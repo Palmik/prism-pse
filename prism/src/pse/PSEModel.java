@@ -79,11 +79,14 @@ public final class PSEModel extends ModelExplicit
 	/** set of hash codes for deciding whether state has predecessors via reaction */
 	private Set<Integer> predecessorsViaReaction;
 	/** map from state to transitions exclusively coming into it */
-	private Map<Integer, List<Integer>> inTransitions;
+	private int[] inTransitions;
+	private int[] inTransitionsOff;
 	/** map from state to transitions both incoming in and outgoing from it */
-	private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
+	private int[] inoutTransitions;
+	private int[] inoutTransitionsOff;
 	/** map from state to transitions exclusively going out from it */
-	private Map<Integer, List<Integer>> outTransitions;
+	private int[] outTransitions;
+	private int[] outTransitionsOff;
 	
 	/**
 	 * Constructs a new parametric model.
@@ -437,17 +440,24 @@ public final class PSEModel extends ModelExplicit
 	{
 		if (inTransitions != null && inoutTransitions != null && outTransitions != null)
 			return;
+	  
+    Map<Integer, List<Integer>> inTransitions_;
+	  Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions_;
+	  Map<Integer, List<Integer>> outTransitions_;
 
 		// Initialise the reaction sets
-		inTransitions = new HashMap<Integer, List<Integer>>(numStates);
-		inoutTransitions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-		outTransitions = new HashMap<Integer, List<Integer>>(numStates);
+		inTransitions_ = new HashMap<Integer, List<Integer>>(numStates);
+		inoutTransitions_ = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
+		outTransitions_ = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
-			inTransitions.put(state, new LinkedList<Integer>());
-			inoutTransitions.put(state, new LinkedList<Pair<Integer, Integer>>());
-			outTransitions.put(state, new LinkedList<Integer>());
+			inTransitions_.put(state, new LinkedList<Integer>());
+			inoutTransitions_.put(state, new LinkedList<Pair<Integer, Integer>>());
+			outTransitions_.put(state, new LinkedList<Integer>());
 		}
 
+    int inCnt = 0;
+    int inoutCnt = 0;
+    int outCnt = 0;
 		// Populate the sets with transition indices
 		for (int pred = 0; pred < numStates; pred++) {
 			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
@@ -460,18 +470,53 @@ public final class PSEModel extends ModelExplicit
 				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
 					if (getReaction(trans) == predReaction) {
 						inout = true;
-						inoutTransitions.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
-						break;
+						inoutTransitions_.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						++inoutCnt;
+            break;
 					}
 				}
 				if (!inout) {
-					inTransitions.get(state).add(predTrans);
+					inTransitions_.get(state).add(predTrans);
+          ++inCnt;
 				}
 				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
-					outTransitions.get(pred).add(predTrans);
-				}
+					outTransitions_.get(pred).add(predTrans);
+				  ++outCnt;
+        }
 			}
 		}
+		
+    inTransitions = new int[inCnt];
+    inoutTransitions = new int[inoutCnt * 2];
+    outTransitions = new int[outCnt];
+    inTransitionsOff = new int[numStates + 1];
+    inoutTransitionsOff = new int[numStates + 1];
+    outTransitionsOff = new int[numStates + 1];
+    int inOff = 0;
+    int inoutOff = 0;
+    int outOff = 0;
+    for (int state = 0; state < numStates; state++) {
+      List<Integer> inTrs = inTransitions_.get(state);
+      List<Pair<Integer, Integer>> inoutTrs = inoutTransitions_.get(state);
+      List<Integer> outTrs = outTransitions_.get(state);
+		 
+      inTransitionsOff[state] = inOff; 
+      inoutTransitionsOff[state] = inoutOff; 
+      outTransitionsOff[state] = outOff; 
+      for (Integer tr : inTrs) {
+        inTransitions[inOff++] = tr;
+      }
+      for (Pair<Integer, Integer> p : inoutTrs) {
+        inoutTransitions[inoutOff++] = p.first;
+        inoutTransitions[inoutOff++] = p.second;
+      }
+      for (Integer tr : outTrs) {
+        outTransitions[outOff++] = tr;
+      }
+    }
+    inTransitionsOff[numStates] = inOff; 
+    inoutTransitionsOff[numStates] = inoutOff; 
+    outTransitionsOff[numStates] = outOff; 
 	}
 
 	/**
@@ -499,22 +544,24 @@ public final class PSEModel extends ModelExplicit
 			resultMax[state] = vectMax[state];
 
 			// Incoming transitions
-			for (int predTrans : inTransitions.get(state)) {
-				int pred = fromState(predTrans);
+			for (int ii = inTransitionsBeg(state); ii < inTransitionsEnd(state); ++ii) {
+				int predTrans = inTransitions[ii];
+        int pred = fromState(predTrans);
 				resultMin[state] += rateParamsLowers[predTrans] * ratePopulations[predTrans] * vectMin[pred] / q;
 				resultMax[state] += rateParamsUppers[predTrans] * ratePopulations[predTrans] * vectMax[pred] / q;
 			}
 
 			// Outgoing transitions
-			for (int trans : outTransitions.get(state)) {
+			for (int ii = outTransitionsBeg(state); ii < outTransitionsEnd(state); ++ii) {
+				int trans = outTransitions[ii];
 				resultMin[state] -= rateParamsUppers[trans] * ratePopulations[trans] * vectMin[state] / q;
 				resultMax[state] -= rateParamsLowers[trans] * ratePopulations[trans] * vectMax[state] / q;
 			}
 
 			// Both incoming and outgoing
-			for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
-				int predTrans = transs.first;
-				int trans = transs.second;
+			for (int ii = inoutTransitionsBeg(state); ii < inoutTransitionsEnd(state); ii += 2) {
+				int predTrans = inoutTransitions[ii];
+				int trans = inoutTransitions[ii + 1];
 
 				int pred = fromState(predTrans);
 				assert fromState(trans) == state;
@@ -615,15 +662,16 @@ public final class PSEModel extends ModelExplicit
 			resultMin[state] = vectMin[state];
 			resultMax[state] = vectMax[state];
 
-			for (int trans : outTransitions.get(state)) {
-				int succ = toState(trans);
+			for (int ii = outTransitionsBeg(state); ii < outTransitionsEnd(state); ii++) {
+				int trans = outTransitions[ii];
+        int succ = toState(trans);
 				resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
 				resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
 			}
 
-			for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
-				int trans = transs.first;
-				int succTrans = transs.second;
+			for (int ii = inoutTransitionsBeg(state); ii < inoutTransitionsEnd(state); ii += 2) {
+				int trans = inoutTransitions[ii];
+				int succTrans = inoutTransitions[ii + 1];
 
 				assert toState(trans) == state;
 				int succ = toState(succTrans);
@@ -660,6 +708,31 @@ public final class PSEModel extends ModelExplicit
 			resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
 		}
 	}
+
+  private int inTransitionsBeg(int state)
+  {
+    return inTransitionsOff[state];
+  }
+  private int inoutTransitionsBeg(int state)
+  {
+    return inoutTransitionsOff[state];
+  }
+  private int outTransitionsBeg(int state)
+  {
+    return outTransitionsOff[state];
+  }
+  private int inTransitionsEnd(int state)
+  {
+    return inTransitionsOff[state + 1];
+  }
+  private int inoutTransitionsEnd(int state)
+  {
+    return inoutTransitionsOff[state + 1];
+  }
+  private int outTransitionsEnd(int state)
+  {
+    return outTransitionsOff[state + 1];
+  }
 
 	/**
 	 * Updates the transition rates of this parametrised CTMC according
