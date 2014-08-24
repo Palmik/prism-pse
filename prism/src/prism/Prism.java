@@ -56,7 +56,7 @@ import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
 import parser.ast.Property;
-import pse.PSEModel;
+import pse.PSEModelExplicit;
 import pse.PSEModelBuilder;
 import pse.PSEModelChecker;
 import pse.PSEModelExplorer;
@@ -3451,7 +3451,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
 		builder.build();
-		PSEModel model = builder.getModel();
+		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected
 		builder = null;
 
@@ -3516,7 +3516,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 
 		PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
 		builder.build();
-		PSEModel model = builder.getModel();
+		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected
 		builder = null;
 

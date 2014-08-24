@@ -126,7 +126,7 @@ public final class PSEModelChecker extends PrismComponent
 	 * Model check an expression, process and return the result.
 	 * Information about states and model constants should be attached to the model.
 	 */
-	public Result check(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	public Result check(PSEModelExplicit model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		long timer = 0;
 
@@ -157,7 +157,7 @@ public final class PSEModelChecker extends PrismComponent
 		return result;
 	}
 
-	public BoxRegionValues checkExpression(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	public BoxRegionValues checkExpression(PSEModelExplicit model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		if (expr instanceof ExpressionFilter) {
 			return checkExpressionFilter(model, (ExpressionFilter) expr, decompositionProcedure);
@@ -173,7 +173,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a filter.
 	 */
-	protected BoxRegionValues checkExpressionFilter(PSEModel model, ExpressionFilter expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	protected BoxRegionValues checkExpressionFilter(PSEModelExplicit model, ExpressionFilter expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		Object resObjMin, resObjMax;
 		StateValues resRgnValsMin, resRgnValsMax;
@@ -383,7 +383,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a P operator expression and return the values for all states.
 	 */
-	protected BoxRegionValues checkExpressionProb(PSEModel model, ExpressionProb expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	protected BoxRegionValues checkExpressionProb(PSEModelExplicit model, ExpressionProb expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		Expression pb; // Probability bound (expression)
 		double p = 0; // Probability bound (actual value)
@@ -428,7 +428,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for the contents of a P operator.
 	 */
-	protected BoxRegionValues checkProbPathFormula(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
+	protected BoxRegionValues checkProbPathFormula(PSEModelExplicit model, Expression expr, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		// Test whether this is a simple path formula (i.e. PCTL)
 		// and then pass control to appropriate method.
@@ -442,13 +442,13 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute probabilities for a simple, non-LTL path operator.
 	 */
-	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModelExplicit model, Expression expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		return checkProbPathFormulaSimple(model, expr, decompositionProcedure, false);
 	}
 
-	protected BoxRegionValues checkProbPathFormulaSimple(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure, boolean negate)
+	protected BoxRegionValues checkProbPathFormulaSimple(PSEModelExplicit model, Expression expr, DecompositionProcedure decompositionProcedure, boolean negate)
 			throws PrismException
 	{
 		BoxRegionValues regionValues = null;
@@ -499,13 +499,13 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Model check a time-bounded until operator; return vector of probabilities for all states.
 	 */
-	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
+	protected BoxRegionValues checkProbBoundedUntil(PSEModelExplicit model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		return checkProbBoundedUntil(model, expr, decompositionProcedure, false);
 	}
 
-	protected BoxRegionValues checkProbBoundedUntil(PSEModel model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure, boolean negate)
+	protected BoxRegionValues checkProbBoundedUntil(PSEModelExplicit model, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure, boolean negate)
 			throws PrismException
 	{
 		double lTime, uTime; // time bounds
@@ -623,7 +623,7 @@ public final class PSEModelChecker extends PrismComponent
 		return regionValues;
 	}
 
-	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
+	public BoxRegionValues computeTransientBackwardsProbs(PSEModelExplicit model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
 			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
@@ -635,7 +635,7 @@ public final class PSEModelChecker extends PrismComponent
 	 * NB: Decompositions of the parameter space must be performed explicitly,
 	 * DecompositionNeeded is not handled within the method.
 	 */
-	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
+	public BoxRegionValues computeTransientBackwardsProbs(PSEModelExplicit model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
 			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure,
 			BoxRegionValues previousResult, boolean negate)
@@ -800,7 +800,7 @@ public final class PSEModelChecker extends PrismComponent
 
 	// Transient analysis
 
-	public BoxRegionValues doTransient(PSEModel model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure) throws PrismException
+	public BoxRegionValues doTransient(PSEModelExplicit model, double t, StateValues initDistMin, StateValues initDistMax, DecompositionProcedure decompositionProcedure) throws PrismException
 	{
 		StateValues initDistMinNew = null, initDistMaxNew = null;
 
@@ -833,7 +833,7 @@ public final class PSEModelChecker extends PrismComponent
 	 */
 	// TODO: Perform decompositions explicitly from doTransient analogically to backwards transient computation,
 	// i.e. replace the double arrays initDist{Min,Max} with BoxRegionValues.
-	public BoxRegionValues computeTransientProbs(PSEModel model, double t, double initDistMin[], double initDistMax[], DecompositionProcedure decompositionProcedure)
+	public BoxRegionValues computeTransientProbs(PSEModelExplicit model, double t, double initDistMin[], double initDistMax[], DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
@@ -856,6 +856,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nStarting PSE transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
+        model.configureParameterSpace(regionFactory.completeSpace()); // To set up isParametrised
 		model.computeInOutReactions();
 
 		// Store num states
@@ -910,6 +911,7 @@ public final class PSEModelChecker extends PrismComponent
 			BoxRegion region = regions.remove();
 			model.configureParameterSpace(region);
 			mainLog.println("Computing probabilities for parameter region " + region);
+
 
 			try {
 				// Start iterations

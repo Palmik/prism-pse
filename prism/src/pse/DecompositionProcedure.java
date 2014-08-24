@@ -36,7 +36,7 @@ import prism.PrismLog;
 public abstract class DecompositionProcedure
 {
 	protected PSEModelChecker modelChecker;
-	protected PSEModel model;
+	protected PSEModelExplicit model;
 	protected Expression propExpr;
 
 	public enum Type
@@ -86,7 +86,7 @@ public abstract class DecompositionProcedure
 		}
 	}
 
-	public void initialise(PSEModelChecker modelChecker, PSEModel model, Expression propExpr) throws PrismException
+	public void initialise(PSEModelChecker modelChecker, PSEModelExplicit model, Expression propExpr) throws PrismException
 	{
 		this.modelChecker = modelChecker;
 		this.model = model;

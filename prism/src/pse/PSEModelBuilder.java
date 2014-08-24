@@ -42,7 +42,7 @@ import explicit.StateStorage;
 
 public final class PSEModelBuilder extends PrismComponent
 {
-	private PSEModel model;
+	private PSEModelExplicit model;
 	private PSEModelExplorer explorer;
 
 	/**
@@ -83,7 +83,7 @@ public final class PSEModelBuilder extends PrismComponent
 	 * 
 	 * @return constructed PSE model
 	 */
-	public PSEModel getModel()
+	public PSEModelExplicit getModel()
 	{
 		return model;
 	}
@@ -93,7 +93,7 @@ public final class PSEModelBuilder extends PrismComponent
 	 * Reserves memory needed for parametric model and reserves necessary space.
 	 * Afterwards, transition probabilities etc. can be added. 
 	 */
-	private void reserveMemoryAndExploreStates(PSEModel model, StateStorage<State> states)
+	private void reserveMemoryAndExploreStates(PSEModelExplicit model, StateStorage<State> states)
 			throws PrismException
 	{
 		int numStates = 0;
@@ -133,10 +133,10 @@ public final class PSEModelBuilder extends PrismComponent
 	 * @return parametric model constructed
 	 * @throws PrismException thrown if model cannot be constructed
 	 */
-	private PSEModel constructModel(ModulesFile modulesFile) throws PrismException
+	private PSEModelExplicit constructModel(ModulesFile modulesFile) throws PrismException
 	{
 		ModelType modelType;
-		PSEModel model;
+		PSEModelExplicit model;
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Cannot do explicit-state reachability if there are multiple initial states");
@@ -151,7 +151,7 @@ public final class PSEModelBuilder extends PrismComponent
 		mainLog.flush();
 		long timer = System.currentTimeMillis();
 
-		model = new PSEModel();
+		model = new PSEModelExplicit();
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Explicit model construction does not support multiple initial states");
