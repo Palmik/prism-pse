@@ -7,23 +7,26 @@ public class PSEModelForVM_CPU
 {
     public PSEModelForVM_CPU
       ( int stCnt, int trCnt
-        , Expression[] trRateParam
-                    , double[] trRateLower
-                    , double[] trRateUpper
-                    , double[] trRatePopul
-                    , int[] trStSrc
-                    , int[] trStTrg
-                    , int[] trsI
-                    , int[] trsO
-                    , int[] trsIO
-                    , int[] trsNP
-            )
+      , BoxRegion completeSpace
+      , int[] trRateParam
+      , double[] trRatePopul
+      , int[] trStSrc
+      , int[] trStTrg
+      , int[] trsI
+      , int[] trsO
+      , int[] trsIO
+      , int[] trsNP
+      )
     {
         this.stCnt = stCnt;
         this.trCnt = trCnt;
+
+        this.lowerBounds = new double[completeSpace.getLowerBounds().length + 1];
+        this.upperBounds = new double[completeSpace.getUpperBounds().length + 1];
+        this.lowerBounds[0] = 1;
+        this.upperBounds[0] = 1;
+
         this.trRateParam = trRateParam;
-        this.trRateLower = trRateLower;
-        this.trRateUpper = trRateUpper;
         this.trRatePopul = trRatePopul;
         this.trStSrc = trStSrc;
         this.trStTrg = trStTrg;
@@ -31,6 +34,8 @@ public class PSEModelForVM_CPU
         this.trsO = trsO;
         this.trsIO = trsIO;
         this.trsNP = trsNP;
+
+        configureParameterSpace(completeSpace);
     }
 
     public void vmMult(double min[], double resMin[], double max[], double resMax[], double q)
@@ -44,16 +49,16 @@ public class PSEModelForVM_CPU
             final int v0 = trStSrc[t];
             final int v1 = trStTrg[t];
 
-            resMin[v1] += trRateLower[t] * trRatePopul[t] * min[v0] * qrec;
-            resMax[v1] += trRateUpper[t] * trRatePopul[t] * max[v0] * qrec;
+            resMin[v1] += lowerBounds[trRateParam[t]] * trRatePopul[t] * min[v0] * qrec;
+            resMax[v1] += upperBounds[trRateParam[t]] * trRatePopul[t] * max[v0] * qrec;
         }
 
         for (int t : trsO)
         {
             final int v0 = trStSrc[t];
 
-            resMin[v0] -= trRateUpper[t] * trRatePopul[t] * min[v0] * qrec;
-            resMax[v0] -= trRateLower[t] * trRatePopul[t] * max[v0] * qrec;
+            resMin[v0] -= upperBounds[trRateParam[t]] * trRatePopul[t] * min[v0] * qrec;
+            resMax[v0] -= lowerBounds[trRateParam[t]] * trRatePopul[t] * max[v0] * qrec;
         }
 
         for (int ii = 0; ii < trsIO.length; )
@@ -73,19 +78,19 @@ public class PSEModelForVM_CPU
             final double midSumNumeratorMin = trRatePopul[t0] * min[v0] - trRatePopul[t1] * min[v1];
             if (midSumNumeratorMin > 0.0)
             {
-                resMin[v1] += trRateLower[t1] * midSumNumeratorMin * qrec;
+                resMin[v1] += lowerBounds[trRateParam[t1]] * midSumNumeratorMin * qrec;
             } else
             {
-                resMin[v1] += trRateUpper[t1] * midSumNumeratorMin * qrec;
+                resMin[v1] += upperBounds[trRateParam[t1]] * midSumNumeratorMin * qrec;
             }
 
             final double midSumNumeratorMax = trRatePopul[t0] * max[v0] - trRatePopul[t1] * max[v1];
             if (midSumNumeratorMax > 0.0)
             {
-                resMax[v1] += trRateUpper[t1] * midSumNumeratorMax * qrec;
+                resMax[v1] += upperBounds[trRateParam[t1]] * midSumNumeratorMax * qrec;
             } else
             {
-                resMax[v1] += trRateLower[t1] * midSumNumeratorMax * qrec;
+                resMax[v1] += lowerBounds[trRateParam[t1]] * midSumNumeratorMax * qrec;
             }
         }
 
@@ -94,7 +99,7 @@ public class PSEModelForVM_CPU
             final int v0 = trStSrc[t];
             final int v1 = trStTrg[t];
 
-            final double rate = trRateLower[t] * trRatePopul[t];
+            final double rate = lowerBounds[trRateParam[t]] * trRatePopul[t];
 
             resMin[v0] -= rate * min[v0] * qrec;
             resMax[v0] -= rate * max[v0] * qrec;
@@ -104,21 +109,24 @@ public class PSEModelForVM_CPU
         }
     }
 
-    public void configureParameterSpace(BoxRegion region) throws PrismException
+    public void configureParameterSpace(BoxRegion region)
     {
-        for (int t = 0; t < trCnt; t++)
+        System.arraycopy(region.getLowerBounds(), 0, lowerBounds, 1, region.getLowerBounds().length);
+        System.arraycopy(region.getUpperBounds(), 0, upperBounds, 1, region.getUpperBounds().length);
+        System.err.println("BEG");
+        for (int i = 0; i < trCnt; ++i)
         {
-            trRateLower[t] = trRateParam[t].evaluateDouble(region.getLowerBounds());
-            trRateUpper[t] = trRateParam[t].evaluateDouble(region.getUpperBounds());
+            System.err.printf("LB %f\n", lowerBounds[trRateParam[i]]);
         }
+        System.err.println("END");
     }
 
     final private int stCnt;
     final private int trCnt;
 
-    final private Expression[] trRateParam;
-    final private double[] trRateLower;
-    final private double[] trRateUpper;
+    final private int[] trRateParam;
+    private double[] lowerBounds;
+    private double[] upperBounds;
     final private double[] trRatePopul;
 
     final private int[] trStSrc;

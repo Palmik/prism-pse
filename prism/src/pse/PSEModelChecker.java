@@ -856,7 +856,6 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("\nStarting PSE transient probability computation...");
 
 		// Compute the in, out, inout sets of reactions
-        model.configureParameterSpace(regionFactory.completeSpace()); // To set up isParametrised
 		model.computeInOutReactions();
 
 		// Store num states

@@ -2933,7 +2933,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	 * Note: All constants in the model file must have already been defined.
 	 * @param propertiesFile Properties file containing property to check, constants defined
 	 * @param undefinedConstants Details of constant ranges defining the experiment
-	 * @param resultsCollection Where to store the results
+	 * @param results Where to store the results
 	 * @param expr The property to check
 	 * @param initialState Initial state (if null, is selected randomly)
 	 * @param maxPathLength The maximum path length for sampling
@@ -3449,7 +3449,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
 
-		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
+		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer, paramNames);
 		builder.build();
 		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected
@@ -3514,7 +3514,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
 
-		PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
+		PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer, paramNames);
 		builder.build();
 		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected

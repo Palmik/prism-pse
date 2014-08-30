@@ -44,6 +44,9 @@ import explicit.ModelExplicit;
  */
 public final class PSEModelExplicit extends ModelExplicit
 {
+    /** param id to param name mapping */
+    private String[] paramNames;
+    private BoxRegion completeSpace;
     /** total number of probabilistic transitions over all states */
     private int numTotalTransitions;
     /** begin and end of state transitions */
@@ -53,11 +56,11 @@ public final class PSEModelExplicit extends ModelExplicit
     /** targets of distribution branches */
     private int[] colsTo;
     /** all transitions' rate parameters, as expressions */
-    private Expression[] rateParams;
+    private int[] rateParams;
     /** all transitions' rate parameters, evaluated with lower bounds of current region */
-    private double[] rateParamsLowers;
+    private double[] lowerBounds;
     /** all transitions' rate parameters, evaluated with upper bounds of current region */
-    private double[] rateParamsUppers;
+    private double[] upperBounds;
     /** species populations in all transitions' origin states */
     private double[] ratePopulations;
     /** indication on all transitions, whether their rate depends on parameters */
@@ -88,13 +91,20 @@ public final class PSEModelExplicit extends ModelExplicit
     /**
      * Constructs a new parametric model.
      */
-    PSEModelExplicit()
+    PSEModelExplicit(String[] paramNames, BoxRegion completeSpace)
     {
         numStates = 0;
         numTotalTransitions = 0;
         initialStates = new LinkedList<Integer>();
         deadlocks = new TreeSet<Integer>();
         predecessorsViaReaction = new HashSet<Integer>();
+        this.paramNames = paramNames;
+        this.completeSpace = completeSpace;
+
+        this.lowerBounds = new double[completeSpace.getLowerBounds().length + 1];
+        this.upperBounds = new double[completeSpace.getUpperBounds().length + 1];
+        this.lowerBounds[0] = 1;
+        this.upperBounds[0] = 1;
     }
 
     // Accessors (for Model)
@@ -243,9 +253,7 @@ public final class PSEModelExplicit extends ModelExplicit
         rows = new int[numStates + 1];
         labels = new String[numTotalTransitions];
         reactions = new int[numTotalTransitions];
-        rateParams = new Expression[numTotalTransitions];
-        rateParamsLowers = new double[numTotalTransitions];
-        rateParamsUppers = new double[numTotalTransitions];
+        rateParams = new int[numTotalTransitions];
         parametrisedTransitions = new boolean[numTotalTransitions];
         ratePopulations = new double[numTotalTransitions];
         colsTo = new int[numTotalTransitions];
@@ -274,16 +282,17 @@ public final class PSEModelExplicit extends ModelExplicit
      * @param reaction kind of the transition being added
      * @param fromState from which state the transition goes
      * @param toState to which state the transition leads
-     * @param rateParamsExpr the transition's rate parameters as expression
+     * @param rateParamId the id of the parameter of this transition (-1 for non parametrised)
+     *                    we increase all param ids by 1 to use them as array indices
      * @param ratePopulation the transition's origin state's species population
      * @param action action with which the transition is labelled
      */
-    void addTransition(int reaction, int fromState, int toState, Expression rateParamsExpr, double ratePopulation, String action)
+    void addTransition(int reaction, int fromState, int toState, int rateParamId, double ratePopulation, String action)
     {
         reactions[numTotalTransitions] = reaction;
         colsFrom[numTotalTransitions] = fromState;
         colsTo[numTotalTransitions] = toState;
-        rateParams[numTotalTransitions] = rateParamsExpr;
+        rateParams[numTotalTransitions] = rateParamId + 1;
         ratePopulations[numTotalTransitions] = ratePopulation;
         labels[numTotalTransitions] = action;
 
@@ -333,7 +342,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     boolean isParametrised(int trans)
     {
-        return parametrisedTransitions[trans];
+        return rateParamsLowers(trans) == rateParamsUppers(trans);
     }
 
     /**
@@ -523,15 +532,15 @@ public final class PSEModelExplicit extends ModelExplicit
             }
         }
 
-        //Arrays.sort(trsI);
-        //Arrays.sort(trsO);
-        //Arrays.sort(trsNP);
+        // Sort for better locality when accessing trRateLower/Upper/Popul.
+        Arrays.sort(trsI);
+        Arrays.sort(trsO);
+        Arrays.sort(trsNP);
 
         return new PSEModelForVM_CPU
           ( numStates, numTotalTransitions
+          , completeSpace
           , rateParams
-          , rateParamsLowers
-          , rateParamsUppers
           , ratePopulations
           , colsFrom
           , colsTo
@@ -562,86 +571,25 @@ public final class PSEModelExplicit extends ModelExplicit
             throws PrismException
     {
         modelVM.vmMult(vectMin, resultMin, vectMax, resultMax, q);
-        /*
+    }
 
+    private double rateParamsLowers(int t)
+    {
+        return lowerBounds[rateParams[t]];
+    }
 
-        for (int state = 0; state < numStates; state++) {
-            // Initialise the result
-            resultMin[state] = vectMin[state];
-            resultMax[state] = vectMax[state];
-
-            // Incoming transitions
-            for (int predTrans : inTransitions.get(state)) {
-                int pred = fromState(predTrans);
-                resultMin[state] += rateParamsLowers[predTrans] * ratePopulations[predTrans] * vectMin[pred] / q;
-                resultMax[state] += rateParamsUppers[predTrans] * ratePopulations[predTrans] * vectMax[pred] / q;
-            }
-
-            // Outgoing transitions
-            for (int trans : outTransitions.get(state)) {
-                resultMin[state] -= rateParamsUppers[trans] * ratePopulations[trans] * vectMin[state] / q;
-                resultMax[state] -= rateParamsLowers[trans] * ratePopulations[trans] * vectMax[state] / q;
-            }
-
-            // Both incoming and outgoing
-            for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
-                int predTrans = transs.first;
-                int trans = transs.second;
-
-                int pred = fromState(predTrans);
-                assert fromState(trans) == state;
-
-                // The rate params of the two considered transitions must be identical
-                assert rateParamsLowers[predTrans] == rateParamsLowers[trans];
-                assert rateParamsUppers[predTrans] == rateParamsUppers[trans];
-
-                double midSumNumeratorMin = ratePopulations[predTrans] * vectMin[pred] - ratePopulations[trans] * vectMin[state];
-                if (midSumNumeratorMin > 0.0) {
-                    resultMin[state] += rateParamsLowers[trans] * midSumNumeratorMin / q;
-                } else {
-                    resultMin[state] += rateParamsUppers[trans] * midSumNumeratorMin / q;
-                }
-
-                double midSumNumeratorMax = ratePopulations[predTrans] * vectMax[pred] - ratePopulations[trans] * vectMax[state];
-                if (midSumNumeratorMax > 0.0) {
-                    resultMax[state] += rateParamsUppers[trans] * midSumNumeratorMax / q;
-                } else {
-                    resultMax[state] += rateParamsLowers[trans] * midSumNumeratorMax / q;
-                }
-            }
-
-        }
-
-        int c = 0;
-        // Optimisation: Non-parametrised transitions
-        for (int trans = 0; trans < numTotalTransitions; trans++) {
-            if (isParametrised(trans))
-                continue;
-
-            ++c;
-            int pred = fromState(trans);
-            int state = toState(trans);
-
-            double rate = rateParamsLowers[trans] * ratePopulations[trans];
-
-            resultMin[pred] -= rate * vectMin[pred] / q;
-            resultMax[pred] -= rate * vectMax[pred] / q;
-
-            resultMin[state] += rate * vectMin[pred] / q;
-            resultMax[state] += rate * vectMax[pred] / q;
-        }
-        System.out.printf("NP CNT EX %s\n", c);
-        */
-
+    private double rateParamsUppers(int t)
+    {
+        return upperBounds[rateParams[t]];
     }
 
     private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
     {
         double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
         if (midSumNumeratorMin > 0.0) {
-            return rateParamsLowers[trans] * midSumNumeratorMin / q;
+            return rateParamsLowers(trans) * midSumNumeratorMin / q;
         } else {
-            return rateParamsUppers[trans] * midSumNumeratorMin / q;
+            return rateParamsUppers(trans) * midSumNumeratorMin / q;
         }
     }
 
@@ -649,9 +597,9 @@ public final class PSEModelExplicit extends ModelExplicit
     {
         double midSumNumeratorMax = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
         if (midSumNumeratorMax > 0.0) {
-            return rateParamsUppers[trans] * midSumNumeratorMax / q;
+            return rateParamsUppers(trans) * midSumNumeratorMax / q;
         } else {
-            return rateParamsLowers[trans] * midSumNumeratorMax / q;
+            return rateParamsLowers(trans) * midSumNumeratorMax / q;
         }
     }
 
@@ -714,8 +662,8 @@ public final class PSEModelExplicit extends ModelExplicit
                 }
 
                 // The rate params of the two considered transitions must be identical
-                assert rateParamsLowers[succTrans] == rateParamsLowers[trans];
-                assert rateParamsUppers[succTrans] == rateParamsUppers[trans];
+                assert rateParamsLowers(succTrans) == rateParamsLowers(trans);
+                assert rateParamsUppers(succTrans) == rateParamsUppers(trans);
 
                 resultMin[state] += mvMultMidSumEvalMin(succTrans, vectMin[succ], vectMin[state], q);
                 resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
@@ -733,7 +681,7 @@ public final class PSEModelExplicit extends ModelExplicit
             if (!subset.get(state))
                 continue;
 
-            double rate = rateParamsLowers[trans] * ratePopulations[trans];
+            double rate = rateParamsLowers(trans) * ratePopulations[trans];
             resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
             resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
         }
@@ -748,14 +696,14 @@ public final class PSEModelExplicit extends ModelExplicit
      * @throws PrismException thrown if rates cannot be evaluated with the new
      * parameter region's bounds
      */
-    public void configureParameterSpace(BoxRegion region) throws PrismException
+    public void configureParameterSpace(BoxRegion region)
     {
-        for (int trans = 0; trans < numTotalTransitions; trans++) {
-            rateParamsLowers[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
-            rateParamsUppers[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
-            parametrisedTransitions[trans] = rateParamsLowers[trans] != rateParamsUppers[trans];
+        // TODO: This is only for the save of mvMult, right now it is redundant... we could share
+        // lowerBounds and upperBounds between this and the VM model.
+        System.arraycopy(region.getLowerBounds(), 0, lowerBounds, 1, region.getLowerBounds().length);
+        System.arraycopy(region.getUpperBounds(), 0, upperBounds, 1, region.getUpperBounds().length);
 
-        }
+        modelVM.configureParameterSpace(region);
     }
 
     /**
@@ -771,12 +719,17 @@ public final class PSEModelExplicit extends ModelExplicit
      * @throws PrismException thrown if an error occurred during construction
      * of the non-parametrised CTMC
      */
-    public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
+    public CTMC instantiate(double[] point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
             throws PrismException
     {
         modulesFile = (ModulesFile) modulesFile.deepCopy();
         // Add point dimensions to constants of the model file
-        modulesFile.getConstantValues().addValues(point.getDimensions());
+        Values dimensions = new Values();
+        for (int i = 0; i < point.length; ++i)
+        {
+            dimensions.addValue(paramNames[i], point[i]);
+        }
+        modulesFile.getConstantValues().addValues(dimensions);
         return (CTMC) constructModel.constructModel(modulesFile);
     }
 }

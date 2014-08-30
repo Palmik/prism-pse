@@ -38,7 +38,6 @@ import parser.ast.Expression;
 import parser.ast.ExpressionConstant;
 import parser.ast.ModulesFile;
 import parser.visitor.ASTTraverse;
-import prism.Pair;
 import prism.PrismException;
 import explicit.ModelExplorer;
 
@@ -50,31 +49,33 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 
 	private BoxRegionFactory regionFactory;
 
-	private Map<Expression, RateParametersAndPopulation> rateDataCache = new HashMap<Expression, RateParametersAndPopulation>();
+	private Map<Expression, ParamIdAndPopulRate> rateDataCache = new HashMap<Expression, ParamIdAndPopulRate>();
 	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
+    private Map<String, Integer> paramIds;
 
-	protected static class RateParametersAndPopulation extends Pair<Expression, Double>
+	protected static class ParamIdAndPopulRate
 	{
-		public RateParametersAndPopulation(Expression first, Double second) {
-			super(first, second);
-		}
-
-		public Expression getParameters()
-		{
-			return first;
-		}
-
-		public double getPopulation()
-		{
-			return second;
-		}
+        ParamIdAndPopulRate(int n, double r)
+        {
+            this.paramId = n;
+            this.populRate = r;
+        }
+		public final int paramId;
+        public final double populRate;
 	}
 
 	public PSEModelExplorer(ModulesFile modulesFile) throws PrismException
 	{
 		modulesFile = (ModulesFile) modulesFile.deepCopy().replaceConstants(modulesFile.getConstantValues()).simplify();
 		engine = new SymbolicEngine(modulesFile);
+        paramIds = new HashMap<String, Integer>();
 	}
+
+    // Param ids start from 0.
+    public int getParamId(String paramName)
+    {
+        return paramIds.get(paramName);
+    }
 
 	public void setParameters(String[] paramNames, double[] lower, double[] upper)
 	{
@@ -83,7 +84,8 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		for (int i = 0; i < paramNames.length; i++) {
 			lowerParams.addValue(paramNames[i], lower[i]);
 			upperParams.addValue(paramNames[i], upper[i]);
-		}
+		    paramIds.put(paramNames[i], i);
+        }
 		regionFactory = new BoxRegionFactory(lowerParams, upperParams);
 	}
 
@@ -92,13 +94,14 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 		return regionFactory;
 	}
 
-	protected RateParametersAndPopulation extractRateParametersAndPopulation(Expression rateExpression) throws PrismException
+	protected ParamIdAndPopulRate extractRateParametersAndPopulation(Expression rateExpression) throws PrismException
 	{
 		if (rateDataCache.containsKey(rateExpression)) {
 			return rateDataCache.get(rateExpression);
 		}
 
-		final List<ExpressionConstant> containedParameters = new ArrayList<ExpressionConstant>();
+        // NOTE: I do this, because non-final variables can not be accessed from closures.
+        final List<ExpressionConstant> rateParameters_ = new ArrayList<ExpressionConstant>();
 		rateExpression.accept(new ASTTraverse()
 		{
 			// TODO: visit() for doubles to handle rate population directly.
@@ -106,28 +109,32 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 			// into pse.RateUtils or something.
 			public Object visit(ExpressionConstant e)
 			{
-				containedParameters.add(e);
+				rateParameters_.add(e);
 				return null;
 			}
 		});
+        if (rateParameters_.size() > 1)
+            throw new PrismException("The PSE algorithms assumes that every transition is parametrised by at most one parameter.");
 
 		Expression rateParameters = Expression.Double(1);
-		for (ExpressionConstant parameterExpr : containedParameters) {
-			rateParameters = Expression.Times(rateParameters, parameterExpr);
-		}
-		double ratePopulation = Expression.Divide(rateExpression, rateParameters).evaluateDouble(regionFactory.completeSpace().getUpperBounds());
-		RateParametersAndPopulation result = new RateParametersAndPopulation(rateParameters, ratePopulation);
-		rateDataCache.put(rateExpression, result);
+        for (ExpressionConstant c : rateParameters_) { rateParameters = Expression.Times(rateParameters, c); }
+
+		double ratePopulation = Expression.Divide(rateExpression, rateParameters).evaluateDouble(regionFactory.completeSpaceUpperParamsValues());
+
+        int paramId = -1;
+        if (rateParameters_.size() > 0) { paramId = getParamId(rateParameters_.get(0).getName()); }
+        ParamIdAndPopulRate result = new ParamIdAndPopulRate(paramId, ratePopulation);
+        rateDataCache.put(rateExpression, result);
 		return result;
 	}
 
-	protected RateParametersAndPopulation[] extractRateParametersAndPopulation(Expression[] rateExpressions) throws PrismException
+	protected ParamIdAndPopulRate[] extractRateParametersAndPopulation(Expression[] rateExpressions) throws PrismException
 	{
 		if (rateExpressions == null) {
 			return null;
 		}
 		int n = rateExpressions.length;
-		RateParametersAndPopulation[] result = new RateParametersAndPopulation[n];
+		ParamIdAndPopulRate[] result = new ParamIdAndPopulRate[n];
 		for (int i = 0; i < n; i++) {
 			result[i] = extractRateParametersAndPopulation(rateExpressions[i]);
 		}

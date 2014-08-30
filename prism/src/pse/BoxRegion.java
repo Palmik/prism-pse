@@ -35,36 +35,35 @@ import explicit.Utils;
 
 final class BoxRegion implements Comparable<BoxRegion>
 {
-	private Values lowerBounds;
-	private Values upperBounds;
+	private double[] lowerBounds;
+	private double[] upperBounds;
 
 	private double volume = 0.0;
 
-	public BoxRegion(Values boundsLower, Values boundsUpper)
-	{
-		assert boundsLower.compareTo(boundsUpper) <= 0;
+	public BoxRegion(double[] boundsLower, double[] boundsUpper)
+    {
 		this.lowerBounds = boundsLower;
 		this.upperBounds = boundsUpper;
 	}
 
 
-	public Values getLowerBounds()
+	public double[] getLowerBounds()
 	{
 		return lowerBounds;
 	}
 
-	public Values getUpperBounds()
+	public double[] getUpperBounds()
 	{
 		return upperBounds;
 	}
 
-	private Values computeMidBounds()
+	private double[] computeMidBounds()
 	{
-		Values midBounds = new Values();
-		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
-			double lowerValue = (Double) lowerBounds.getValue(i);
-			double upperValue = (Double) upperBounds.getValue(i);
-			midBounds.addValue(lowerBounds.getName(i), lowerValue + 0.5 * (upperValue - lowerValue));
+		final double[] midBounds = new double[lowerBounds.length];
+		for (int i = 0; i < lowerBounds.length; ++i) {
+			final double lowerValue = lowerBounds[i];
+			final double upperValue = upperBounds[i];
+			midBounds[i] = lowerValue + 0.5 * (upperValue - lowerValue);
 		}
 		return midBounds;
 	}
@@ -72,24 +71,23 @@ final class BoxRegion implements Comparable<BoxRegion>
 	public Set<BoxRegion> decompose()
 	{
 		Set<BoxRegion> subregions = new HashSet<BoxRegion>();
-		Values midBounds = computeMidBounds();
+		double[] midBounds = computeMidBounds();
 		Set<Integer> allIndices = new HashSet<Integer>();
-		for (int i = 0; i < midBounds.getNumValues(); i++) {
+		for (int i = 0; i < midBounds.length; i++) {
 			allIndices.add(i);
 		}
 
 		for (Set<Integer> indices : Utils.powerSet(allIndices)) {
-			Values newLowerBounds = new Values();
-			Values newUpperBounds = new Values();
-			for (int i = 0; i < midBounds.getNumValues(); i++) {
-				String name = midBounds.getName(i);
-				double midValue = (Double) midBounds.getValue(i);
+			double[] newLowerBounds = new double[lowerBounds.length];
+			double[] newUpperBounds = new double[lowerBounds.length];
+			for (int i = 0; i < midBounds.length; ++i) {
+				final double midValue = midBounds[i];
 				if (indices.contains(i)) {
-					newLowerBounds.addValue(name, (Double) lowerBounds.getValue(i));
-					newUpperBounds.addValue(name, midValue);
+					newLowerBounds[i] = lowerBounds[i];
+					newUpperBounds[i] = midValue;
 				} else {
-					newLowerBounds.addValue(name, midValue);
-					newUpperBounds.addValue(name, (Double) upperBounds.getValue(i));
+					newLowerBounds[i] = midValue;
+					newUpperBounds[i] = upperBounds[i];
 				}
 			}
 			subregions.add(new BoxRegion(newLowerBounds, newUpperBounds));
@@ -103,9 +101,9 @@ final class BoxRegion implements Comparable<BoxRegion>
 			return volume;
 
 		volume = 1.0;
-		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
-			double lowerValue = (Double) lowerBounds.getValue(i);
-			double upperValue = (Double) upperBounds.getValue(i);
+		for (int i = 0; i < lowerBounds.length; ++i) {
+			double lowerValue = lowerBounds[i];
+			double upperValue = upperBounds[i];
 			if (lowerValue != upperValue) {
 				volume *= upperValue - lowerValue;
 			}
@@ -113,33 +111,43 @@ final class BoxRegion implements Comparable<BoxRegion>
 		return volume;
 	}
 
-	public Set<Point> generateSamplePoints()
+	public Set<double[]> generateSamplePoints()
 	{
 		return generateSamplePoints(2);
 	}
 
-	public Set<Point> generateSamplePoints(int numSamples)
+	public Set<double[]> generateSamplePoints(int numSamples)
 	{
-		Set<Point> samples = new HashSet<Point>();
+		Set<double[]> samples = new HashSet<double[]>();
 		Random r = new Random();
 		while (samples.size() != numSamples) {
-			Values dimensions = new Values();
-			for (int i = 0; i < lowerBounds.getNumValues(); i++) {
-				double lowerValue = (Double) lowerBounds.getValue(i);
-				double upperValue = (Double) upperBounds.getValue(i);
+			double[] dimensions = new double[lowerBounds.length];
+			for (int i = 0; i < lowerBounds.length; ++i) {
+				double lowerValue = lowerBounds[i];
+				double upperValue = upperBounds[i];
 				double randomValue = lowerValue + r.nextDouble() * (upperValue - lowerValue);
-				dimensions.addValue(lowerBounds.getName(i), randomValue);
+				dimensions[i] = randomValue;
 			}
-			samples.add(new Point(dimensions));
+			samples.add(dimensions);
 		}
 		return samples;
 	}
 
+    private int DoubleArrayCompareTo(double[] aa, double[] bb)
+    {
+        for (int i = 0; i < aa.length; ++i)
+        {
+            int r = Double.compare(aa[i], bb[i]);
+            if (r != 0) return r;
+        }
+        return 0;
+    }
+
 	@Override
 	public int compareTo(BoxRegion r)
 	{
-		int lowerRes = lowerBounds.compareTo(r.lowerBounds);
-		int upperRes = upperBounds.compareTo(r.upperBounds);
+		int lowerRes = DoubleArrayCompareTo(lowerBounds, r.lowerBounds);
+		int upperRes = DoubleArrayCompareTo(upperBounds, r.upperBounds);
 		if (lowerRes == upperRes)
 			return lowerRes;
 
@@ -191,13 +199,13 @@ final class BoxRegion implements Comparable<BoxRegion>
 	public String toString()
 	{
 		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < lowerBounds.getNumValues(); i++) {
+		for (int i = 0; i < lowerBounds.length; i++) {
 			if (i != 0) builder.append(",");
-			builder.append(lowerBounds.getName(i));
+			builder.append(Integer.toString(i));
 			builder.append("=");
-			builder.append((Double) lowerBounds.getValue(i));
+			builder.append((Double) lowerBounds[i]);
 			builder.append(":");
-			builder.append((Double) upperBounds.getValue(i));
+			builder.append((Double) upperBounds[i]);
 		}
 		return builder.toString();
 	}

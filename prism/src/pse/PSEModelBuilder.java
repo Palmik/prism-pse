@@ -27,8 +27,10 @@
 
 package pse;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import parser.State;
 import parser.Values;
@@ -44,14 +46,16 @@ public final class PSEModelBuilder extends PrismComponent
 {
 	private PSEModelExplicit model;
 	private PSEModelExplorer explorer;
+    private String[] paramNames;
 
 	/**
 	 * Constructor
 	 */
-	public PSEModelBuilder(PrismComponent parent, PSEModelExplorer explorer) throws PrismException
+	public PSEModelBuilder(PrismComponent parent, PSEModelExplorer explorer, String[] paramNames) throws PrismException
 	{
 		super(parent);
 		this.explorer = explorer;
+        this.paramNames = paramNames;
 	}
 
 	/**
@@ -71,7 +75,6 @@ public final class PSEModelBuilder extends PrismComponent
 		time = System.currentTimeMillis();
 		ModulesFile modulesFile = (ModulesFile) explorer.getModulesFile();
 		model = constructModel(modulesFile);
-		model.configureParameterSpace(explorer.getRegionFactory().completeSpace());
 		time = System.currentTimeMillis() - time;
 
 		mainLog.println("\nTime for model construction: " + time / 1000.0 + " seconds.");
@@ -87,7 +90,6 @@ public final class PSEModelBuilder extends PrismComponent
 	{
 		return model;
 	}
-
 
 	/**
 	 * Reserves memory needed for parametric model and reserves necessary space.
@@ -151,7 +153,10 @@ public final class PSEModelBuilder extends PrismComponent
 		mainLog.flush();
 		long timer = System.currentTimeMillis();
 
-		model = new PSEModelExplicit();
+		model = new PSEModelExplicit
+          ( paramNames
+          , explorer.getRegionFactory().completeSpace()
+          );
 
 		if (modulesFile.getInitialStates() != null) {
 			throw new PrismException("Explicit model construction does not support multiple initial states");
@@ -163,7 +168,7 @@ public final class PSEModelBuilder extends PrismComponent
 		List<State> statesList = states.toPermutedArrayList(permut);
 		model.setStatesList(statesList);
 		model.addInitialState(permut[0]);
-		Values upperParams = explorer.getRegionFactory().completeSpace().getUpperBounds();
+		Values upperParams = explorer.getRegionFactory().completeSpaceUpperParamsValues();
 		for (State state : statesList) {
 			explorer.queryState(state);
 			int numChoices = explorer.getNumChoices();
@@ -176,10 +181,11 @@ public final class PSEModelBuilder extends PrismComponent
 				int reaction = explorer.getReaction(succNr);
 				State stateNew = explorer.computeTransitionTarget(succNr);
 				Expression rateExpr = explorer.getTransitionProbability(succNr);
-				PSEModelExplorer.RateParametersAndPopulation paramsAndPopulation = explorer.extractRateParametersAndPopulation(rateExpr);
-				String action = explorer.getTransitionAction(succNr);
+				PSEModelExplorer.ParamIdAndPopulRate paramIdAndPopulRate = explorer.extractRateParametersAndPopulation(rateExpr);
+
+                String action = explorer.getTransitionAction(succNr);
 				model.addTransition(reaction, permut[states.get(state)], permut[states.get(stateNew)],
-						paramsAndPopulation.first, paramsAndPopulation.second, action);
+						paramIdAndPopulRate.paramId, paramIdAndPopulRate.populRate, action);
 				sumOut = Expression.Plus(sumOut, rateExpr);
 			}
 			model.setSumLeaving(sumOut.evaluateDouble(upperParams));
