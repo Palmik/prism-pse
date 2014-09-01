@@ -137,7 +137,7 @@ public class Bisimulation extends PrismComponent
 
 	/**
 	 * Construct the initial partition based on a set of proposition bitsets.
-	 * Store info in {@code numStates}, {@code numBlocks} and {@code partition}.
+	 * Store info in {@code stCnt}, {@code numBlocks} and {@code partition}.
 	 */
 	private void initialisePartitionInfo(Model model, List<BitSet> propBSs)
 	{

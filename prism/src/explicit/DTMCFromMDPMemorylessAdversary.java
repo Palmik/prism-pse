@@ -53,7 +53,7 @@ public class DTMCFromMDPMemorylessAdversary extends DTMCExplicit
 	public DTMCFromMDPMemorylessAdversary(MDP mdp, int adv[])
 	{
 		this.mdp = mdp;
-		this.numStates = mdp.getNumStates();
+		this.stCnt = mdp.getNumStates();
 		this.adv = adv;
 	}
 
@@ -113,7 +113,7 @@ public class DTMCFromMDPMemorylessAdversary extends DTMCExplicit
 	public int getNumTransitions()
 	{
 		int numTransitions = 0;
-		for (int s = 0; s < numStates; s++)
+		for (int s = 0; s < stCnt; s++)
 			if (adv[s] >= 0)
 				numTransitions += mdp.getNumTransitions(s, adv[s]);
 		return numTransitions;
@@ -216,7 +216,7 @@ public class DTMCFromMDPMemorylessAdversary extends DTMCExplicit
 
 	public void prob1step(BitSet subset, BitSet u, BitSet v, BitSet result)
 	{
-		for (int s = 0; s < numStates; s++) {
+		for (int s = 0; s < stCnt; s++) {
 			if (subset.get(s)) {
 				result.set(s, mdp.prob1stepSingle(s, adv[s], u, v));
 			}

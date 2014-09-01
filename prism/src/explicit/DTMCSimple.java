@@ -67,9 +67,9 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	 */
 	public DTMCSimple(DTMCSimple dtmc)
 	{
-		this(dtmc.numStates);
+		this(dtmc.stCnt);
 		copyFrom(dtmc);
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			trans.set(i, new Distribution(dtmc.trans.get(i)));
 		}
 		numTransitions = dtmc.numTransitions;
@@ -84,9 +84,9 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	 */
 	public DTMCSimple(DTMCSimple dtmc, int permut[])
 	{
-		this(dtmc.numStates);
+		this(dtmc.stCnt);
 		copyFrom(dtmc, permut);
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			trans.set(permut[i], new Distribution(dtmc.trans.get(i), permut));
 		}
 		numTransitions = dtmc.numTransitions;
@@ -108,7 +108,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	public void clearState(int i)
 	{
 		// Do nothing if state does not exist
-		if (i >= numStates || i < 0)
+		if (i >= stCnt || i < 0)
 			return;
 		// Clear data structures and update stats
 		numTransitions -= trans.get(i).size();
@@ -119,7 +119,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	public int addState()
 	{
 		addStates(1);
-		return numStates - 1;
+		return stCnt - 1;
 	}
 
 	@Override
@@ -127,7 +127,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	{
 		for (int i = 0; i < numToAdd; i++) {
 			trans.add(new Distribution());
-			numStates++;
+			stCnt++;
 		}
 	}
 
@@ -241,7 +241,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	@Override
 	public void findDeadlocks(boolean fix) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			if (trans.get(i).isEmpty()) {
 				addDeadlockState(i);
 				if (fix)
@@ -253,7 +253,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	@Override
 	public void checkForDeadlocks(BitSet except) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			if (trans.get(i).isEmpty() && (except == null || !except.get(i)))
 				throw new PrismException("DTMC has a deadlock in state " + i);
 		}
@@ -278,7 +278,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	{
 		int i;
 		Distribution distr;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				distr = trans.get(i);
 				result.set(i, distr.containsOneOf(u));
@@ -291,7 +291,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 	{
 		int i;
 		Distribution distr;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				distr = trans.get(i);
 				result.set(i, distr.containsOneOf(v) && distr.isSubsetOf(u));
@@ -368,11 +368,11 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 		Distribution distr;
 		
 		// Initialise result to 0
-		for (j = 0; j < numStates; j++) {
+		for (j = 0; j < stCnt; j++) {
 			result[j] = 0;
 		}
 		// Go through matrix elements (by row)
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			distr = trans.get(i);
 			for (Map.Entry<Integer, Double> e : distr) {
 				j = (Integer) e.getKey();
@@ -403,7 +403,7 @@ public class DTMCSimple extends DTMCExplicit implements ModelSimple
 		String s = "";
 		first = true;
 		s = "trans: [ ";
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (first)
 				first = false;
 			else

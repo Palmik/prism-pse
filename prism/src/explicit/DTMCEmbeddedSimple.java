@@ -56,11 +56,11 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 	public DTMCEmbeddedSimple(CTMCSimple ctmc)
 	{
 		this.ctmc = ctmc;
-		this.numStates = ctmc.getNumStates();
+		this.stCnt = ctmc.getNumStates();
 		// TODO: should we copy other stuff across too?
-		exitRates = new double[numStates];
+		exitRates = new double[stCnt];
 		numExtraTransitions = 0;
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			exitRates[i] = ctmc.getTransitions(i).sum();
 			if (exitRates[i] == 0)
 				numExtraTransitions++;
@@ -177,7 +177,7 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 	public String infoString()
 	{
 		String s = "";
-		s += numStates + " states (" + getNumInitialStates() + " initial)";
+		s += stCnt + " states (" + getNumInitialStates() + " initial)";
 		s += ", " + getNumTransitions() + " transitions (incl. " + numExtraTransitions + " self-loops)";
 		return s;
 	}
@@ -186,7 +186,7 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + getNumTransitions() + "\n";
 		return s;
 	}
@@ -208,7 +208,7 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 	public void prob0step(BitSet subset, BitSet u, BitSet result)
 	{
 		int i;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				result.set(i, someSuccessorsInSet(i, u));
 			}
@@ -218,7 +218,7 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 	public void prob1step(BitSet subset, BitSet u, BitSet v, BitSet result)
 	{
 		int i;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				result.set(i, someSuccessorsInSet(i, v) && allSuccessorsInSet(i, u));
 			}
@@ -357,11 +357,11 @@ public class DTMCEmbeddedSimple extends DTMCExplicit
 		Distribution distr;
 		
 		// Initialise result to 0
-		for (j = 0; j < numStates; j++) {
+		for (j = 0; j < stCnt; j++) {
 			result[j] = 0;
 		}
 		// Go through matrix elements (by row)
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			distr = ctmc.getTransitions(i);
 			er = exitRates[i];
 			// Exit rate 0: prob 1 self-loop

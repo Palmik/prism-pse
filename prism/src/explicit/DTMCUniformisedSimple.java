@@ -57,10 +57,10 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	public DTMCUniformisedSimple(CTMCSimple ctmc, double q)
 	{
 		this.ctmc = ctmc;
-		this.numStates = ctmc.getNumStates();
+		this.stCnt = ctmc.getNumStates();
 		this.q = q;
 		numExtraTransitions = 0;
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			if (ctmc.getTransitions(i).get(i) == 0 && ctmc.getTransitions(i).sumAllBut(i) < q) {
 				numExtraTransitions++;
 			}
@@ -182,7 +182,7 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	public String infoString()
 	{
 		String s = "";
-		s += numStates + " states (" + getNumInitialStates() + " initial)";
+		s += stCnt + " states (" + getNumInitialStates() + " initial)";
 		s += ", " + getNumTransitions() + " transitions (incl. " + numExtraTransitions + " self-loops)";
 		return s;
 	}
@@ -191,7 +191,7 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + getNumTransitions() + "\n";
 		return s;
 	}
@@ -286,11 +286,11 @@ public class DTMCUniformisedSimple extends DTMCExplicit
 		Distribution distr;
 		
 		// Initialise result to 0
-		for (j = 0; j < numStates; j++) {
+		for (j = 0; j < stCnt; j++) {
 			result[j] = 0;
 		}
 		// Go through matrix elements (by row)
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			distr = ctmc.getTransitions(i);
 			sum = 0.0;
 			for (Map.Entry<Integer, Double> e : distr) {

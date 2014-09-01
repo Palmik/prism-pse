@@ -2058,7 +2058,7 @@ public class ModuleModel extends SelectionModel implements Observer
             //If not, a single click selects whichever element is under
             //the mouse
              
-            for(int i = 0; i < numStates; i++)
+            for(int i = 0; i < stCnt; i++)
             {
                 State st = (State)theStates.get(i);
                 if(st.intersects(mouseBox))

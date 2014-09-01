@@ -911,7 +911,6 @@ public final class PSEModelChecker extends PrismComponent
 			model.configureParameterSpace(region);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
-
 			try {
 				// Start iterations
 				iters = 1;

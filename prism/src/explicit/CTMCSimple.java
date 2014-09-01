@@ -94,7 +94,7 @@ public class CTMCSimple extends DTMCSimple implements CTMC
 	{
 		int i;
 		double d, max = Double.NEGATIVE_INFINITY;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			d = trans.get(i).sum();
 			if (d > max)
 				max = d;
@@ -140,11 +140,11 @@ public class CTMCSimple extends DTMCSimple implements CTMC
 		Distribution distr;
 		int i;
 		double d;
-		dtmc = new DTMCSimple(numStates);
+		dtmc = new DTMCSimple(stCnt);
 		for (int in : getInitialStates()) {
 			dtmc.addInitialState(in);
 		}
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			distr = trans.get(i);
 			d = distr.sum();
 			if (d == 0) {
@@ -163,7 +163,7 @@ public class CTMCSimple extends DTMCSimple implements CTMC
 	{
 		Distribution distr;
 		int i;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			distr = trans.get(i);
 			distr.set(i, q - distr.sumAllBut(i));
 		}
@@ -182,11 +182,11 @@ public class CTMCSimple extends DTMCSimple implements CTMC
 		Distribution distr;
 		int i;
 		double d;
-		dtmc = new DTMCSimple(numStates);
+		dtmc = new DTMCSimple(stCnt);
 		for (int in : getInitialStates()) {
 			dtmc.addInitialState(in);
 		}
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			// Add scaled off-diagonal entries
 			distr = trans.get(i);
 			for (Map.Entry<Integer, Double> e : distr) {

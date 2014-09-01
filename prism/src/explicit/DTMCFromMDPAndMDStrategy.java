@@ -54,7 +54,7 @@ public class DTMCFromMDPAndMDStrategy extends DTMCExplicit
 	public DTMCFromMDPAndMDStrategy(MDP mdp, MDStrategy strat)
 	{
 		this.mdp = mdp;
-		this.numStates = mdp.getNumStates();
+		this.stCnt = mdp.getNumStates();
 		this.strat = strat;
 	}
 
@@ -114,7 +114,7 @@ public class DTMCFromMDPAndMDStrategy extends DTMCExplicit
 	public int getNumTransitions()
 	{
 		int numTransitions = 0;
-		for (int s = 0; s < numStates; s++)
+		for (int s = 0; s < stCnt; s++)
 			if (strat.isChoiceDefined(s))
 				numTransitions += mdp.getNumTransitions(s, strat.getChoiceIndex(s));
 		return numTransitions;

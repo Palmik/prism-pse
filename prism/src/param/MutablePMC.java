@@ -344,7 +344,7 @@ final class MutablePMC {
 	{
 		StringBuilder result = new StringBuilder();
 		
-		for (int state = 0; state < numStates; state++) {
+		for (int state = 0; state < stCnt; state++) {
 			result.append("state " + state);
 			if (useRewards) {
 				result.append(" " + rewards[state]);

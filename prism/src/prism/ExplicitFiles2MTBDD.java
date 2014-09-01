@@ -110,7 +110,7 @@ public class ExplicitFiles2MTBDD
 	/**
 	 * Build a Model corresponding to the passed in states/transitions/labels files.
 	 * Variable info and model type is taken from {@code modulesFile}.
-	 * The number of states should also be passed in as {@code numStates}.
+	 * The number of states should also be passed in as {@code stCnt}.
 	 */
 	public Model build(File statesFile, File transFile, File labelsFile, ModulesFile modulesFile, int numStates) throws PrismException
 	{

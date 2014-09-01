@@ -27,40 +27,21 @@
 package pse;
 
 import parser.Values;
-import prism.PrismLangException;
 
 public final class BoxRegionFactory
 {
-	private Values lowerParamsValues;
-	private Values upperParamsValues;
-    private double[] lowerParams;
-    private double[] upperParams;
+	private Values lowerParams;
+	private Values upperParams;
 
 	public BoxRegionFactory(Values paramsLower, Values paramsUpper)
 	{
 		assert paramsLower.getNumValues() == paramsUpper.getNumValues();
-		this.lowerParamsValues = paramsLower;
-		this.upperParamsValues = paramsUpper;
-        this.lowerParams = new double[paramsLower.getNumValues()];
-        this.upperParams = new double[paramsUpper.getNumValues()];
-        for (int i = 0; i < paramsLower.getNumValues(); ++i)
-        {
-            this.lowerParams[i] = (Double)paramsLower.getValue(i);
-            this.upperParams[i] = (Double)paramsUpper.getValue(i);
-        }
+		this.lowerParams = paramsLower;
+		this.upperParams = paramsUpper;
 	}
 
-    public BoxRegion completeSpace()
-    {
-        return new BoxRegion(lowerParams, upperParams);
-    }
-    public Values completeSpaceLowerParamsValues()
-    {
-        return lowerParamsValues;
-    }
-
-    public Values completeSpaceUpperParamsValues()
-    {
-        return upperParamsValues;
-    }
+	public BoxRegion completeSpace()
+	{
+		return new BoxRegion(lowerParams, upperParams);
+	}
 }

@@ -59,10 +59,10 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 	public String infoString()
 	{
 		String s = "";
-		s += numStates + " states (" + getNumInitialStates() + " initial)";
+		s += stCnt + " states (" + getNumInitialStates() + " initial)";
 		s += ", " + getNumTransitions() + " transitions";
 		s += ", " + getNumChoices() + " choices";
-		s += ", dist max/avg = " + getMaxNumChoices() + "/" + PrismUtils.formatDouble2dp(((double) getNumChoices()) / numStates);
+		s += ", dist max/avg = " + getMaxNumChoices() + "/" + PrismUtils.formatDouble2dp(((double) getNumChoices()) / stCnt);
 		return s;
 	}
 
@@ -70,10 +70,10 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + getNumTransitions() + "\n";
 		s += "Choices:     " + getNumChoices() + "\n";
-		s += "Max/avg:     " + getMaxNumChoices() + "/" + PrismUtils.formatDouble2dp(((double) getNumChoices()) / numStates) + "\n";
+		s += "Max/avg:     " + getMaxNumChoices() + "/" + PrismUtils.formatDouble2dp(((double) getNumChoices()) / stCnt) + "\n";
 		return s;
 	}
 
@@ -84,9 +84,9 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		Object action;
 		TreeMap<Integer, Double> sorted;
 		// Output transitions to .tra file
-		out.print(numStates + " " + getNumChoices() + " " + getNumTransitions() + "\n");
+		out.print(stCnt + " " + getNumChoices() + " " + getNumTransitions() + "\n");
 		sorted = new TreeMap<Integer, Double>();
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			numChoices = getNumChoices(i);
 			for (j = 0; j < numChoices; j++) {
 				// Extract transitions and sort by destination state index (to match PRISM-exported files)
@@ -138,7 +138,7 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		Object action;
 		String style;
 		out.print("digraph " + getModelType() + " {\nsize=\"8,5\"\nnode [shape=box];\n");
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (mark != null && mark.get(i))
 				out.print(i + " [style=filled  fillcolor=\"#cccccc\"]\n");
 			numChoices = getNumChoices(i);
@@ -173,9 +173,9 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 			// Output transitions to PRISM language file
 			out = new FileWriter(filename);
 			out.write(getModelType().keyword() + "\n");
-			out.write("module M\nx : [0.." + (numStates - 1) + "];\n");
+			out.write("module M\nx : [0.." + (stCnt - 1) + "];\n");
 			sorted = new TreeMap<Integer, Double>();
-			for (i = 0; i < numStates; i++) {
+			for (i = 0; i < stCnt; i++) {
 				numChoices = getNumChoices(i);
 				for (j = 0; j < numChoices; j++) {
 					// Extract transitions and sort by destination state index (to match PRISM-exported files)
@@ -214,7 +214,7 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 	public boolean areAllChoiceActionsUnique()
 	{
 		HashSet<Object> sActions = new HashSet<Object>();
-		for (int s = 0; s < numStates; s++) {
+		for (int s = 0; s < stCnt; s++) {
 			int n = getNumChoices(s);
 			if (n > 1) {
 				sActions.clear();
@@ -236,10 +236,10 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultMinMaxSingle(s, vect, min, strat);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultMinMaxSingle(s, vect, min, strat);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))
@@ -254,14 +254,14 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		double d, diff, maxDiff = 0.0;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++) {
+			for (s = 0; s < stCnt; s++) {
 				d = mvMultJacMinMaxSingle(s, vect, min, strat);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
 				vect[s] = d;
 			}
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1)) {
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1)) {
 				d = mvMultJacMinMaxSingle(s, vect, min, strat);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
@@ -276,7 +276,7 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 			}
 		}
 		// Use this code instead for backwards Gauss-Seidel
-		/*for (s = numStates - 1; s >= 0; s--) {
+		/*for (s = stCnt - 1; s >= 0; s--) {
 			if (subset.get(s)) {
 				d = mvMultJacMinMaxSingle(s, vect, min, strat);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
@@ -293,10 +293,10 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultRewMinMaxSingle(s, vect, mdpRewards, min, strat);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultRewMinMaxSingle(s, vect, mdpRewards, min, strat);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))
@@ -311,14 +311,14 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 		double d, diff, maxDiff = 0.0;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++) {
+			for (s = 0; s < stCnt; s++) {
 				d = mvMultRewJacMinMaxSingle(s, vect, mdpRewards, min, strat);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
 				vect[s] = d;
 			}
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1)) {
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1)) {
 				d = mvMultRewJacMinMaxSingle(s, vect, mdpRewards, min, strat);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
@@ -333,7 +333,7 @@ public abstract class MDPExplicit extends ModelExplicit implements MDP
 			}
 		}
 		// Use this code instead for backwards Gauss-Seidel
-		/*for (s = numStates - 1; s >= 0; s--) {
+		/*for (s = stCnt - 1; s >= 0; s--) {
 			if (subset.get(s)) {
 				d = mvMultRewJacMinMaxSingle(s, vect, mdpRewards, min);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);

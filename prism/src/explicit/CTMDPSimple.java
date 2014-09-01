@@ -88,7 +88,7 @@ public class CTMDPSimple extends MDPSimple implements CTMDP
 	{
 		int i;
 		double d, max = Double.NEGATIVE_INFINITY;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			for (Distribution distr : trans.get(i)) {
 				d = distr.sum();
 				if (d > max)
@@ -103,7 +103,7 @@ public class CTMDPSimple extends MDPSimple implements CTMDP
 	{
 		int i, j, n;
 		double d;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			n = trans.get(i).size();
 			if (n < 2)
 				continue;
@@ -130,11 +130,11 @@ public class CTMDPSimple extends MDPSimple implements CTMDP
 		Distribution distrNew;
 		int i;
 		double sum, d;
-		mdp = new MDPSimple(numStates);
+		mdp = new MDPSimple(stCnt);
 		for (int in : getInitialStates()) {
 			mdp.addInitialState(in);
 		}
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			for (Distribution distr : trans.get(i)) {
 				distrNew = new Distribution();
 				sum = distr.sum();

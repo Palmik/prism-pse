@@ -51,7 +51,7 @@ public abstract class ModelExplicit implements Model
 	// Basic model information
 
 	/** Number of states */
-	protected int numStates;
+	protected int stCnt;
 	/** Which states are initial states */
 	protected List<Integer> initialStates; // TODO: should be a (linkedhash?) set really
 	/** States that are/were deadlocks. Where requested and where appropriate (DTMCs/MDPs),
@@ -77,7 +77,7 @@ public abstract class ModelExplicit implements Model
 	 */
 	public void copyFrom(ModelExplicit model)
 	{
-		numStates = model.numStates;
+		stCnt = model.stCnt;
 		for (int in : model.initialStates) {
 			addInitialState(in);
 		}
@@ -99,7 +99,7 @@ public abstract class ModelExplicit implements Model
 	 */
 	public void copyFrom(ModelExplicit model, int permut[])
 	{
-		numStates = model.numStates;
+		stCnt = model.stCnt;
 		for (int in : model.initialStates) {
 			addInitialState(permut[in]);
 		}
@@ -118,7 +118,7 @@ public abstract class ModelExplicit implements Model
 	 */
 	public void initialise(int numStates)
 	{
-		this.numStates = numStates;
+		this.stCnt = numStates;
 		initialStates = new ArrayList<Integer>();
 		deadlocks = new TreeSet<Integer>();
 		statesList = null;
@@ -182,7 +182,7 @@ public abstract class ModelExplicit implements Model
 	@Override
 	public int getNumStates()
 	{
-		return numStates;
+		return stCnt;
 	}
 
 	@Override
@@ -330,7 +330,7 @@ public abstract class ModelExplicit implements Model
 		int i;
 		// Header
 		out.print("digraph " + getModelType() + " {\nsize=\"8,5\"\nnode [shape=box];\n");
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			// Style for each state
 			if (mark != null && mark.get(i))
 				out.print(i + " [style=filled  fillcolor=\"#cccccc\"]\n");
@@ -341,7 +341,7 @@ public abstract class ModelExplicit implements Model
 		if (showStates) {
 			List<State> states = getStatesList();
 			if (states != null) {
-				for (i = 0; i < numStates; i++) {
+				for (i = 0; i < stCnt; i++) {
 					out.print(i + " [label=\"" + i + "\\n" + states.get(i) + "\"]\n");
 				}
 			}
@@ -406,7 +406,7 @@ public abstract class ModelExplicit implements Model
 		if (o == null || !(o instanceof ModelExplicit))
 			return false;
 		ModelExplicit model = (ModelExplicit) o;
-		if (numStates != model.numStates)
+		if (stCnt != model.stCnt)
 			return false;
 		if (!initialStates.equals(model.initialStates))
 			return false;

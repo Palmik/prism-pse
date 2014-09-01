@@ -88,7 +88,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		// TODO: actions?
 		initialise(m.getNumStates());
 		copyFrom(m);
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			set = newDistributionSet(null);
 			set.addAll(m.getChoices(i));
 			addDistributionSet(i, set);
@@ -113,7 +113,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	public void clearState(int i)
 	{
 		// Do nothing if state does not exist
-		if (i >= numStates || i < 0)
+		if (i >= stCnt || i < 0)
 			return;
 		// Clear data structures and update stats
 		List<DistributionSet> list = trans.get(i);
@@ -133,7 +133,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	public int addState()
 	{
 		addStates(1);
-		return numStates - 1;
+		return stCnt - 1;
 	}
 
 	@Override
@@ -142,7 +142,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		for (int i = 0; i < numToAdd; i++) {
 			trans.add(new ArrayList<DistributionSet>());
 		}
-		numStates += numToAdd;
+		stCnt += numToAdd;
 	}
 
 	@Override
@@ -251,7 +251,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	{
 		ArrayList<DistributionSet> set;
 		// Check state exists
-		if (s >= numStates || s < 0)
+		if (s >= stCnt || s < 0)
 			return -1;
 		// Add distribution set (if new)
 		set = trans.get(s);
@@ -338,7 +338,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	@Override
 	public void findDeadlocks(boolean fix) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			// Note that no distributions is a deadlock, not an empty distribution
 			if (trans.get(i).isEmpty()) {
 				addDeadlockState(i);
@@ -356,7 +356,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	@Override
 	public void checkForDeadlocks(BitSet except) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			if (trans.get(i).isEmpty() && (except == null || !except.get(i)))
 				throw new PrismException("STPG has a deadlock in state " + i);
 		}
@@ -369,9 +369,9 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		int i, j, k;
 		TreeMap<Integer, Double> sorted;
 		// Output transitions to .tra file
-		out.print(numStates + " " + numDistrSets + " " + numDistrs + " " + numTransitions + "\n");
+		out.print(stCnt + " " + numDistrSets + " " + numDistrs + " " + numTransitions + "\n");
 		sorted = new TreeMap<Integer, Double>();
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			j = -1;
 			for (DistributionSet distrs : trans.get(i)) {
 				j++;
@@ -433,11 +433,11 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	public String infoString()
 	{
 		String s = "";
-		s += numStates + " states (" + getNumInitialStates() + " initial)";
+		s += stCnt + " states (" + getNumInitialStates() + " initial)";
 		s += ", " + numTransitions + " transitions";
 		s += ", " + numDistrs + " choices";
 		s += ", " + numDistrSets + " choice sets";
-		s += ", p1max/avg = " + maxNumDistrSets + "/" + PrismUtils.formatDouble2dp(((double) numDistrSets) / numStates);
+		s += ", p1max/avg = " + maxNumDistrSets + "/" + PrismUtils.formatDouble2dp(((double) numDistrSets) / stCnt);
 		s += ", p2max/avg = " + maxNumDistrs + "/" + PrismUtils.formatDouble2dp(((double) numDistrs) / numDistrSets);
 		return s;
 	}
@@ -446,10 +446,10 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + numTransitions + "\n";
 		s += "Choices:     " + numDistrs + "\n";
-		s += "P1 max/avg:  " + maxNumDistrSets + "/" + PrismUtils.formatDouble2dp(((double) numDistrSets) / numStates) + "\n";
+		s += "P1 max/avg:  " + maxNumDistrSets + "/" + PrismUtils.formatDouble2dp(((double) numDistrSets) / stCnt) + "\n";
 		s += "P2 max/avg:  " + maxNumDistrs + "/" + PrismUtils.formatDouble2dp(((double) numDistrs) / numDistrSets) + "\n";
 		return s;
 	}
@@ -598,7 +598,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	{
 		int i;
 		boolean b1, b2, b3;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = forall1; // there exists or for all player 1 choices
 				for (DistributionSet distrs : trans.get(i)) {
@@ -631,7 +631,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 	{
 		int i;
 		boolean b1, b2, b3;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = forall1; // there exists or for all player 1 choices
 				for (DistributionSet distrs : trans.get(i)) {
@@ -665,10 +665,10 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultMinMaxSingle(s, vect, min1, min2);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultMinMaxSingle(s, vect, min1, min2);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))
@@ -761,14 +761,14 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		double d, diff, maxDiff = 0.0;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++) {
+			for (s = 0; s < stCnt; s++) {
 				d = mvMultJacMinMaxSingle(s, vect, min1, min2);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
 				vect[s] = d;
 			}
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1)) {
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1)) {
 				d = mvMultJacMinMaxSingle(s, vect, min1, min2);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
@@ -834,10 +834,10 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultRewMinMaxSingle(s, vect, rewards, min1, min2, adv);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultRewMinMaxSingle(s, vect, rewards, min1, min2, adv);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))
@@ -995,7 +995,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		String str = "";
 		first = true;
 		str = "[ ";
-		for (s = 0; s < numStates; s++) {
+		for (s = 0; s < stCnt; s++) {
 			if (first)
 				first = false;
 			else
@@ -1068,7 +1068,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		String s = "";
 		first = true;
 		s = "[ ";
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (first)
 				first = false;
 			else
@@ -1087,7 +1087,7 @@ public class STPGAbstrSimple extends ModelExplicit implements STPG, NondetModelS
 		if (o == null || !(o instanceof STPGAbstrSimple))
 			return false;
 		STPGAbstrSimple stpg = (STPGAbstrSimple) o;
-		if (numStates != stpg.numStates)
+		if (stCnt != stpg.stCnt)
 			return false;
 		if (!initialStates.equals(stpg.initialStates))
 			return false;

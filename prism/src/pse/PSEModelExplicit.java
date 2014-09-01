@@ -32,10 +32,7 @@ import java.util.*;
 import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ModulesFile;
-import prism.ModelType;
-import prism.Pair;
-import prism.PrismException;
-import prism.PrismLog;
+import prism.*;
 import explicit.CTMC;
 import explicit.ModelExplicit;
 
@@ -44,67 +41,63 @@ import explicit.ModelExplicit;
  */
 public final class PSEModelExplicit extends ModelExplicit
 {
-    /** param id to param name mapping */
-    private String[] paramNames;
-    private BoxRegion completeSpace;
     /** total number of probabilistic transitions over all states */
-    private int numTotalTransitions;
+    private int trCnt;
     /** begin and end of state transitions */
     private int[] rows;
     /** origins of distribution branches */
-    private int[] colsFrom;
+    private int[] trStSrc;
     /** targets of distribution branches */
-    private int[] colsTo;
+    private int[] trStTrg;
     /** all transitions' rate parameters, as expressions */
-    private int[] rateParams;
+    private Expression[] trRateExpr;
     /** all transitions' rate parameters, evaluated with lower bounds of current region */
-    private double[] lowerBounds;
+    private double[] trRateLower;
     /** all transitions' rate parameters, evaluated with upper bounds of current region */
-    private double[] upperBounds;
+    private double[] trRateUpper;
     /** species populations in all transitions' origin states */
-    private double[] ratePopulations;
-    /** indication on all transitions, whether their rate depends on parameters */
-    private boolean[] parametrisedTransitions;
+    private double[] trRatePopul;
     /** all transitions' reactions, i.e. transition kinds */
-    private int[] reactions;
-    /** labels - per transition, <i>not</i> per action */
-    private String[] labels;
+    private int[] trReac;
+    /**  - per transition, <i>not</i> per action */
+    private String[] trName;
     /** total sum of leaving rates for a state */
-    private double[] exitRates;
+    private double[] stExitRate;
     /** set of hash codes for deciding whether state has predecessors via reaction */
     private Set<Integer> predecessorsViaReaction;
     /** map from state to non-param transitions coming out from it */
-    private Map<Integer, List<Integer>> nonParamTransitions;
-    private int nonParamTransitionsCnt;
+    private Map<Integer, List<Integer>> trsNP;
+    private int trsNPCnt;
+    private int trsNPNonZeroPopulRateCnt;
     /** map from state to transitions exclusively coming into it */
-    private Map<Integer, List<Integer>> inTransitions;
-    private int inTransitionsCnt;
+    private Map<Integer, List<Integer>> trsI;
+    private int trsICnt;
+    private int trsINonZeroPopulRateCnt;
     /** map from state to transitions both incoming in and outgoing from it */
-    private Map<Integer, List<Pair<Integer, Integer>>> inoutTransitions;
-    private int inoutTransitionsCnt;
+    private Map<Integer, List<Pair<Integer, Integer>>> trsIO;
+    private int trsIOCnt;
+    private int trsIONonZeroPopulRateCnt;
     /** map from state to transitions exclusively going out from it */
-    private Map<Integer, List<Integer>> outTransitions;
-    private int outTransitionsCnt;
+    private Map<Integer, List<Integer>> trsO;
+    private int trsOCnt;
+    private int trsONonZeroPopulRateCnt;
 
-    private PSEModelForVM_CPU modelVM;
+    private boolean gpu;
+    private PSEModelForVM_CPU modelVMCPU;
+    private PSEModelForVM_GPU modelVMGPU;
 
     /**
      * Constructs a new parametric model.
      */
-    PSEModelExplicit(String[] paramNames, BoxRegion completeSpace)
+    PSEModelExplicit()
     {
-        numStates = 0;
-        numTotalTransitions = 0;
+        stCnt = 0;
+        trCnt = 0;
         initialStates = new LinkedList<Integer>();
         deadlocks = new TreeSet<Integer>();
         predecessorsViaReaction = new HashSet<Integer>();
-        this.paramNames = paramNames;
-        this.completeSpace = completeSpace;
 
-        this.lowerBounds = new double[completeSpace.getLowerBounds().length + 1];
-        this.upperBounds = new double[completeSpace.getUpperBounds().length + 1];
-        this.lowerBounds[0] = 1;
-        this.upperBounds[0] = 1;
+        this.gpu = false;
     }
 
     // Accessors (for Model)
@@ -124,7 +117,7 @@ public final class PSEModelExplicit extends ModelExplicit
     @Override
     public int getNumTransitions()
     {
-        return numTotalTransitions;
+        return trCnt;
     }
 
     @Override
@@ -237,7 +230,7 @@ public final class PSEModelExplicit extends ModelExplicit
     public String infoStringTable()
     {
         String s = "";
-        s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+        s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
         s += "Transitions: " + getNumTransitions() + "\n";
         return s;
     }
@@ -251,14 +244,15 @@ public final class PSEModelExplicit extends ModelExplicit
     void reserveMem(int numStates, int numTotalTransitions)
     {
         rows = new int[numStates + 1];
-        labels = new String[numTotalTransitions];
-        reactions = new int[numTotalTransitions];
-        rateParams = new int[numTotalTransitions];
-        parametrisedTransitions = new boolean[numTotalTransitions];
-        ratePopulations = new double[numTotalTransitions];
-        colsTo = new int[numTotalTransitions];
-        colsFrom = new int[numTotalTransitions];
-        exitRates = new double[numStates];
+        trName = new String[numTotalTransitions];
+        trReac = new int[numTotalTransitions];
+        trRateExpr = new Expression[numTotalTransitions];
+        trRateLower = new double[numTotalTransitions];
+        trRateUpper = new double[numTotalTransitions];
+        trRatePopul = new double[numTotalTransitions];
+        trStTrg = new int[numTotalTransitions];
+        trStSrc = new int[numTotalTransitions];
+        stExitRate = new double[numStates];
     }
 
     /**
@@ -272,8 +266,8 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     void finishState()
     {
-        rows[numStates + 1] = numTotalTransitions;
-        numStates++;
+        rows[stCnt + 1] = trCnt;
+        stCnt++;
     }
 
     /**
@@ -282,23 +276,22 @@ public final class PSEModelExplicit extends ModelExplicit
      * @param reaction kind of the transition being added
      * @param fromState from which state the transition goes
      * @param toState to which state the transition leads
-     * @param rateParamId the id of the parameter of this transition (-1 for non parametrised)
-     *                    we increase all param ids by 1 to use them as array indices
+     * @param rateExpr the rate expression
      * @param ratePopulation the transition's origin state's species population
      * @param action action with which the transition is labelled
      */
-    void addTransition(int reaction, int fromState, int toState, int rateParamId, double ratePopulation, String action)
+    void addTransition(int reaction, int fromState, int toState, Expression rateExpr, double ratePopulation, String action)
     {
-        reactions[numTotalTransitions] = reaction;
-        colsFrom[numTotalTransitions] = fromState;
-        colsTo[numTotalTransitions] = toState;
-        rateParams[numTotalTransitions] = rateParamId + 1;
-        ratePopulations[numTotalTransitions] = ratePopulation;
-        labels[numTotalTransitions] = action;
+        trReac[trCnt] = reaction;
+        trStSrc[trCnt] = fromState;
+        trStTrg[trCnt] = toState;
+        trRateExpr[trCnt] = rateExpr;
+        trRatePopul[trCnt] = ratePopulation;
+        trName[trCnt] = action;
 
         predecessorsViaReaction.add(toState ^ reaction);
 
-        numTotalTransitions++;
+        trCnt++;
     }
 
     /**
@@ -308,7 +301,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     void setSumLeaving(double leaving)
     {
-        exitRates[numStates] = leaving;
+        stExitRate[stCnt] = leaving;
     }
 
     /**
@@ -342,7 +335,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     boolean isParametrised(int trans)
     {
-        return rateParamsLowers(trans) == rateParamsUppers(trans);
+        return rateParamsLowers(trans) != rateParamsUppers(trans);
     }
 
     /**
@@ -353,7 +346,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     int getReaction(int trans)
     {
-        return reactions[trans];
+        return trReac[trans];
     }
 
     /**
@@ -364,7 +357,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     int fromState(int trans)
     {
-        return colsFrom[trans];
+        return trStSrc[trans];
     }
 
     /**
@@ -375,7 +368,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     int toState(int trans)
     {
-        return colsTo[trans];
+        return trStTrg[trans];
     }
 
     /**
@@ -386,7 +379,7 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     String getLabel(int trans)
     {
-        return labels[trans];
+        return trName[trans];
     }
 
     /**
@@ -397,8 +390,8 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     double getMaxExitRate()
     {
-        BitSet allStates = new BitSet(numStates);
-        allStates.set(0, numStates - 1);
+        BitSet allStates = new BitSet(stCnt);
+        allStates.set(0, stCnt - 1);
         return getMaxExitRate(allStates);
     }
 
@@ -413,8 +406,8 @@ public final class PSEModelExplicit extends ModelExplicit
     {
         double max = Double.NEGATIVE_INFINITY;
         for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
-            if (exitRates[state] > max)
-                max = exitRates[state];
+            if (stExitRate[state] > max)
+                max = stExitRate[state];
         }
         return max;
     }
@@ -439,35 +432,36 @@ public final class PSEModelExplicit extends ModelExplicit
     /**
      * Analyses the model's transitions in order to divide them between exclusively
      * incoming, exclusively outgoing or both incoming/outgoing from the perspective
-     * of particular states. The results are stored in {@code inTransitions},
-     * {@code outTransitions} and {@code inoutTransitions}, respectively.
+     * of particular states. The results are stored in {@code trsI},
+     * {@code trsO} and {@code trsIO}, respectively.
      */
     public void computeInOutReactions()
     {
-        if (inTransitions != null && inoutTransitions != null && outTransitions != null && nonParamTransitions != null)
+        if (trsI != null && trsIO != null && trsO != null && trsNP != null)
             return;
 
         // Initialise the reaction sets
-        inTransitions = new HashMap<Integer, List<Integer>>(numStates);
-        inoutTransitions = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-        outTransitions = new HashMap<Integer, List<Integer>>(numStates);
-        nonParamTransitions = new HashMap<Integer, List<Integer>>(numStates);
-        inTransitionsCnt = 0;
-        inoutTransitionsCnt = 0;
-        outTransitionsCnt = 0;
-        for (int state = 0; state < numStates; state++) {
-            inTransitions.put(state, new LinkedList<Integer>());
-            inoutTransitions.put(state, new LinkedList<Pair<Integer, Integer>>());
-            outTransitions.put(state, new LinkedList<Integer>());
-            nonParamTransitions.put(state, new LinkedList<Integer>());
+        trsI = new HashMap<Integer, List<Integer>>(stCnt);
+        trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(stCnt);
+        trsO = new HashMap<Integer, List<Integer>>(stCnt);
+        trsNP = new HashMap<Integer, List<Integer>>(stCnt);
+        trsICnt = 0;
+        trsIOCnt = 0;
+        trsOCnt = 0;
+        for (int state = 0; state < stCnt; state++) {
+            trsI.put(state, new LinkedList<Integer>());
+            trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
+            trsO.put(state, new LinkedList<Integer>());
+            trsNP.put(state, new LinkedList<Integer>());
         }
 
         // Populate the sets with transition indices
-        for (int pred = 0; pred < numStates; pred++) {
+        for (int pred = 0; pred < stCnt; pred++) {
             for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
                 if (!isParametrised(predTrans)) {
-                    nonParamTransitions.get(pred).add(predTrans);
-                    ++nonParamTransitionsCnt;
+                    trsNP.get(pred).add(predTrans);
+                    ++trsNPCnt;
+                    if (trRatePopul[predTrans] != 0) ++trsNPNonZeroPopulRateCnt;
                     continue;
                 }
                 boolean inout = false;
@@ -476,78 +470,108 @@ public final class PSEModelExplicit extends ModelExplicit
                 for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
                     if (getReaction(trans) == predReaction) {
                         inout = true;
-                        inoutTransitions.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
-                        ++inoutTransitionsCnt;
+                        trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+                        ++trsIOCnt;
                         break;
                     }
                 }
                 if (!inout) {
-                    inTransitions.get(state).add(predTrans);
-                    ++inTransitionsCnt;
+                    trsI.get(state).add(predTrans);
+                    ++trsICnt;
+                    if (trRatePopul[predTrans] != 0) ++trsINonZeroPopulRateCnt;
                 }
                 if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
-                    outTransitions.get(pred).add(predTrans);
-                    ++outTransitionsCnt;
+                    trsO.get(pred).add(predTrans);
+                    ++trsOCnt;
+                    if (trRatePopul[predTrans] != 0) ++trsONonZeroPopulRateCnt;
                 }
             }
         }
 
-        modelVM = buildModelForVM_CPU();
+        if (gpu) { modelVMGPU = buildModelForVM_GPU(); }
+        else { modelVMCPU = buildModelForVM_CPU(); }
+    }
+
+    public PSEModelForVM_GPU buildModelForVM_GPU()
+    {
+        double[] dataNP = new double[trsNPNonZeroPopulRateCnt];
+        int[] dataNPTrg = new int[trsNPNonZeroPopulRateCnt];
+        int[] dataNPSrcBeg = new int[stCnt + 1];
+
+        int dataNPPos = 0;
+        for (int src = 0; src < stCnt; ++src)
+        {
+            List<Integer> stTrsNP = trsNP.get(src);
+
+            dataNPSrcBeg[src] = dataNPPos;
+            for (int t : stTrsNP)
+            {
+                if (trRatePopul[t] != 0)
+                {
+                    dataNP[dataNPPos] = trRatePopul[t];
+                    dataNPTrg[dataNPPos] = trStTrg[t];
+                    ++dataNPPos;
+                }
+            }
+        }
+        dataNPSrcBeg[stCnt] = dataNPPos;
+
+        return null;
     }
 
     public PSEModelForVM_CPU buildModelForVM_CPU()
     {
-        int[] trsI = new int[inTransitionsCnt];
-        int[] trsO = new int[outTransitionsCnt];
-        int[] trsIO = new int[inoutTransitionsCnt * 2];
-        int[] trsNP = new int[nonParamTransitionsCnt];
+        int[] trsI_ = new int[trsICnt];
+        int[] trsO_ = new int[trsOCnt];
+        int[] trsIO_ = new int[trsIOCnt * 2];
+        int[] trsNP_ = new int[trsNPCnt];
 
         int trsIPos = 0;
         int trsOPos = 0;
         int trsIOPos = 0;
         int trsNPPos = 0;
-        for (int state = 0; state < numStates; state++)
+        for (int state = 0; state < stCnt; state++)
         {
-            List<Integer> inTrs = inTransitions.get(state);
-            List<Pair<Integer, Integer>> inoutTrs = inoutTransitions.get(state);
-            List<Integer> outTrs = outTransitions.get(state);
-            List<Integer> nonParamTrs = nonParamTransitions.get(state);
+            List<Integer> stTrsI = trsI.get(state);
+            List<Integer> stTrsO = trsO.get(state);
+            List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+            List<Integer> stTrsNP = trsNP.get(state);
 
-            for (Integer tr : inTrs)
+            for (Integer tr : stTrsI)
             {
-                trsI[trsIPos++] = tr;
+                trsI_[trsIPos++] = tr;
             }
-            for (Integer tr : outTrs)
+            for (Integer tr : stTrsO)
             {
-                trsO[trsOPos++] = tr;
+                trsO_[trsOPos++] = tr;
             }
-            for (Pair<Integer, Integer> p : inoutTrs)
+            for (Pair<Integer, Integer> p : stTrsIO)
             {
-                trsIO[trsIOPos++] = p.first;
-                trsIO[trsIOPos++] = p.second;
+                trsIO_[trsIOPos++] = p.first;
+                trsIO_[trsIOPos++] = p.second;
             }
-            for (Integer tr : nonParamTrs)
+            for (Integer tr : stTrsNP)
             {
-                trsNP[trsNPPos++] = tr;
+                trsNP_[trsNPPos++] = tr;
             }
         }
 
         // Sort for better locality when accessing trRateLower/Upper/Popul.
-        Arrays.sort(trsI);
-        Arrays.sort(trsO);
-        Arrays.sort(trsNP);
+        Arrays.sort(trsI_);
+        Arrays.sort(trsO_);
+        Arrays.sort(trsNP_);
 
         return new PSEModelForVM_CPU
-          ( numStates, numTotalTransitions
-          , completeSpace
-          , rateParams
-          , ratePopulations
-          , colsFrom
-          , colsTo
-          , trsI
-          , trsO
-          , trsIO
-          , trsNP
+          ( stCnt, trCnt
+          , trRateLower
+          , trRateUpper
+          , trRatePopul
+          , trStSrc
+          , trStTrg
+          , trsI_
+          , trsO_
+          , trsIO_
+          , trsNP_
           );
     }
 
@@ -570,22 +594,23 @@ public final class PSEModelExplicit extends ModelExplicit
     public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
             throws PrismException
     {
-        modelVM.vmMult(vectMin, resultMin, vectMax, resultMax, q);
+        if (gpu) { modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
+        else { modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
     }
 
     private double rateParamsLowers(int t)
     {
-        return lowerBounds[rateParams[t]];
+        return trRateLower[t];
     }
 
     private double rateParamsUppers(int t)
     {
-        return upperBounds[rateParams[t]];
+        return trRateUpper[t];
     }
 
     private double mvMultMidSumEvalMin(int trans, double vectMinPred, double vectMinState, double q)
     {
-        double midSumNumeratorMin = ratePopulations[trans] * vectMinPred - ratePopulations[trans] * vectMinState;
+        double midSumNumeratorMin = trRatePopul[trans] * vectMinPred - trRatePopul[trans] * vectMinState;
         if (midSumNumeratorMin > 0.0) {
             return rateParamsLowers(trans) * midSumNumeratorMin / q;
         } else {
@@ -595,7 +620,7 @@ public final class PSEModelExplicit extends ModelExplicit
 
     private double mvMultMidSumEvalMax(int trans, double vectMaxPred, double vectMaxState, double q)
     {
-        double midSumNumeratorMax = ratePopulations[trans] * vectMaxPred - ratePopulations[trans] * vectMaxState;
+        double midSumNumeratorMax = trRatePopul[trans] * vectMaxPred - trRatePopul[trans] * vectMaxState;
         if (midSumNumeratorMax > 0.0) {
             return rateParamsUppers(trans) * midSumNumeratorMax / q;
         } else {
@@ -628,12 +653,12 @@ public final class PSEModelExplicit extends ModelExplicit
     {
         if (subset == null) {
             // Loop over all states
-            subset = new BitSet(numStates);
-            subset.set(0, numStates - 1);
+            subset = new BitSet(stCnt);
+            subset.set(0, stCnt - 1);
         }
 
         if (complement) {
-            subset.flip(0, numStates - 1);
+            subset.flip(0, stCnt - 1);
         }
 
         for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
@@ -641,13 +666,13 @@ public final class PSEModelExplicit extends ModelExplicit
             resultMin[state] = vectMin[state];
             resultMax[state] = vectMax[state];
 
-            for (int trans : outTransitions.get(state)) {
+            for (int trans : trsO.get(state)) {
                 int succ = toState(trans);
                 resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
                 resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
             }
 
-            for (Pair<Integer, Integer> transs : inoutTransitions.get(state)) {
+            for (Pair<Integer, Integer> transs : trsIO.get(state)) {
                 int trans = transs.first;
                 int succTrans = transs.second;
 
@@ -671,7 +696,7 @@ public final class PSEModelExplicit extends ModelExplicit
         }
 
         // Optimisation: Non-parametrised transitions
-        for (int trans = 0; trans < numTotalTransitions; trans++) {
+        for (int trans = 0; trans < trCnt; trans++) {
             if (isParametrised(trans))
                 continue;
 
@@ -681,7 +706,7 @@ public final class PSEModelExplicit extends ModelExplicit
             if (!subset.get(state))
                 continue;
 
-            double rate = rateParamsLowers(trans) * ratePopulations[trans];
+            double rate = rateParamsLowers(trans) * trRatePopul[trans];
             resultMin[state] += rate * (vectMin[succ] - vectMin[state]) / q;
             resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
         }
@@ -696,14 +721,20 @@ public final class PSEModelExplicit extends ModelExplicit
      * @throws PrismException thrown if rates cannot be evaluated with the new
      * parameter region's bounds
      */
-    public void configureParameterSpace(BoxRegion region)
+    public void configureParameterSpace(BoxRegion region) throws PrismLangException
     {
-        // TODO: This is only for the save of mvMult, right now it is redundant... we could share
-        // lowerBounds and upperBounds between this and the VM model.
-        System.arraycopy(region.getLowerBounds(), 0, lowerBounds, 1, region.getLowerBounds().length);
-        System.arraycopy(region.getUpperBounds(), 0, upperBounds, 1, region.getUpperBounds().length);
+        int npCnt = 0;
+        for (int t = 0; t < trCnt; ++t)
+        {
+            trRateLower[t] = trRateExpr[t].evaluateDouble(region.getLowerBounds());
+            trRateUpper[t] = trRateExpr[t].evaluateDouble(region.getUpperBounds());
+            if (!isParametrised(t)) ++npCnt;
+        }
 
-        modelVM.configureParameterSpace(region);
+        System.err.printf("NP %s; P %s\n", npCnt, trCnt - npCnt);
+
+        if (modelVMCPU != null) modelVMCPU.configureParameterSpace(trRateLower, trRateUpper);
+        if (modelVMGPU != null) modelVMGPU.configureParameterSpace(trRateLower, trRateUpper);
     }
 
     /**
@@ -719,17 +750,12 @@ public final class PSEModelExplicit extends ModelExplicit
      * @throws PrismException thrown if an error occurred during construction
      * of the non-parametrised CTMC
      */
-    public CTMC instantiate(double[] point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
+    public CTMC instantiate(Point point, ModulesFile modulesFile, explicit.ConstructModel constructModel)
             throws PrismException
     {
         modulesFile = (ModulesFile) modulesFile.deepCopy();
-        // Add point dimensions to constants of the model file
-        Values dimensions = new Values();
-        for (int i = 0; i < point.length; ++i)
-        {
-            dimensions.addValue(paramNames[i], point[i]);
-        }
-        modulesFile.getConstantValues().addValues(dimensions);
+        // Add point dimensions to constants of the modules file
+        modulesFile.getConstantValues().addValues(point.getDimensions());
         return (CTMC) constructModel.constructModel(modulesFile);
     }
 }

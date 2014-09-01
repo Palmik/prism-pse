@@ -57,7 +57,7 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 	public String infoString()
 	{
 		String s = "";
-		s += numStates + " states (" + getNumInitialStates() + " initial)";
+		s += stCnt + " states (" + getNumInitialStates() + " initial)";
 		s += ", " + getNumTransitions() + " transitions";
 		return s;
 	}
@@ -66,7 +66,7 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + getNumTransitions() + "\n";
 		return s;
 	}
@@ -77,9 +77,9 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 		int i;
 		TreeMap<Integer, Double> sorted;
 		// Output transitions to .tra file
-		out.print(numStates + " " + getNumTransitions() + "\n");
+		out.print(stCnt + " " + getNumTransitions() + "\n");
 		sorted = new TreeMap<Integer, Double>();
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			// Extract transitions and sort by destination state index (to match PRISM-exported files)
 			Iterator<Map.Entry<Integer, Double>> iter = getTransitionsIterator(i);
 			while (iter.hasNext()) {
@@ -117,9 +117,9 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 			// Output transitions to PRISM language file
 			out = new FileWriter(filename);
 			out.write(getModelType().keyword() + "\n");
-			out.write("module M\nx : [0.." + (numStates - 1) + "];\n");
+			out.write("module M\nx : [0.." + (stCnt - 1) + "];\n");
 			sorted = new TreeMap<Integer, Double>();
-			for (i = 0; i < numStates; i++) {
+			for (i = 0; i < stCnt; i++) {
 				// Extract transitions and sort by destination state index (to match PRISM-exported files)
 				Iterator<Map.Entry<Integer, Double>> iter = getTransitionsIterator(i);
 				while (iter.hasNext()) {
@@ -155,10 +155,10 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultSingle(s, vect);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultSingle(s, vect);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))
@@ -173,14 +173,14 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 		double d, diff, maxDiff = 0.0;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++) {
+			for (s = 0; s < stCnt; s++) {
 				d = mvMultJacSingle(s, vect);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
 				vect[s] = d;
 			}
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1)) {
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1)) {
 				d = mvMultJacSingle(s, vect);
 				diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
 				maxDiff = diff > maxDiff ? diff : maxDiff;
@@ -194,7 +194,7 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 				vect[s] = d;
 			}
 			// Use this code instead for backwards Gauss-Seidel
-			/*for (s = numStates - 1; s >= 0; s--) {
+			/*for (s = stCnt - 1; s >= 0; s--) {
 				if (subset.get(s)) {
 					d = mvMultJacSingle(s, vect);
 					diff = absolute ? (Math.abs(d - vect[s])) : (Math.abs(d - vect[s]) / d);
@@ -212,10 +212,10 @@ public abstract class DTMCExplicit extends ModelExplicit implements DTMC
 		int s;
 		// Loop depends on subset/complement arguments
 		if (subset == null) {
-			for (s = 0; s < numStates; s++)
+			for (s = 0; s < stCnt; s++)
 				result[s] = mvMultRewSingle(s, vect, mcRewards);
 		} else if (complement) {
-			for (s = subset.nextClearBit(0); s < numStates; s = subset.nextClearBit(s + 1))
+			for (s = subset.nextClearBit(0); s < stCnt; s = subset.nextClearBit(s + 1))
 				result[s] = mvMultRewSingle(s, vect, mcRewards);
 		} else {
 			for (s = subset.nextSetBit(0); s >= 0; s = subset.nextSetBit(s + 1))

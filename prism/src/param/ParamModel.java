@@ -73,7 +73,7 @@ final class ParamModel extends ModelExplicit
 	 */
 	ParamModel()
 	{
-		numStates = 0;
+		stCnt = 0;
 		numTotalChoices = 0;
 		numTotalTransitions = 0;
 		initialStates = new LinkedList<Integer>();
@@ -229,7 +229,7 @@ final class ParamModel extends ModelExplicit
 	public String infoStringTable()
 	{
 		String s = "";
-		s += "States:      " + numStates + " (" + getNumInitialStates() + " initial)\n";
+		s += "States:      " + stCnt + " (" + getNumInitialStates() + " initial)\n";
 		s += "Transitions: " + getNumTransitions() + "\n";
 		return s;
 	}
@@ -274,8 +274,8 @@ final class ParamModel extends ModelExplicit
 	 */
 	void finishState()
 	{
-		rows[numStates + 1] = numTotalChoices;
-		numStates++;
+		rows[stCnt + 1] = numTotalChoices;
+		stCnt++;
 	}
 
 	/**
@@ -422,9 +422,9 @@ final class ParamModel extends ModelExplicit
 	ParamModel instantiate(Point point)
 	{
 		ParamModel result = new ParamModel();
-		result.reserveMem(numStates, numTotalChoices, numTotalTransitions);
+		result.reserveMem(stCnt, numTotalChoices, numTotalTransitions);
 		result.initialStates = new LinkedList<Integer>(this.initialStates);
-		for (int state = 0; state < numStates; state++) {
+		for (int state = 0; state < stCnt; state++) {
 			for (int choice = stateBegin(state); choice < stateEnd(state); choice++) {
 				for (int succ = choiceBegin(choice); succ < choiceEnd(choice); succ++) {
 					result.addTransition(succState(succ), functionFactory.fromBigRational(succProb(succ).evaluate(point)), labels[succ]);

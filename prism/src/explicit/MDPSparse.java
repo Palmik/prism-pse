@@ -62,7 +62,7 @@ public class MDPSparse extends MDPExplicit
 	 * array is of size numDistrs+1 and last entry is always equal to numTransitions */
 	protected int choiceStarts[];
 	/** Indices into choiceStarts giving the start of the choices for each state;
-	 * array is of size numStates+1 and last entry is always equal to numDistrs */
+	 * array is of size stCnt+1 and last entry is always equal to numDistrs */
 	protected int rowStarts[];
 
 	// Action labels
@@ -108,10 +108,10 @@ public class MDPSparse extends MDPExplicit
 		nonZeros = new double[numTransitions];
 		cols = new int[numTransitions];
 		choiceStarts = new int[numDistrs + 1];
-		rowStarts = new int[numStates + 1];
+		rowStarts = new int[stCnt + 1];
 		actions = mdp.actions == null ? null : new Object[numDistrs];
 		j = k = 0;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			rowStarts[i] = j;
 			if (mdp.actions != null) {
 				n = mdp.getNumChoices(i);
@@ -142,7 +142,7 @@ public class MDPSparse extends MDPExplicit
 			}
 		}
 		choiceStarts[numDistrs] = numTransitions;
-		rowStarts[numStates] = numDistrs;
+		rowStarts[stCnt] = numDistrs;
 	}
 
 	/**
@@ -167,8 +167,8 @@ public class MDPSparse extends MDPExplicit
 		numTransitions = mdp.getNumTransitions();
 		maxNumDistrs = mdp.getMaxNumChoices();
 		// Compute the inverse of the permutation
-		permutInv = new int[numStates];
-		for (i = 0; i < numStates; i++) {
+		permutInv = new int[stCnt];
+		for (i = 0; i < stCnt; i++) {
 			permutInv[permut[i]] = i;
 		}
 		// Copy transition function
@@ -178,10 +178,10 @@ public class MDPSparse extends MDPExplicit
 		nonZeros = new double[numTransitions];
 		cols = new int[numTransitions];
 		choiceStarts = new int[numDistrs + 1];
-		rowStarts = new int[numStates + 1];
+		rowStarts = new int[stCnt + 1];
 		actions = mdp.actions == null ? null : new Object[numDistrs];
 		j = k = 0;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			rowStarts[i] = j;
 			if (mdp.actions != null) {
 				n = mdp.getNumChoices(permutInv[i]);
@@ -212,7 +212,7 @@ public class MDPSparse extends MDPExplicit
 			}
 		}
 		choiceStarts[numDistrs] = numTransitions;
-		rowStarts[numStates] = numDistrs;
+		rowStarts[stCnt] = numDistrs;
 	}
 
 	/**
@@ -253,7 +253,7 @@ public class MDPSparse extends MDPExplicit
 		nonZeros = new double[numTransitions];
 		cols = new int[numTransitions];
 		choiceStarts = new int[numDistrs + 1];
-		rowStarts = new int[numStates + 1];
+		rowStarts = new int[stCnt + 1];
 		this.actions = new Object[numDistrs];
 		int choiceIndex = 0;
 		int colIndex = 0;
@@ -278,7 +278,7 @@ public class MDPSparse extends MDPExplicit
 			}
 		}
 		choiceStarts[numDistrs] = numTransitions;
-		rowStarts[numStates] = numDistrs;
+		rowStarts[stCnt] = numDistrs;
 	}
 
 	// Mutators (other)
@@ -353,10 +353,10 @@ public class MDPSparse extends MDPExplicit
 				lineNum++;
 			}
 			choiceStarts[numDistrs] = numTransitions;
-			rowStarts[numStates] = numDistrs;
+			rowStarts[stCnt] = numDistrs;
 			// Compute maxNumDistrs
 			maxNumDistrs = 0;
-			for (i = 0; i < numStates; i++) {
+			for (i = 0; i < stCnt; i++) {
 				maxNumDistrs = Math.max(maxNumDistrs, getNumChoices(i));
 			}
 			// Close file
@@ -457,7 +457,7 @@ public class MDPSparse extends MDPExplicit
 	@Override
 	public void findDeadlocks(boolean fix) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			// Note that no distributions is a deadlock, not an empty distribution
 			if (getNumChoices(i) == 0) {
 				addDeadlockState(i);
@@ -471,7 +471,7 @@ public class MDPSparse extends MDPExplicit
 	@Override
 	public void checkForDeadlocks(BitSet except) throws PrismException
 	{
-		for (int i = 0; i < numStates; i++) {
+		for (int i = 0; i < stCnt; i++) {
 			if (getNumChoices(i) == 0 && (except == null || !except.get(i)))
 				throw new PrismException("MDP has a deadlock in state " + i);
 		}
@@ -614,7 +614,7 @@ public class MDPSparse extends MDPExplicit
 	{
 		int i, j, k, l1, h1, l2, h2;
 		boolean b1, some;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = forall; // there exists or for all
 				l1 = rowStarts[i];
@@ -652,7 +652,7 @@ public class MDPSparse extends MDPExplicit
 	{
 		int i, j, k, l1, h1, l2, h2;
 		boolean b1, some, all;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = true;
 				l1 = rowStarts[i];
@@ -687,7 +687,7 @@ public class MDPSparse extends MDPExplicit
 	{
 		int i, j, k, l1, h1, l2, h2, stratCh = -1;
 		boolean b1, some, all;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = false;
 				l1 = rowStarts[i];
@@ -731,7 +731,7 @@ public class MDPSparse extends MDPExplicit
 	{
 		int i, j, k, l1, h1, l2, h2;
 		boolean b1, some, all;
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (subset.get(i)) {
 				b1 = forall; // there exists or for all
 				l1 = rowStarts[i];
@@ -1118,7 +1118,7 @@ public class MDPSparse extends MDPExplicit
 		Object o;
 		String s = "";
 		s = "[ ";
-		for (i = 0; i < numStates; i++) {
+		for (i = 0; i < stCnt; i++) {
 			if (i > 0)
 				s += ", ";
 			s += i + ": [";
@@ -1153,7 +1153,7 @@ public class MDPSparse extends MDPExplicit
 		if (o == null || !(o instanceof MDPSparse))
 			return false;
 		MDPSparse mdp = (MDPSparse) o;
-		if (numStates != mdp.numStates)
+		if (stCnt != mdp.stCnt)
 			return false;
 		if (!initialStates.equals(mdp.initialStates))
 			return false;

@@ -3449,7 +3449,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
 
-		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer, paramNames);
+		PSEModelBuilder builder = new PSEModelBuilder(this, modelExplorer);
 		builder.build();
 		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected
@@ -3514,7 +3514,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		modelExplorer.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
 		pse.BoxRegionFactory regionFactory = modelExplorer.getRegionFactory();
 
-		PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer, paramNames);
+		PSEModelBuilder builder = new pse.PSEModelBuilder(this, modelExplorer);
 		builder.build();
 		PSEModelExplicit model = builder.getModel();
 		// Allow the builder to be garbage-collected
