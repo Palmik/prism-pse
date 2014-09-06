@@ -15,7 +15,9 @@ public class PSEModelForVM_CPU
       , int[] trsI
       , int[] trsO
       , int[] trsIO
-      , int[] trsNP
+      , double[] trsNPVal
+      , int[] trsNPTrg
+      , int[] trsNPSrcBeg
       )
     {
         this.stCnt = stCnt;
@@ -28,7 +30,9 @@ public class PSEModelForVM_CPU
         this.trsI = trsI;
         this.trsO = trsO;
         this.trsIO = trsIO;
-        this.trsNP = trsNP;
+        this.trsNPVal = trsNPVal;
+        this.trsNPTrg = trsNPTrg;
+        this.trsNPSrcBeg = trsNPSrcBeg;
 
         configureParameterSpace(trRateLower, trRateUpper);
     }
@@ -89,19 +93,22 @@ public class PSEModelForVM_CPU
             }
         }
 
-        for (int t : trsNP)
+        for (int v0 = 0; v0 < stCnt; ++v0)
         {
-            final int v0 = trStSrc[t];
-            final int v1 = trStTrg[t];
+            for (int ii = trsNPSrcBeg[v0]; ii < trsNPSrcBeg[v0 + 1]; ++ii)
+            {
+                final int v1 = trsNPTrg[ii];
+                final double rate = trsNPVal[ii];
 
-            final double rate = trRateLower[t] * trRatePopul[t];
+                resMin[v0] -= rate * min[v0] * qrec;
+                resMax[v0] -= rate * max[v0] * qrec;
 
-            resMin[v0] -= rate * min[v0] * qrec;
-            resMax[v0] -= rate * max[v0] * qrec;
-
-            resMin[v1] += rate * min[v0] * qrec;
-            resMax[v1] += rate * max[v0] * qrec;
+                resMin[v1] += rate * min[v0] * qrec;
+                resMax[v1] += rate * max[v0] * qrec;
+            }
         }
+
+
     }
 
     public void configureParameterSpace(double[] trRateLower, double[] trRateUpper)
@@ -124,5 +131,7 @@ public class PSEModelForVM_CPU
     final private int[] trsI;
     final private int[] trsO;
     final private int[] trsIO;
-    final private int[] trsNP;
+    final private double[] trsNPVal;
+    final private int[] trsNPTrg;
+    final private int[] trsNPSrcBeg;
 }

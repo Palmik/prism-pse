@@ -36,6 +36,7 @@ import prism.*;
 import explicit.CTMC;
 import explicit.ModelExplicit;
 
+
 /**
  * Represents a parametrised CTMC model to be used for PSE-based methods.
  */
@@ -508,7 +509,7 @@ public final class PSEModelExplicit extends ModelExplicit
             {
                 if (trRatePopul[t] != 0)
                 {
-                    dataNP[dataNPPos] = trRatePopul[t];
+                    dataNP[dataNPPos] = trRateLower[t] * trRatePopul[t];
                     dataNPTrg[dataNPPos] = trStTrg[t];
                     ++dataNPPos;
                 }
@@ -516,7 +517,12 @@ public final class PSEModelExplicit extends ModelExplicit
         }
         dataNPSrcBeg[stCnt] = dataNPPos;
 
-        return null;
+        return new PSEModelForVM_GPU
+            ( stCnt, trCnt
+            , dataNP
+            , dataNPTrg
+            , dataNPSrcBeg
+            );
     }
 
     public PSEModelForVM_CPU buildModelForVM_CPU()
@@ -524,12 +530,16 @@ public final class PSEModelExplicit extends ModelExplicit
         int[] trsI_ = new int[trsICnt];
         int[] trsO_ = new int[trsOCnt];
         int[] trsIO_ = new int[trsIOCnt * 2];
-        int[] trsNP_ = new int[trsNPCnt];
+
+
+        double[] trsNPVal = new double[trsNPNonZeroPopulRateCnt];
+        int[] trsNPTrg = new int[trsNPNonZeroPopulRateCnt];
+        int[] trsNPSrcBeg = new int[stCnt + 1];
+        int trsNPPos = 0;
 
         int trsIPos = 0;
         int trsOPos = 0;
         int trsIOPos = 0;
-        int trsNPPos = 0;
         for (int state = 0; state < stCnt; state++)
         {
             List<Integer> stTrsI = trsI.get(state);
@@ -550,16 +560,23 @@ public final class PSEModelExplicit extends ModelExplicit
                 trsIO_[trsIOPos++] = p.first;
                 trsIO_[trsIOPos++] = p.second;
             }
-            for (Integer tr : stTrsNP)
+
+            trsNPSrcBeg[state] = trsNPPos;
+            for (Integer t : stTrsNP)
             {
-                trsNP_[trsNPPos++] = tr;
+                if (trRatePopul[t] != 0)
+                {
+                    trsNPVal[trsNPPos] = trRateLower[t] * trRatePopul[t];
+                    trsNPTrg[trsNPPos] = trStTrg[t];
+                    ++trsNPPos;
+                }
             }
         }
+        trsNPSrcBeg[stCnt] = trsNPPos;
 
         // Sort for better locality when accessing trRateLower/Upper/Popul.
         Arrays.sort(trsI_);
         Arrays.sort(trsO_);
-        Arrays.sort(trsNP_);
 
         return new PSEModelForVM_CPU
           ( stCnt, trCnt
@@ -571,7 +588,9 @@ public final class PSEModelExplicit extends ModelExplicit
           , trsI_
           , trsO_
           , trsIO_
-          , trsNP_
+          , trsNPVal
+          , trsNPTrg
+          , trsNPSrcBeg
           );
     }
 
