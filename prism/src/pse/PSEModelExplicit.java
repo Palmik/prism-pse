@@ -523,7 +523,7 @@ public final class PSEModelExplicit extends ModelExplicit
 
         int trsOPos = 0;
         int trsIOPos = 0;
-        for (int state = 0; state < stCnt; state++)
+        for (int state = 0; state < stCnt; ++state)
         {
             List<Integer> stTrsI = trsIByTrg.get(state);
             List<Integer> stTrsO = trsOBySrc.get(state);
@@ -547,9 +547,9 @@ public final class PSEModelExplicit extends ModelExplicit
                 final double valUpper = trRateUpper[t] * trRatePopul[t];
                 if (valLower != 0 || valUpper != 0)
                 {
-                    trsIVal.pushBack(valUpper);
                     trsIVal.pushBack(valLower);
-                    trsISrc.pushBack(trStTrg[t]);
+                    trsIVal.pushBack(valUpper);
+                    trsISrc.pushBack(trStSrc[t]);
                     ++trsIPos;
                 }
             }

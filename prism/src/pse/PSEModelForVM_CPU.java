@@ -96,18 +96,20 @@ public class PSEModelForVM_CPU
             }
         }
 
+        /*
         for (int v1 = 0; v1 < stCnt; ++v1)
         {
             for (int ii = trsITrgBeg[v1]; ii < trsITrgBeg[v1 + 1]; ++ii)
             {
                 final int v0 = trsISrc[ii];
-                final double rateLower = trsNPVal[2*ii];
-                final double rateUpper = trsNPVal[2*ii+1];
+                final double rateLower = trsIVal[2*ii];
+                final double rateUpper = trsIVal[2*ii+1];
 
                 resMin[v1] += rateLower * min[v0] * qrec;
                 resMax[v1] += rateUpper * max[v0] * qrec;
             }
         }
+        */
 
         for (int v0 = 0; v0 < stCnt; ++v0)
         {
