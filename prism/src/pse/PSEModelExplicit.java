@@ -540,6 +540,7 @@ public final class PSEModelExplicit extends ModelExplicit
                 trsIO_[trsIOPos++] = p.second;
             }
 
+
             trsITrgBeg[state] = trsIPos;
             for (Integer t : stTrsI)
             {
@@ -608,12 +609,12 @@ public final class PSEModelExplicit extends ModelExplicit
      * @param resultMax vector to store maximised result in
      * @param q uniformisation rate
      */
-    public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q, int iterationCnt)
+    public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
             throws PrismException
     {
         if (gpu)
         {
-            modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, q, iterationCnt);
+            modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, q, 1);
         }
         else { modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
     }
