@@ -12,9 +12,15 @@ public class PSEModelForVM_CPU
       , double[] trRatePopul
       , int[] trStSrc
       , int[] trStTrg
-      , int[] trsI
       , int[] trsO
       , int[] trsIO
+
+      , int trsICnt
+      , double[] trsIVal
+      , int[] trsISrc
+      , int[] trsITrgBeg
+
+      , int trsNPCnt
       , double[] trsNPVal
       , int[] trsNPTrg
       , int[] trsNPSrcBeg
@@ -24,17 +30,23 @@ public class PSEModelForVM_CPU
         this.trCnt = trCnt;
 
         this.trRatePopul = trRatePopul;
+        this.trRateLower = trRateLower;
+        this.trRateUpper = trRateUpper;
 
         this.trStSrc = trStSrc;
         this.trStTrg = trStTrg;
-        this.trsI = trsI;
         this.trsO = trsO;
         this.trsIO = trsIO;
+
+        this.trsICnt = trsICnt;
+        this.trsIVal = trsIVal;
+        this.trsISrc = trsISrc;
+        this.trsITrgBeg = trsITrgBeg;
+
+        this.trsNPCnt = trsNPCnt;
         this.trsNPVal = trsNPVal;
         this.trsNPTrg = trsNPTrg;
         this.trsNPSrcBeg = trsNPSrcBeg;
-
-        configureParameterSpace(trRateLower, trRateUpper);
     }
 
     public void vmMult(double min[], double resMin[], double max[], double resMax[], double q)
@@ -42,15 +54,6 @@ public class PSEModelForVM_CPU
         System.arraycopy(min, 0, resMin, 0, min.length);
         System.arraycopy(max, 0, resMax, 0, max.length);
         double qrec = 1 / q;
-
-        for (int t : trsI)
-        {
-            final int v0 = trStSrc[t];
-            final int v1 = trStTrg[t];
-
-            resMin[v1] += trRateLower[t] * trRatePopul[t] * min[v0] * qrec;
-            resMax[v1] += trRateUpper[t] * trRatePopul[t] * max[v0] * qrec;
-        }
 
         for (int t : trsO)
         {
@@ -93,6 +96,19 @@ public class PSEModelForVM_CPU
             }
         }
 
+        for (int v1 = 0; v1 < stCnt; ++v1)
+        {
+            for (int ii = trsITrgBeg[v1]; ii < trsITrgBeg[v1 + 1]; ++ii)
+            {
+                final int v0 = trsISrc[ii];
+                final double rateLower = trsNPVal[2*ii];
+                final double rateUpper = trsNPVal[2*ii+1];
+
+                resMin[v1] += rateLower * min[v0] * qrec;
+                resMax[v1] += rateUpper * max[v0] * qrec;
+            }
+        }
+
         for (int v0 = 0; v0 < stCnt; ++v0)
         {
             for (int ii = trsNPSrcBeg[v0]; ii < trsNPSrcBeg[v0 + 1]; ++ii)
@@ -111,13 +127,6 @@ public class PSEModelForVM_CPU
 
     }
 
-    public void configureParameterSpace(double[] trRateLower, double[] trRateUpper)
-    {
-        // NOTE: There should be no need to deep copy
-        this.trRateLower = trRateLower;
-        this.trRateUpper = trRateUpper;
-    }
-
     final private int stCnt;
     final private int trCnt;
 
@@ -128,9 +137,15 @@ public class PSEModelForVM_CPU
     final private int[] trStSrc;
     final private int[] trStTrg;
 
-    final private int[] trsI;
     final private int[] trsO;
     final private int[] trsIO;
+
+    final private int trsICnt;
+    final private double[] trsIVal;
+    final private int[] trsISrc;
+    final private int[] trsITrgBeg;
+
+    final private int trsNPCnt;
     final private double[] trsNPVal;
     final private int[] trsNPTrg;
     final private int[] trsNPSrcBeg;

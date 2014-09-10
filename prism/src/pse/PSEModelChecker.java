@@ -915,9 +915,18 @@ public final class PSEModelChecker extends PrismComponent
 				// Start iterations
 				iters = 1;
 				totalIters++;
-				while (iters <= right) {
+
+                model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q, 1000);
+                tmpsoln = solnMin;
+                solnMin = soln2Min;
+                soln2Min = tmpsoln;
+                tmpsoln = solnMax;
+                solnMax = soln2Max;
+                soln2Max = tmpsoln;
+                iters = left;
+                while (iters <= right) {
 					// Vector-matrix multiply
-					model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q);
+					model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q, 1);
 
 					// Swap vectors for next iter
 					tmpsoln = solnMin;
