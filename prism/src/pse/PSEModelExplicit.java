@@ -83,9 +83,7 @@ public final class PSEModelExplicit extends ModelExplicit
     private int trsOCnt;
     private int trsONonZeroPopulRateCnt;
 
-    private boolean gpu;
     private PSEModelForVM_CPU modelVMCPU;
-    private PSEModelForVM_GPU modelVMGPU;
 
     /**
      * Constructs a new parametric model.
@@ -97,8 +95,6 @@ public final class PSEModelExplicit extends ModelExplicit
         initialStates = new LinkedList<Integer>();
         deadlocks = new TreeSet<Integer>();
         predecessorsViaReaction = new HashSet<Integer>();
-
-        this.gpu = false;
     }
 
     // Accessors (for Model)
@@ -489,8 +485,7 @@ public final class PSEModelExplicit extends ModelExplicit
             }
         }
 
-        if (gpu) { modelVMGPU = buildModelForVM_GPU(); }
-        else { modelVMCPU = buildModelForVM_CPU(); }
+        modelVMCPU = buildModelForVM_CPU();
     }
 
     public PSEModelForVM_GPU buildModelForVM_GPU()
@@ -613,8 +608,7 @@ public final class PSEModelExplicit extends ModelExplicit
     public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
             throws PrismException
     {
-        if (gpu) { modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
-        else { modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
+        modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, q);
     }
 
     private double rateParamsLowers(int t)
@@ -753,7 +747,6 @@ public final class PSEModelExplicit extends ModelExplicit
         System.err.printf("NP %s; P %s\n", npCnt, trCnt - npCnt);
 
         if (modelVMCPU != null) modelVMCPU.configureParameterSpace(trRateLower, trRateUpper);
-        if (modelVMGPU != null) modelVMGPU.configureParameterSpace(trRateLower, trRateUpper);
     }
 
     /**
