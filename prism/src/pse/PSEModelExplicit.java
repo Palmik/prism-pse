@@ -507,7 +507,6 @@ public final class PSEModelExplicit extends ModelExplicit
 
     public PSEModelForVM_CPU buildModelForVM_CPU()
     {
-        int[] trsI_ = new int[trsICnt];
         int[] trsO_ = new int[trsOCnt];
         int[] trsIO_ = new int[trsIOCnt * 2];
 
@@ -531,10 +530,6 @@ public final class PSEModelExplicit extends ModelExplicit
             List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
             List<Integer> stTrsNP = trsNPBySrc.get(state);
 
-            for (Integer tr : stTrsI)
-            {
-                trsI_[trsIPos++] = tr;
-            }
             for (Integer tr : stTrsO)
             {
                 trsO_[trsOPos++] = tr;
