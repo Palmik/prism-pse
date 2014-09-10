@@ -912,45 +912,36 @@ public final class PSEModelChecker extends PrismComponent
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			try {
-				// Start iterations
-				iters = 1;
-				totalIters++;
-
-                model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q, 1000);
-                tmpsoln = solnMin;
-                solnMin = soln2Min;
-                soln2Min = tmpsoln;
-                tmpsoln = solnMax;
-                solnMax = soln2Max;
-                soln2Max = tmpsoln;
-                iters = left;
+                // Start iterations
+                iters = 1;
+                totalIters++;
                 while (iters <= right) {
-					// Vector-matrix multiply
-					model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q, 1);
+                    // Vector-matrix multiply
+                    model.vmMult(solnMin, soln2Min, solnMax, soln2Max, q, 1);
 
-					// Swap vectors for next iter
-					tmpsoln = solnMin;
-					solnMin = soln2Min;
-					soln2Min = tmpsoln;
-					tmpsoln = solnMax;
-					solnMax = soln2Max;
-					soln2Max = tmpsoln;
+                    // Swap vectors for next iter
+                    tmpsoln = solnMin;
+                    solnMin = soln2Min;
+                    soln2Min = tmpsoln;
+                    tmpsoln = solnMax;
+                    solnMax = soln2Max;
+                    soln2Max = tmpsoln;
 
-					// Add to sum
-					if (iters >= left) {
-						for (i = 0; i < n; i++) {
-							sumMin[i] += weights[iters - left] * solnMin[i];
-							sumMax[i] += weights[iters - left] * solnMax[i];
-						}
-						// After a number of iters (default 50), examine the partially computed result
-						if (iters % numItersExaminePartial == 0) {
-							decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-						}
-					}
+                    // Add to sum
+                    if (iters >= left) {
+                        for (i = 0; i < n; i++) {
+                            sumMin[i] += weights[iters - left] * solnMin[i];
+                            sumMax[i] += weights[iters - left] * solnMax[i];
+                        }
+                        // After a number of iters (default 50), examine the partially computed result
+                        if (iters % numItersExaminePartial == 0) {
+                            decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+                        }
+                    }
 
-					iters++;
-					totalIters++;
-				}
+                    iters++;
+                    totalIters++;
+                }
 
 				// Examine this region's result after all the iters have been finished
 				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
