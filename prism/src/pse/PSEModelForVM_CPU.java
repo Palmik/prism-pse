@@ -96,7 +96,6 @@ public class PSEModelForVM_CPU
             }
         }
 
-        /*
         for (int v1 = 0; v1 < stCnt; ++v1)
         {
             for (int ii = trsITrgBeg[v1]; ii < trsITrgBeg[v1 + 1]; ++ii)
@@ -109,8 +108,7 @@ public class PSEModelForVM_CPU
                 resMax[v1] += rateUpper * max[v0] * qrec;
             }
         }
-        */
-
+        
         for (int v0 = 0; v0 < stCnt; ++v0)
         {
             for (int ii = trsNPSrcBeg[v0]; ii < trsNPSrcBeg[v0 + 1]; ++ii)

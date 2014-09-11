@@ -478,7 +478,7 @@ public final class PSEModelExplicit extends ModelExplicit
                 for (int t1 = stateBegin(v1); t1 < stateEnd(v1); t1++) {
                     if (getReaction(t1) == r0) {
                         inout = true;
-                        trsIO.get(v1).add(new Pair<Integer, Integer>(t1, t1));
+                        trsIO.get(v1).add(new Pair<Integer, Integer>(t0, t1));
                         ++trsIOCnt;
                         break;
                     }
