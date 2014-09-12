@@ -21,7 +21,6 @@ public class PSEModelForVM_CPU
 
       , int trsOCnt
       , double[] trsOVal
-      , int[] trsOTrg
       , int[] trsOSrcBeg
 
       , int trsNPCnt
@@ -48,7 +47,6 @@ public class PSEModelForVM_CPU
 
         this.trsOCnt = trsOCnt;
         this.trsOVal = trsOVal;
-        this.trsOTrg = trsOTrg;
         this.trsOSrcBeg = trsOSrcBeg;
 
         this.trsNPCnt = trsNPCnt;
@@ -113,12 +111,11 @@ public class PSEModelForVM_CPU
         {
             for (int ii = trsOSrcBeg[v0]; ii < trsOSrcBeg[v0 + 1]; ++ii)
             {
-                final int v1 = trsOTrg[ii];
                 final double rateLower = trsOVal[2*ii];
                 final double rateUpper = trsOVal[2*ii+1];
 
-                resMin[v1] += rateLower * min[v0] * qrec;
-                resMax[v1] += rateUpper * max[v0] * qrec;
+                resMin[v0] -= rateUpper * min[v0] * qrec;
+                resMax[v0] -= rateLower * max[v0] * qrec;
             }
         }
 
@@ -159,7 +156,6 @@ public class PSEModelForVM_CPU
 
     final private int trsOCnt;
     final private double[] trsOVal;
-    final private int[] trsOTrg;
     final private int[] trsOSrcBeg;
 
     final private int trsNPCnt;

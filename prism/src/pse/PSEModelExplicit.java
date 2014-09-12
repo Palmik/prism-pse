@@ -507,7 +507,6 @@ public final class PSEModelExplicit extends ModelExplicit
 
     public PSEModelForVM_CPU buildModelForVM_CPU()
     {
-        int[] trsO_ = new int[trsOCnt];
         int[] trsIO_ = new int[trsIOCnt * 2];
 
         VectorOfDouble trsIVal = new VectorOfDouble();
@@ -516,7 +515,6 @@ public final class PSEModelExplicit extends ModelExplicit
         int trsIPos = 0;
 
         VectorOfDouble trsOVal = new VectorOfDouble();
-        VectorOfInt trsOTrg = new VectorOfInt();
         int[] trsOSrcBeg = new int[stCnt + 1];
         int trsOPos = 0;
 
@@ -533,16 +531,11 @@ public final class PSEModelExplicit extends ModelExplicit
             List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
             List<Integer> stTrsNP = trsNPBySrc.get(state);
 
-            for (Integer tr : stTrsO)
-            {
-                trsO_[trsOPos++] = tr;
-            }
             for (Pair<Integer, Integer> p : stTrsIO)
             {
                 trsIO_[trsIOPos++] = p.first;
                 trsIO_[trsIOPos++] = p.second;
             }
-
 
             trsITrgBeg[state] = trsIPos;
             for (Integer t : stTrsI)
@@ -558,7 +551,7 @@ public final class PSEModelExplicit extends ModelExplicit
                 }
             }
 
-            trsOSrcBeg[state] = trsIPos;
+            trsOSrcBeg[state] = trsOPos;
             for (Integer t : stTrsO)
             {
                 final double valLower = trRateLower[t] * trRatePopul[t];
@@ -567,7 +560,6 @@ public final class PSEModelExplicit extends ModelExplicit
                 {
                     trsOVal.pushBack(valLower);
                     trsOVal.pushBack(valUpper);
-                    trsOTrg.pushBack(trStSrc[t]);
                     ++trsOPos;
                 }
             }
@@ -585,6 +577,7 @@ public final class PSEModelExplicit extends ModelExplicit
             }
         }
         trsITrgBeg[stCnt] = trsIPos;
+        trsOSrcBeg[stCnt] = trsOPos;
         trsNPSrcBeg[stCnt] = trsNPPos;
 
         return new PSEModelForVM_CPU
@@ -604,7 +597,6 @@ public final class PSEModelExplicit extends ModelExplicit
 
           , trsOPos
           , trsOVal.data()
-          , trsOTrg.data()
           , trsOSrcBeg
 
           , trsNPPos
