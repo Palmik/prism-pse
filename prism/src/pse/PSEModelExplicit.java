@@ -510,18 +510,21 @@ public final class PSEModelExplicit extends ModelExplicit
         int[] trsO_ = new int[trsOCnt];
         int[] trsIO_ = new int[trsIOCnt * 2];
 
+        VectorOfDouble trsIVal = new VectorOfDouble();
+        VectorOfInt trsISrc = new VectorOfInt();
+        int[] trsITrgBeg = new int[stCnt + 1];
+        int trsIPos = 0;
+
+        VectorOfDouble trsOVal = new VectorOfDouble();
+        VectorOfInt trsOTrg = new VectorOfInt();
+        int[] trsOSrcBeg = new int[stCnt + 1];
+        int trsOPos = 0;
 
         VectorOfDouble trsNPVal = new VectorOfDouble();
         VectorOfInt trsNPTrg = new VectorOfInt();
         int[] trsNPSrcBeg = new int[stCnt + 1];
         int trsNPPos = 0;
 
-        VectorOfDouble trsIVal = new VectorOfDouble();
-        VectorOfInt trsISrc = new VectorOfInt();
-        int[] trsITrgBeg = new int[stCnt + 1];
-        int trsIPos = 0;
-
-        int trsOPos = 0;
         int trsIOPos = 0;
         for (int state = 0; state < stCnt; ++state)
         {
@@ -555,6 +558,20 @@ public final class PSEModelExplicit extends ModelExplicit
                 }
             }
 
+            trsOSrcBeg[state] = trsIPos;
+            for (Integer t : stTrsO)
+            {
+                final double valLower = trRateLower[t] * trRatePopul[t];
+                final double valUpper = trRateUpper[t] * trRatePopul[t];
+                if (valLower != 0 || valUpper != 0)
+                {
+                    trsOVal.pushBack(valLower);
+                    trsOVal.pushBack(valUpper);
+                    trsOTrg.pushBack(trStSrc[t]);
+                    ++trsOPos;
+                }
+            }
+
             trsNPSrcBeg[state] = trsNPPos;
             for (Integer t : stTrsNP)
             {
@@ -578,13 +595,17 @@ public final class PSEModelExplicit extends ModelExplicit
           , trStSrc
           , trStTrg
 
-          , trsO_
           , trsIO_
 
           , trsIPos
           , trsIVal.data()
           , trsISrc.data()
           , trsITrgBeg
+
+          , trsOPos
+          , trsOVal.data()
+          , trsOTrg.data()
+          , trsOSrcBeg
 
           , trsNPPos
           , trsNPVal.data()

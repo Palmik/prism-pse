@@ -12,13 +12,17 @@ public class PSEModelForVM_CPU
       , double[] trRatePopul
       , int[] trStSrc
       , int[] trStTrg
-      , int[] trsO
       , int[] trsIO
 
       , int trsICnt
       , double[] trsIVal
       , int[] trsISrc
       , int[] trsITrgBeg
+
+      , int trsOCnt
+      , double[] trsOVal
+      , int[] trsOTrg
+      , int[] trsOSrcBeg
 
       , int trsNPCnt
       , double[] trsNPVal
@@ -35,13 +39,17 @@ public class PSEModelForVM_CPU
 
         this.trStSrc = trStSrc;
         this.trStTrg = trStTrg;
-        this.trsO = trsO;
         this.trsIO = trsIO;
 
         this.trsICnt = trsICnt;
         this.trsIVal = trsIVal;
         this.trsISrc = trsISrc;
         this.trsITrgBeg = trsITrgBeg;
+
+        this.trsOCnt = trsOCnt;
+        this.trsOVal = trsOVal;
+        this.trsOTrg = trsOTrg;
+        this.trsOSrcBeg = trsOSrcBeg;
 
         this.trsNPCnt = trsNPCnt;
         this.trsNPVal = trsNPVal;
@@ -54,14 +62,6 @@ public class PSEModelForVM_CPU
         System.arraycopy(min, 0, resMin, 0, min.length);
         System.arraycopy(max, 0, resMax, 0, max.length);
         double qrec = 1 / q;
-
-        for (int t : trsO)
-        {
-            final int v0 = trStSrc[t];
-
-            resMin[v0] -= trRateUpper[t] * trRatePopul[t] * min[v0] * qrec;
-            resMax[v0] -= trRateLower[t] * trRatePopul[t] * max[v0] * qrec;
-        }
 
         for (int ii = 0; ii < trsIO.length; )
         {
@@ -108,7 +108,20 @@ public class PSEModelForVM_CPU
                 resMax[v1] += rateUpper * max[v0] * qrec;
             }
         }
-        
+
+        for (int v0 = 0; v0 < stCnt; ++v0)
+        {
+            for (int ii = trsOSrcBeg[v0]; ii < trsOSrcBeg[v0 + 1]; ++ii)
+            {
+                final int v1 = trsOTrg[ii];
+                final double rateLower = trsOVal[2*ii];
+                final double rateUpper = trsOVal[2*ii+1];
+
+                resMin[v1] += rateLower * min[v0] * qrec;
+                resMax[v1] += rateUpper * max[v0] * qrec;
+            }
+        }
+
         for (int v0 = 0; v0 < stCnt; ++v0)
         {
             for (int ii = trsNPSrcBeg[v0]; ii < trsNPSrcBeg[v0 + 1]; ++ii)
@@ -137,13 +150,17 @@ public class PSEModelForVM_CPU
     final private int[] trStSrc;
     final private int[] trStTrg;
 
-    final private int[] trsO;
     final private int[] trsIO;
 
     final private int trsICnt;
     final private double[] trsIVal;
     final private int[] trsISrc;
     final private int[] trsITrgBeg;
+
+    final private int trsOCnt;
+    final private double[] trsOVal;
+    final private int[] trsOTrg;
+    final private int[] trsOSrcBeg;
 
     final private int trsNPCnt;
     final private double[] trsNPVal;
