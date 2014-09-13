@@ -12,21 +12,22 @@ public class PSEModelForVM_CPU
       , double[] trRatePopul
       , int[] trStSrc
       , int[] trStTrg
+
       , int[] trsIO
 
-      , int trsICnt
-      , double[] trsIVal
-      , int[] trsISrc
-      , int[] trsITrgBeg
+      , double[] matMinDiagVal
+      , double[] matMinVal
+      , int[] matMinSrc
+      , int[] matMinTrgBeg
 
-      , int trsOCnt
-      , double[] trsOVal
-      , int[] trsOSrcBeg
+      , double[] matMaxDiagVal
+      , double[] matMaxVal
+      , int[] matMaxSrc
+      , int[] matMaxTrgBeg
 
-      , int trsNPCnt
-      , double[] trsNPVal
-      , int[] trsNPTrg
-      , int[] trsNPSrcBeg
+      , double[] matVal
+      , int[] matSrc
+      , int[] matTrgBeg
       )
     {
         this.stCnt = stCnt;
@@ -38,24 +39,25 @@ public class PSEModelForVM_CPU
 
         this.trStSrc = trStSrc;
         this.trStTrg = trStTrg;
+
         this.trsIO = trsIO;
 
-        this.trsICnt = trsICnt;
-        this.trsIVal = trsIVal;
-        this.trsISrc = trsISrc;
-        this.trsITrgBeg = trsITrgBeg;
+        this.matMinDiagVal = matMinDiagVal;
+        this.matMinVal = matMinVal;
+        this.matMinSrc = matMinSrc;
+        this.matMinTrgBeg = matMinTrgBeg;
 
-        this.trsOCnt = trsOCnt;
-        this.trsOVal = trsOVal;
-        this.trsOSrcBeg = trsOSrcBeg;
+        this.matMaxDiagVal = matMaxDiagVal;
+        this.matMaxVal = matMaxVal;
+        this.matMaxSrc = matMaxSrc;
+        this.matMaxTrgBeg = matMaxTrgBeg;
 
-        this.trsNPCnt = trsNPCnt;
-        this.trsNPVal = trsNPVal;
-        this.trsNPTrg = trsNPTrg;
-        this.trsNPSrcBeg = trsNPSrcBeg;
+        this.matVal = matVal;
+        this.matSrc = matSrc;
+        this.matTrgBeg = matTrgBeg;
     }
 
-    public void vmMult(double min[], double resMin[], double max[], double resMax[], double q)
+    final public void vmMult(double min[], double resMin[], double max[], double resMax[], double q)
     {
         System.arraycopy(min, 0, resMin, 0, min.length);
         System.arraycopy(max, 0, resMax, 0, max.length);
@@ -94,47 +96,41 @@ public class PSEModelForVM_CPU
             }
         }
 
+        //vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
+        //vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
+        //vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
+    }
+
+    final private void vmMultRawMinOrMax(double[] mDiagVal, double[] mVal, int[] mSrc, int[] mTrgBeg, double[] vi, double[] vo, double qrec)
+    {
+       for (int v1 = 0; v1 < stCnt; ++v1)
+       {
+           final int ib = mTrgBeg[v1];
+           final int ie = mTrgBeg[v1 + 1];
+           vo[v1] += mDiagVal[v1] * vi[v1];
+           for (int ii = ib; ii < ie; ++ii)
+           {
+               final int v0 = mSrc[ii];
+               final double rate = mVal[ii];
+               vo[v1] += rate * vi[v0] * qrec;
+           }
+       }
+    }
+
+    final private void vmMultRaw(double[] mVal, int[] mSrc, int[] mTrgBeg, double[] vmini, double[] vmaxi, double[] vmino, double[] vmaxo, double qrec)
+    {
         for (int v1 = 0; v1 < stCnt; ++v1)
         {
-            for (int ii = trsITrgBeg[v1]; ii < trsITrgBeg[v1 + 1]; ++ii)
+            final int ib = mTrgBeg[v1];
+            final int ie = mTrgBeg[v1 + 1];
+            for (int ii = ib; ii < ie; ++ii)
             {
-                final int v0 = trsISrc[ii];
-                final double rateLower = trsIVal[2*ii];
-                final double rateUpper = trsIVal[2*ii+1];
-
-                resMin[v1] += rateLower * min[v0] * qrec;
-                resMax[v1] += rateUpper * max[v0] * qrec;
+                final int v0 = mSrc[ii];
+                final double rate = mVal[ii];
+                vmino[v1] += rate * vmini[v0] * qrec;
+                vmaxo[v1] += rate * vmaxi[v0] * qrec;
             }
         }
-
-        for (int v0 = 0; v0 < stCnt; ++v0)
-        {
-            for (int ii = trsOSrcBeg[v0]; ii < trsOSrcBeg[v0 + 1]; ++ii)
-            {
-                final double rateLower = trsOVal[2*ii];
-                final double rateUpper = trsOVal[2*ii+1];
-
-                resMin[v0] -= rateUpper * min[v0] * qrec;
-                resMax[v0] -= rateLower * max[v0] * qrec;
-            }
-        }
-
-        for (int v0 = 0; v0 < stCnt; ++v0)
-        {
-            for (int ii = trsNPSrcBeg[v0]; ii < trsNPSrcBeg[v0 + 1]; ++ii)
-            {
-                final int v1 = trsNPTrg[ii];
-                final double rate = trsNPVal[ii];
-
-                resMin[v0] -= rate * min[v0] * qrec;
-                resMax[v0] -= rate * max[v0] * qrec;
-
-                resMin[v1] += rate * min[v0] * qrec;
-                resMax[v1] += rate * max[v0] * qrec;
-            }
-        }
-
-
     }
 
     final private int stCnt;
@@ -149,17 +145,17 @@ public class PSEModelForVM_CPU
 
     final private int[] trsIO;
 
-    final private int trsICnt;
-    final private double[] trsIVal;
-    final private int[] trsISrc;
-    final private int[] trsITrgBeg;
+    final private double[] matMinDiagVal;
+    final private double[] matMinVal;
+    final private int[] matMinSrc;
+    final private int[] matMinTrgBeg;
 
-    final private int trsOCnt;
-    final private double[] trsOVal;
-    final private int[] trsOSrcBeg;
+    final private double[] matMaxDiagVal;
+    final private double[] matMaxVal;
+    final private int[] matMaxSrc;
+    final private int[] matMaxTrgBeg;
 
-    final private int trsNPCnt;
-    final private double[] trsNPVal;
-    final private int[] trsNPTrg;
-    final private int[] trsNPSrcBeg;
+    final private double[] matVal;
+    final private int[] matSrc;
+    final private int[] matTrgBeg;
 }
