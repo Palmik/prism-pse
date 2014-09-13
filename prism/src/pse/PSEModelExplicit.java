@@ -570,25 +570,23 @@ public final class PSEModelExplicit extends ModelExplicit
                     ++matMaxPos;
                 }
             }
-/*
             for (Integer t : stTrsO)
             {
                 matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t];
                 matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t];
             }
-
             for (Integer t : stTrsNP)
             {
                 final double val = trRateLower[t] * trRatePopul[t];
-                matMinDiagVal[trStSrc[t]] -= val;
-                matMaxDiagVal[trStSrc[t]] -= val;
+                //matMinDiagVal[trStSrc[t]] -= val;
+                //matMaxDiagVal[trStSrc[t]] -= val;
                 if (val != 0)
                 {
                     matVal.pushBack(val);
                     matSrc.pushBack(trStSrc[t]);
                     ++matPos;
                 }
-            }*/
+            }
         }
         matMinTrgBeg[stCnt] = matMinPos;
         matMaxTrgBeg[stCnt] = matMaxPos;
