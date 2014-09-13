@@ -555,8 +555,8 @@ public final class PSEModelExplicit extends ModelExplicit
 
             for (Integer t : stTrsI)
             {
-                final double valMin = trRateUpper[t] * trRatePopul[t];
-                final double valMax = trRateLower[t] * trRatePopul[t];
+                final double valMin = trRateLower[t] * trRatePopul[t];
+                final double valMax = trRateUpper[t] * trRatePopul[t];
                 if (valMin != 0)
                 {
                     matMinVal.pushBack(valMin);
@@ -570,7 +570,7 @@ public final class PSEModelExplicit extends ModelExplicit
                     ++matMaxPos;
                 }
             }
-
+/*
             for (Integer t : stTrsO)
             {
                 matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t];
@@ -588,7 +588,7 @@ public final class PSEModelExplicit extends ModelExplicit
                     matSrc.pushBack(trStSrc[t]);
                     ++matPos;
                 }
-            }
+            }*/
         }
         matMinTrgBeg[stCnt] = matMinPos;
         matMaxTrgBeg[stCnt] = matMaxPos;

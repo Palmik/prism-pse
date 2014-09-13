@@ -96,9 +96,9 @@ public class PSEModelForVM_CPU
             }
         }
 
-        //vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
-        //vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
-        //vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
+        vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
+        vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
+        vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
     }
 
     final private void vmMultRawMinOrMax(double[] mDiagVal, double[] mVal, int[] mSrc, int[] mTrgBeg, double[] vi, double[] vo, double qrec)
