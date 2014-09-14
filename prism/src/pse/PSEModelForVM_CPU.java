@@ -57,11 +57,15 @@ public class PSEModelForVM_CPU
         this.matTrgBeg = matTrgBeg;
     }
 
-    final public void vmMult(double min[], double resMin[], double max[], double resMax[], double q)
+    final public void vmMult
+        ( final double min[], final double resMin[]
+        , final double max[], final double resMax[]
+        , double q
+        )
     {
         System.arraycopy(min, 0, resMin, 0, min.length);
         System.arraycopy(max, 0, resMax, 0, max.length);
-        double qrec = 1 / q;
+        final double qrec = 1 / q;
 
         for (int ii = 0; ii < trsIO.length; )
         {
@@ -96,8 +100,30 @@ public class PSEModelForVM_CPU
             }
         }
 
-        vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
-        vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
+        Thread t1 = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
+            }
+        };
+        Thread t2 = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
+            }
+        };
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            throw new Error(e);
+        }
         vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
     }
 
