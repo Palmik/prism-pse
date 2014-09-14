@@ -545,9 +545,8 @@ public final class PSEModelExplicit extends ModelExplicit
             List<Integer> stTrsI = trsIByTrg.get(state);
             List<Integer> stTrsO = trsOBySrc.get(state);
             List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
-            List<Integer> stTrsNP = trsNPBySrc.get(state);
+            List<Integer> stTrsNP = trsNPByTrg.get(state);
 
-            /*
             for (Pair<Integer, Integer> p : stTrsIO)
             {
                 trsIO_[trsIOPos++] = p.first;
@@ -576,7 +575,7 @@ public final class PSEModelExplicit extends ModelExplicit
                 matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t];
                 matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t];
             }
-            */
+
             for (Integer t : stTrsNP)
             {
                 final double val = trRateLower[t] * trRatePopul[t];
