@@ -101,13 +101,17 @@ public class PSEModelForVM_CPU
         vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
     }
 
-    final private void vmMultRawMinOrMax(double[] mDiagVal, double[] mVal, int[] mSrc, int[] mTrgBeg, double[] vi, double[] vo, double qrec)
+    final private void vmMultRawMinOrMax
+        ( double[] mDiagVal, double[] mVal, int[] mSrc, int[] mTrgBeg
+        , double[] vi, double[] vo
+        , double qrec
+        )
     {
        for (int v1 = 0; v1 < stCnt; ++v1)
        {
            final int ib = mTrgBeg[v1];
            final int ie = mTrgBeg[v1 + 1];
-           vo[v1] += mDiagVal[v1] * vi[v1];
+           vo[v1] += mDiagVal[v1] * vi[v1] * qrec;
            for (int ii = ib; ii < ie; ++ii)
            {
                final int v0 = mSrc[ii];
@@ -117,7 +121,11 @@ public class PSEModelForVM_CPU
        }
     }
 
-    final private void vmMultRaw(double[] mVal, int[] mSrc, int[] mTrgBeg, double[] vmini, double[] vmaxi, double[] vmino, double[] vmaxo, double qrec)
+    final private void vmMultRaw
+        ( double[] mVal, int[] mSrc, int[] mTrgBeg
+        , double[] vmini, double[] vmaxi, double[] vmino, double[] vmaxo
+        , double qrec
+        )
     {
         for (int v1 = 0; v1 < stCnt; ++v1)
         {

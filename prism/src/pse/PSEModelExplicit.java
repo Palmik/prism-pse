@@ -547,6 +547,7 @@ public final class PSEModelExplicit extends ModelExplicit
             List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
             List<Integer> stTrsNP = trsNPBySrc.get(state);
 
+            /*
             for (Pair<Integer, Integer> p : stTrsIO)
             {
                 trsIO_[trsIOPos++] = p.first;
@@ -574,12 +575,29 @@ public final class PSEModelExplicit extends ModelExplicit
             {
                 matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t];
                 matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t];
+                if (Double.isNaN(matMaxDiagVal[trStSrc[t]]))
+                {
+                    throw new Error("O MAX");
+                }
+                if (Double.isNaN(matMinDiagVal[trStSrc[t]]))
+                {
+                    throw new Error("O MIN");
+                }
             }
+            */
             for (Integer t : stTrsNP)
             {
                 final double val = trRateLower[t] * trRatePopul[t];
-                //matMinDiagVal[trStSrc[t]] -= val;
-                //matMaxDiagVal[trStSrc[t]] -= val;
+                matMinDiagVal[trStSrc[t]] -= val;
+                matMaxDiagVal[trStSrc[t]] -= val;
+                if (Double.isNaN(matMaxDiagVal[trStSrc[t]]))
+                {
+                    throw new Error("NP MAX");
+                }
+                if (Double.isNaN(matMinDiagVal[trStSrc[t]]))
+                {
+                    throw new Error("NP MIN");
+                }
                 if (val != 0)
                 {
                     matVal.pushBack(val);
