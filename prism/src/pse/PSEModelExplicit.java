@@ -101,7 +101,7 @@ public final class PSEModelExplicit extends ModelExplicit
         deadlocks = new TreeSet<Integer>();
         predecessorsViaReaction = new HashSet<Integer>();
 
-        this.gpu = false;
+        this.gpu = true;
     }
 
     // Accessors (for Model)
@@ -508,14 +508,9 @@ public final class PSEModelExplicit extends ModelExplicit
 
     final public PSEModelForVM_GPU buildModelForVM_GPU()
     {
-        return null;
-    }
-
-    final public PSEModelForVM_CPU buildModelForVM_CPU()
-    {
         final long timeBeg = System.nanoTime();
 
-        int[] trsIO_ = new int[trsIOCnt * 2];
+        final double qrec = 1.0 / getDefaultUniformisationRate();
 
         VectorOfDouble matMinVal = new VectorOfDouble();
         VectorOfInt matMinSrc = new VectorOfInt();
@@ -535,12 +530,20 @@ public final class PSEModelExplicit extends ModelExplicit
         double[] matMinDiagVal = new double[stCnt];
         double[] matMaxDiagVal = new double[stCnt];
 
-        int trsIOPos = 0;
+        VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
+        VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
+        VectorOfDouble matIOUpperVal0 = new VectorOfDouble();
+        VectorOfDouble matIOUpperVal1 = new VectorOfDouble();
+        VectorOfInt matIOSrc = new VectorOfInt();
+        int[] matIOTrgBeg = new int [stCnt + 1];
+        int matIOPos = 0;
+
         for (int state = 0; state < stCnt; ++state)
         {
             matMinTrgBeg[state] = matMinPos;
             matMaxTrgBeg[state] = matMaxPos;
             matTrgBeg[state] = matPos;
+            matIOTrgBeg[state] = matIOPos;
 
             List<Integer> stTrsI = trsIByTrg.get(state);
             List<Integer> stTrsO = trsOBySrc.get(state);
@@ -549,14 +552,42 @@ public final class PSEModelExplicit extends ModelExplicit
 
             for (Pair<Integer, Integer> p : stTrsIO)
             {
-                trsIO_[trsIOPos++] = p.first;
-                trsIO_[trsIOPos++] = p.second;
+                final int t0 = p.first;
+                final int t1 = p.second;
+                final int v0 = trStSrc[t0];
+                final int v1 = trStTrg[t0]; // == trStSrc[t1]
+
+                final double valLower0 = trRateLower[t0] * trRatePopul[t0] * qrec;
+                final double valLower1 = trRateLower[t1] * trRatePopul[t1] * qrec;
+                final double valUpper0 = trRateUpper[t0] * trRatePopul[t0] * qrec;
+                final double valUpper1 = trRateUpper[t1] * trRatePopul[t1] * qrec;
+
+                // The rate params of t0 and t1 must be identical
+                // assert trRateLower[t0] == trRateLower[t1];
+                // assert trRateUpper[t0] == trRateUpper[t1];
+                //
+                // The lower rate == 0 iff upper rate == 0
+                // assert (trRateLower[t0] == 0 && trRateUpper[t0] == 0) ||
+                //        (trRateLower[t0] != 0 && trRateUpper[t0] != 0)
+                //
+
+                // if (valLower0 != 0) should be enough -- see above
+                if (!(valLower0 == 0 && valLower1 == 0 && valUpper0 == 0 && valUpper1 == 0))
+                {
+                    matIOLowerVal0.pushBack(valLower0);
+                    matIOLowerVal1.pushBack(valLower1);
+                    matIOUpperVal0.pushBack(valUpper0);
+                    matIOUpperVal1.pushBack(valUpper1);
+
+                    matIOSrc.pushBack(v0);
+                    ++matIOPos;
+                }
             }
 
             for (Integer t : stTrsI)
             {
-                final double valMin = trRateLower[t] * trRatePopul[t];
-                final double valMax = trRateUpper[t] * trRatePopul[t];
+                final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
+                final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
                 if (valMin != 0)
                 {
                     matMinVal.pushBack(valMin);
@@ -572,13 +603,13 @@ public final class PSEModelExplicit extends ModelExplicit
             }
             for (Integer t : stTrsO)
             {
-                matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t];
-                matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t];
+                matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
+                matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
             }
 
             for (Integer t : stTrsNP)
             {
-                final double val = trRateLower[t] * trRatePopul[t];
+                final double val = trRateLower[t] * trRatePopul[t] * qrec;
                 matMinDiagVal[trStSrc[t]] -= val;
                 matMaxDiagVal[trStSrc[t]] -= val;
                 if (val != 0)
@@ -592,35 +623,44 @@ public final class PSEModelExplicit extends ModelExplicit
         matMinTrgBeg[stCnt] = matMinPos;
         matMaxTrgBeg[stCnt] = matMaxPos;
         matTrgBeg[stCnt] = matPos;
+        matIOTrgBeg[stCnt] = matIOPos;
 
-        PSEModelForVM_CPU res = new PSEModelForVM_CPU
-          ( stCnt, trCnt
-          , trRateLower
-          , trRateUpper
-          , trRatePopul
-          , trStSrc
-          , trStTrg
+        PSEModelForVM_GPU res = new PSEModelForVM_GPU
+            ( stCnt, trCnt
+            , matIOLowerVal0.data()
+            , matIOLowerVal1.data()
+            , matIOUpperVal0.data()
+            , matIOUpperVal1.data()
+            , matIOSrc.data()
+            , matIOTrgBeg
 
-          , trsIO_
+            , matMinVal.data()
+            , matMinSrc.data()
+            , matMinTrgBeg
 
-          , matMinDiagVal
-          , matMinVal.data()
-          , matMinSrc.data()
-          , matMinTrgBeg
+            , matMaxVal.data()
+            , matMaxSrc.data()
+            , matMaxTrgBeg
 
-          , matMaxDiagVal
-          , matMaxVal.data()
-          , matMaxSrc.data()
-          , matMaxTrgBeg
-
-          , matVal.data()
-          , matSrc.data()
-          , matTrgBeg
-          );
+            , matMinDiagVal
+            , matMaxDiagVal
+            , matVal.data()
+            , matSrc.data()
+            , matTrgBeg
+            );
 
         timeBuildModel += System.nanoTime() - timeBeg;
         System.err.printf("Total build time: %s\n", (double)timeBuildModel/1000000000.0);
+        System.err.printf("Total double cnt: %s; Total int cnt: %s\n"
+            , matIOLowerVal0.size() * 4 + matMinVal.size() + matMaxVal.size() + matVal.size()
+            , matIOSrc.size() + stCnt * 4
+            );
         return res;
+    }
+
+    final public PSEModelForVM_CPU buildModelForVM_CPU()
+    {
+        return null;
     }
 
     /**
@@ -637,16 +677,11 @@ public final class PSEModelExplicit extends ModelExplicit
      * @param resultMin vector to store minimised result in
      * @param vectMax vector to multiply by when computing maximised result
      * @param resultMax vector to store maximised result in
-     * @param q uniformisation rate
      */
-    final public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], double q)
+    final public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
             throws PrismException
     {
-        if (gpu)
-        {
-            modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, q, 1);
-        }
-        else { modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, q); }
+        modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
     }
 
     private double rateParamsLowers(int t)

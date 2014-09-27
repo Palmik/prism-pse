@@ -67,6 +67,7 @@ public class PSEModelForVM_CPU
         System.arraycopy(max, 0, resMax, 0, max.length);
         final double qrec = 1 / q;
 
+        int IOZ = 0;
         for (int ii = 0; ii < trsIO.length; )
         {
             final int t0 = trsIO[ii++]; // t0 goes from v0 to v1
@@ -100,37 +101,15 @@ public class PSEModelForVM_CPU
             }
         }
 
-        Thread t1 = new Thread()
-        {
-            @Override
-            public void run()
-            {
-                vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
-            }
-        };
-        Thread t2 = new Thread()
-        {
-            @Override
-            public void run()
-            {
-                vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
-            }
-        };
-        t1.start();
-        t2.start();
-        try {
-            t1.join();
-            t2.join();
-        } catch (InterruptedException e) {
-            throw new Error(e);
-        }
+        vmMultRawMinOrMax(matMinDiagVal, matMinVal, matMinSrc, matMinTrgBeg, min, resMin, qrec);
+        vmMultRawMinOrMax(matMaxDiagVal, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax, qrec);
         vmMultRaw(matVal, matSrc, matTrgBeg, min, max, resMin, resMax, qrec);
     }
 
     final private void vmMultRawMinOrMax
-        ( double[] mDiagVal, double[] mVal, int[] mSrc, int[] mTrgBeg
-        , double[] vi, double[] vo
-        , double qrec
+        ( final double[] mDiagVal, final double[] mVal, final int[] mSrc, final int[] mTrgBeg
+        , final double[] vi, final double[] vo
+        , final double qrec
         )
     {
        for (int v1 = 0; v1 < stCnt; ++v1)
@@ -148,9 +127,9 @@ public class PSEModelForVM_CPU
     }
 
     final private void vmMultRaw
-        ( double[] mVal, int[] mSrc, int[] mTrgBeg
-        , double[] vmini, double[] vmaxi, double[] vmino, double[] vmaxo
-        , double qrec
+        ( final double[] mVal, final int[] mSrc, final int[] mTrgBeg
+        , final double[] vmini, final double[] vmaxi, final double[] vmino, final double[] vmaxo
+        , final double qrec
         )
     {
         for (int v1 = 0; v1 < stCnt; ++v1)
