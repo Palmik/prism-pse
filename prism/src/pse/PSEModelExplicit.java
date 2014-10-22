@@ -529,6 +529,11 @@ public final class PSEModelExplicit extends ModelExplicit
 
         double[] matMinDiagVal = new double[stCnt];
         double[] matMaxDiagVal = new double[stCnt];
+	    for (int i = 0; i < stCnt; ++i)
+	    {
+		    matMinDiagVal[i] = 1;
+		    matMaxDiagVal[i] = 1;
+	    }
 
         VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
         VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
@@ -660,7 +665,160 @@ public final class PSEModelExplicit extends ModelExplicit
 
     final public PSEModelForVM_CPU buildModelForVM_CPU()
     {
-        return null;
+	    final long timeBeg = System.nanoTime();
+
+	    final double qrec = 1.0 / getDefaultUniformisationRate();
+
+	    VectorOfDouble matMinVal = new VectorOfDouble();
+	    VectorOfInt matMinSrc = new VectorOfInt();
+	    int[] matMinTrgBeg = new int [stCnt + 1];
+	    int matMinPos = 0;
+
+	    VectorOfDouble matMaxVal = new VectorOfDouble();
+	    VectorOfInt matMaxSrc = new VectorOfInt();
+	    int[] matMaxTrgBeg = new int [stCnt + 1];
+	    int matMaxPos = 0;
+
+	    VectorOfDouble matVal = new VectorOfDouble();
+	    VectorOfInt matSrc = new VectorOfInt();
+	    int[] matTrgBeg = new int [stCnt + 1];
+	    int matPos = 0;
+
+	    double[] matMinDiagVal = new double[stCnt];
+	    double[] matMaxDiagVal = new double[stCnt];
+	    for (int i = 0; i < stCnt; ++i)
+	    {
+		    matMinDiagVal[i] = 1;
+		    matMaxDiagVal[i] = 1;
+	    }
+
+
+	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
+	    VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
+	    VectorOfDouble matIOUpperVal0 = new VectorOfDouble();
+	    VectorOfDouble matIOUpperVal1 = new VectorOfDouble();
+	    VectorOfInt matIOSrc = new VectorOfInt();
+	    int[] matIOTrgBeg = new int [stCnt + 1];
+	    int matIOPos = 0;
+
+	    for (int state = 0; state < stCnt; ++state)
+	    {
+		    matMinTrgBeg[state] = matMinPos;
+		    matMaxTrgBeg[state] = matMaxPos;
+		    matTrgBeg[state] = matPos;
+		    matIOTrgBeg[state] = matIOPos;
+
+		    List<Integer> stTrsI = trsIByTrg.get(state);
+		    List<Integer> stTrsO = trsOBySrc.get(state);
+		    List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+		    List<Integer> stTrsNP = trsNPByTrg.get(state);
+
+		    for (Pair<Integer, Integer> p : stTrsIO)
+		    {
+			    final int t0 = p.first;
+			    final int t1 = p.second;
+			    final int v0 = trStSrc[t0];
+			    final int v1 = trStTrg[t0]; // == trStSrc[t1]
+
+			    final double valLower0 = trRateLower[t0] * trRatePopul[t0] * qrec;
+			    final double valLower1 = trRateLower[t1] * trRatePopul[t1] * qrec;
+			    final double valUpper0 = trRateUpper[t0] * trRatePopul[t0] * qrec;
+			    final double valUpper1 = trRateUpper[t1] * trRatePopul[t1] * qrec;
+
+			    // The rate params of t0 and t1 must be identical
+			    // assert trRateLower[t0] == trRateLower[t1];
+			    // assert trRateUpper[t0] == trRateUpper[t1];
+			    //
+			    // The lower rate == 0 iff upper rate == 0
+			    // assert (trRateLower[t0] == 0 && trRateUpper[t0] == 0) ||
+			    //        (trRateLower[t0] != 0 && trRateUpper[t0] != 0)
+			    //
+
+			    // if (valLower0 != 0) should be enough -- see above
+			    if (!(valLower0 == 0 && valLower1 == 0 && valUpper0 == 0 && valUpper1 == 0))
+			    {
+				    matIOLowerVal0.pushBack(valLower0);
+				    matIOLowerVal1.pushBack(valLower1);
+				    matIOUpperVal0.pushBack(valUpper0);
+				    matIOUpperVal1.pushBack(valUpper1);
+
+				    matIOSrc.pushBack(v0);
+				    ++matIOPos;
+			    }
+		    }
+
+		    for (Integer t : stTrsI)
+		    {
+			    final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
+			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
+			    if (valMin != 0)
+			    {
+				    matMinVal.pushBack(valMin);
+				    matMinSrc.pushBack(trStSrc[t]);
+				    ++matMinPos;
+			    }
+			    if (valMax != 0)
+			    {
+				    matMaxVal.pushBack(valMax);
+				    matMaxSrc.pushBack(trStSrc[t]);
+				    ++matMaxPos;
+			    }
+		    }
+		    for (Integer t : stTrsO)
+		    {
+			    matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
+			    matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
+		    }
+
+		    for (Integer t : stTrsNP)
+		    {
+			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
+			    matMinDiagVal[trStSrc[t]] -= val;
+			    matMaxDiagVal[trStSrc[t]] -= val;
+			    if (val != 0)
+			    {
+				    matVal.pushBack(val);
+				    matSrc.pushBack(trStSrc[t]);
+				    ++matPos;
+			    }
+		    }
+	    }
+	    matMinTrgBeg[stCnt] = matMinPos;
+	    matMaxTrgBeg[stCnt] = matMaxPos;
+	    matTrgBeg[stCnt] = matPos;
+	    matIOTrgBeg[stCnt] = matIOPos;
+
+	    PSEModelForVM_CPU res = new PSEModelForVM_CPU
+			    ( stCnt, trCnt
+					    , matIOLowerVal0.data()
+					    , matIOLowerVal1.data()
+					    , matIOUpperVal0.data()
+					    , matIOUpperVal1.data()
+					    , matIOSrc.data()
+					    , matIOTrgBeg
+
+					    , matMinVal.data()
+					    , matMinSrc.data()
+					    , matMinTrgBeg
+
+					    , matMaxVal.data()
+					    , matMaxSrc.data()
+					    , matMaxTrgBeg
+
+					    , matMinDiagVal
+					    , matMaxDiagVal
+					    , matVal.data()
+					    , matSrc.data()
+					    , matTrgBeg
+			    );
+
+	    timeBuildModel += System.nanoTime() - timeBeg;
+	    System.err.printf("Total build time: %s\n", (double)timeBuildModel/1000000000.0);
+	    System.err.printf("Total double cnt: %s; Total int cnt: %s\n"
+			    , matIOLowerVal0.size() * 4 + matMinVal.size() + matMaxVal.size() + matVal.size()
+			    , matIOSrc.size() + stCnt * 4
+	    );
+	    return res;
     }
 
     /**
@@ -681,7 +839,9 @@ public final class PSEModelExplicit extends ModelExplicit
     final public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
             throws PrismException
     {
-        modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+
+	    if (gpu) modelVMGPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+        else modelVMCPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
     }
 
     private double rateParamsLowers(int t)

@@ -47,8 +47,8 @@ __kernel void SpMV2_CS
 
   if (v0 < stCnt)
   {
-    real prod1 = vo1[v0] + vi1[v0] * diagVal1[v0];
-    real prod2 = vo2[v0] + vi2[v0] * diagVal2[v0];
+    real prod1 = vi1[v0] * diagVal1[v0]; //vo1[v0] + vi1[v0] * diagVal1[v0];
+    real prod2 = vi2[v0] * diagVal2[v0]; //vo2[v0] + vi2[v0] * diagVal2[v0];
 
     uint cb = srcBeg[v0];
     uint ce = srcBeg[v0 + 1];
@@ -113,25 +113,4 @@ __kernel void SpMVIO_CS
     min1[v1] = prod1;
     max1[v1] = prod2;
   }
-
-  /*
-
-            final double midSumNumeratorMin = trRatePopul[t0] * min[v0] - trRatePopul[t1] * min[v1];
-            if (midSumNumeratorMin > 0.0)
-            {
-                resMin[v1] += trRateLower[t1] * midSumNumeratorMin * qrec;
-            } else
-            {
-                resMin[v1] += trRateUpper[t1] * midSumNumeratorMin * qrec;
-            }
-
-            final double midSumNumeratorMax = trRatePopul[t0] * max[v0] - trRatePopul[t1] * max[v1];
-            if (midSumNumeratorMax > 0.0)
-            {
-                resMax[v1] += trRateUpper[t1] * midSumNumeratorMax * qrec;
-            } else
-            {
-                resMax[v1] += trRateLower[t1] * midSumNumeratorMax * qrec;
-            }
-  */
 }

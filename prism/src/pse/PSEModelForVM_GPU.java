@@ -134,6 +134,22 @@ public class PSEModelForVM_GPU
 
     }
 
+	/*
+	public void vmMult(double min[], double resMin[], double max[], double resMax[], int iterationCnt)
+	{
+		for (int i = 0; i < iterationCnt; ++i)
+		{
+			vmMult(min, resMin, max, resMax);
+			final double[] tmp1 = min;
+			final double[] tmp2 = max;
+			min = resMin;
+			max = resMax;
+			resMin = tmp1;
+			resMax = tmp2;
+		}
+	}
+	*/
+
     public void vmMult(double min[], double resMin[], double max[], double resMax[], int iterationCnt)
     {
         cl_mem minMem = minMem1;
@@ -145,9 +161,9 @@ public class PSEModelForVM_GPU
         for (int i = 0; i < 4; ++i) { evWrite[i] = new cl_event(); }
         clEnqueueWriteBuffer(clCommandQueue, minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(min), 0, null, evWrite[0]);
         clEnqueueWriteBuffer(clCommandQueue, maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max), 0, null, evWrite[1]);
-        clEnqueueWriteBuffer(clCommandQueue, resMinMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(min), 0, null, evWrite[2]);
-        clEnqueueWriteBuffer(clCommandQueue, resMaxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max), 0, null, evWrite[3]);
-        clWaitForEvents(4, evWrite);
+        //clEnqueueWriteBuffer(clCommandQueue, resMinMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(min), 0, null, evWrite[2]);
+        //clEnqueueWriteBuffer(clCommandQueue, resMaxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max), 0, null, evWrite[3]);
+        clWaitForEvents(2, evWrite);
 
         final long lws = 64;
         final long gws = leastGreaterMultiple(stCnt, lws);
@@ -177,8 +193,12 @@ public class PSEModelForVM_GPU
             clSetKernelArg(clKernelMatIO, 9, Sizeof.cl_mem, Pointer.to(resMinMem));
             clSetKernelArg(clKernelMatIO, 10, Sizeof.cl_mem, Pointer.to(resMaxMem));
 
+            clEnqueueNDRangeKernel(clCommandQueue, clKernelMat, 1, null, new long[]{gws}, new long[]{lws},
+		            (i == 0) ? 0 : 2, (i == 0) ? null : new cl_event[]{evMatMin, evMatMax}, evMat);
+                    //0, null, null); clFinish(clCommandQueue);
+
             clEnqueueNDRangeKernel(clCommandQueue, clKernelMatIO, 1, null, new long[]{gws}, new long[]{lws},
-                    (i == 0) ? 0 : 2, (i == 0) ? null : evCopy, evMatIO);
+                    1, new cl_event[]{evMat}, evMatIO);
                     //0, null, null); clFinish(clCommandQueue);
 
             clEnqueueNDRangeKernel(clCommandQueue, clKernelMatMin, 1, null, new long[]{gws}, new long[]{lws},
@@ -188,18 +208,6 @@ public class PSEModelForVM_GPU
             clEnqueueNDRangeKernel(clCommandQueue, clKernelMatMax, 1, null, new long[]{gws}, new long[]{lws},
                     1, new cl_event[]{evMatIO}, evMatMax);
                     //0, null, null); clFinish(clCommandQueue);
-
-            clEnqueueNDRangeKernel(clCommandQueue, clKernelMat, 1, null, new long[]{gws}, new long[]{lws},
-                    2, new cl_event[]{evMatMin, evMatMax}, evMat);
-                    //0, null, null); clFinish(clCommandQueue);
-
-            clEnqueueCopyBuffer(clCommandQueue, resMinMem, minMem, 0, 0, Sizeof.cl_double * stCnt,
-                    1, new cl_event[]{evMat}, evCopy[0]);
-                    //0, null, null); clFinish(clCommandQueue);
-            clEnqueueCopyBuffer(clCommandQueue, resMinMem, minMem, 0, 0, Sizeof.cl_double * stCnt,
-                    1, new cl_event[]{evMat}, evCopy[1]);
-                    //0, null, null); clFinish(clCommandQueue);
-
 
             // Swap
             final cl_mem tmpMin = minMem;
@@ -323,6 +331,6 @@ public class PSEModelForVM_GPU
     cl_mem matTrgBeg;
 
     private static String clProgramSource =
-            "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#pragma OPENCL EXTENSION cl_amd_printf : enable\n\ntypedef double real;\n\n__kernel void SpMV1_CS\n  ( const uint stCnt\n  , __global real const* val\n  , __global uint const* trg\n  , __global uint const* srcBeg\n\n  , __global real const* vi\n  , __global real* vo\n  )\n{\n  int v0 = get_global_id(0);\n\n  real prod = vo[v0];\n  if (v0 < stCnt)\n  {\n    uint cb = srcBeg[v0];\n    uint ce = srcBeg[v0 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      prod += val[i] * vi[trg[i]];\n    }\n    vo[v0] = prod;\n  }\n}\n\n__kernel void SpMV2_CS\n  ( const uint stCnt\n  , __global real const* diagVal1\n  , __global real const* diagVal2\n  , __global real const* val\n  , __global uint const* trg\n  , __global uint const* srcBeg\n\n  , __global real const* vi1\n  , __global real const* vi2\n  , __global real* vo1\n  , __global real* vo2\n  )\n{\n  int v0 = get_global_id(0);\n\n  if (v0 < stCnt)\n  {\n    real prod1 = vo1[v0] + vi1[v0] * diagVal1[v0];\n    real prod2 = vo2[v0] + vi2[v0] * diagVal2[v0];\n\n    uint cb = srcBeg[v0];\n    uint ce = srcBeg[v0 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      prod1 += val[i] * vi1[trg[i]];\n      prod2 += val[i] * vi2[trg[i]];\n    }\n    vo1[v0] = prod1;\n    vo2[v0] = prod2;\n  }\n}\n\n__kernel void SpMVIO_CS\n  ( const uint stCnt\n  , __global real const* lowerVal0\n  , __global real const* lowerVal1\n  , __global real const* upperVal0\n  , __global real const* upperVal1\n  , __global uint const* src\n  , __global uint const* trgBeg\n\n  , __global real const* min0\n  , __global real const* max0\n  , __global real* min1\n  , __global real* max1\n  )\n{\n  int v1 = get_global_id(0);\n\n  if (v1 < stCnt)\n  {\n    real prod1 = min1[v1];\n    real prod2 = max1[v1];\n\n    uint cb = trgBeg[v1];\n    uint ce = trgBeg[v1 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      const uint v0 = src[i];\n      const real rlowerMin = (lowerVal0[i] * min0[v0] - lowerVal1[i] * min0[v1]);\n      const real rupperMax = (upperVal0[i] * max0[v0] - upperVal1[i] * max0[v1]);\n      if (rlowerMin > 0.0)\n      {\n        prod1 += rlowerMin;\n      }\n      else\n      {\n        prod1 += (upperVal0[i] * min0[v0] - upperVal1[i] * min0[v1]);\n      }\n      if (rupperMax > 0.0)\n      {\n        prod2 += rupperMax;\n      }\n      else\n      {\n        prod2 += (lowerVal0[i] * max0[v0] - lowerVal1[i] * max0[v1]);\n      }\n    }\n    min1[v1] = prod1;\n    max1[v1] = prod2;\n  }\n\n  /*\n\n            final double midSumNumeratorMin = trRatePopul[t0] * min[v0] - trRatePopul[t1] * min[v1];\n            if (midSumNumeratorMin > 0.0)\n            {\n                resMin[v1] += trRateLower[t1] * midSumNumeratorMin * qrec;\n            } else\n            {\n                resMin[v1] += trRateUpper[t1] * midSumNumeratorMin * qrec;\n            }\n\n            final double midSumNumeratorMax = trRatePopul[t0] * max[v0] - trRatePopul[t1] * max[v1];\n            if (midSumNumeratorMax > 0.0)\n            {\n                resMax[v1] += trRateUpper[t1] * midSumNumeratorMax * qrec;\n            } else\n            {\n                resMax[v1] += trRateLower[t1] * midSumNumeratorMax * qrec;\n            }\n  */\n}\n"
+		    "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#pragma OPENCL EXTENSION cl_amd_printf : enable\n\ntypedef double real;\n\n__kernel void SpMV1_CS\n  ( const uint stCnt\n  , __global real const* val\n  , __global uint const* trg\n  , __global uint const* srcBeg\n\n  , __global real const* vi\n  , __global real* vo\n  )\n{\n  int v0 = get_global_id(0);\n\n  real prod = vo[v0];\n  if (v0 < stCnt)\n  {\n    uint cb = srcBeg[v0];\n    uint ce = srcBeg[v0 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      prod += val[i] * vi[trg[i]];\n    }\n    vo[v0] = prod;\n  }\n}\n\n__kernel void SpMV2_CS\n  ( const uint stCnt\n  , __global real const* diagVal1\n  , __global real const* diagVal2\n  , __global real const* val\n  , __global uint const* trg\n  , __global uint const* srcBeg\n\n  , __global real const* vi1\n  , __global real const* vi2\n  , __global real* vo1\n  , __global real* vo2\n  )\n{\n  int v0 = get_global_id(0);\n\n  if (v0 < stCnt)\n  {\n    real prod1 = vi1[v0] * diagVal1[v0]; //vo1[v0] + vi1[v0] * diagVal1[v0];\n    real prod2 = vi2[v0] * diagVal2[v0]; //vo2[v0] + vi2[v0] * diagVal2[v0];\n\n    uint cb = srcBeg[v0];\n    uint ce = srcBeg[v0 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      prod1 += val[i] * vi1[trg[i]];\n      prod2 += val[i] * vi2[trg[i]];\n    }\n    vo1[v0] = prod1;\n    vo2[v0] = prod2;\n  }\n}\n\n__kernel void SpMVIO_CS\n  ( const uint stCnt\n  , __global real const* lowerVal0\n  , __global real const* lowerVal1\n  , __global real const* upperVal0\n  , __global real const* upperVal1\n  , __global uint const* src\n  , __global uint const* trgBeg\n\n  , __global real const* min0\n  , __global real const* max0\n  , __global real* min1\n  , __global real* max1\n  )\n{\n  int v1 = get_global_id(0);\n\n  if (v1 < stCnt)\n  {\n    real prod1 = min1[v1];\n    real prod2 = max1[v1];\n\n    uint cb = trgBeg[v1];\n    uint ce = trgBeg[v1 + 1];\n\n    for (uint i = cb; i < ce; ++i)\n    {\n      const uint v0 = src[i];\n      const real rlowerMin = (lowerVal0[i] * min0[v0] - lowerVal1[i] * min0[v1]);\n      const real rupperMax = (upperVal0[i] * max0[v0] - upperVal1[i] * max0[v1]);\n      if (rlowerMin > 0.0)\n      {\n        prod1 += rlowerMin;\n      }\n      else\n      {\n        prod1 += (upperVal0[i] * min0[v0] - upperVal1[i] * min0[v1]);\n      }\n      if (rupperMax > 0.0)\n      {\n        prod2 += rupperMax;\n      }\n      else\n      {\n        prod2 += (lowerVal0[i] * max0[v0] - lowerVal1[i] * max0[v1]);\n      }\n    }\n    min1[v1] = prod1;\n    max1[v1] = prod2;\n  }\n}\n"
     ;
 }
