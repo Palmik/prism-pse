@@ -165,7 +165,7 @@ public class PSEModelForVM_GPU
         //clEnqueueWriteBuffer(clCommandQueue, resMaxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max), 0, null, evWrite[3]);
         clWaitForEvents(2, evWrite);
 
-        final long lws = 64;
+        final long lws = 1024;
         final long gws = leastGreaterMultiple(stCnt, lws);
 
         final cl_event evMatIO = new cl_event();
@@ -283,14 +283,9 @@ public class PSEModelForVM_GPU
         */
     }
 
-    private static long leastGreaterMultiple(long x, long m)
+    private static long leastGreaterMultiple(long x, long z)
     {
-        long res = 0;
-        while (res < x)
-        {
-            res += m;
-        }
-        return res;
+        return x + (z - x % z) % z;
     }
 
     private cl_context clContext;

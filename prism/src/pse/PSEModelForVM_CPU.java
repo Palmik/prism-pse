@@ -82,10 +82,14 @@ public class PSEModelForVM_CPU
         //System.arraycopy(min, 0, resMin, 0, min.length);
         //System.arraycopy(max, 0, resMax, 0, max.length);
 
-	    SpMV2_CS(stCnt, matMinDiagVal, matMaxDiagVal, matVal, matSrc, matTrgBeg, min, max, resMin, resMax);
-        SpMV1_CS(stCnt, matMinVal, matMinSrc, matMinTrgBeg, min, resMin);
-	    SpMV1_CS(stCnt, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax);
-	    SpMVIO_CS(stCnt
+	    if (matTrgBeg[stCnt] > 0)
+		    SpMV2_CS(stCnt, matMinDiagVal, matMaxDiagVal, matVal, matSrc, matTrgBeg, min, max, resMin, resMax);
+        if (matMinTrgBeg[stCnt] > 0)
+	        SpMV1_CS(stCnt, matMinVal, matMinSrc, matMinTrgBeg, min, resMin);
+	    if (matMaxTrgBeg[stCnt] > 0)
+		    SpMV1_CS(stCnt, matMaxVal, matMaxSrc, matMaxTrgBeg, max, resMax);
+	    if (matIOTrgBeg[stCnt] > 0)
+		    SpMVIO_CS(stCnt
 			, matIOLowerVal0, matIOLowerVal1, matIOUpperVal0, matIOUpperVal1
 			, matIOSrc, matIOTrgBeg
 			, min, max, resMin, resMax
