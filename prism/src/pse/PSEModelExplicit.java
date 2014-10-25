@@ -83,7 +83,8 @@ public final class PSEModelExplicit extends ModelExplicit
     private int trsIOCnt;
 
     private boolean gpu;
-    private PSEModelForVM_CPU modelVMCPU;
+    private PSEModelForMV_CPU modelMVCPU;
+	private PSEModelForVM_CPU modelVMCPU;
     private PSEModelForVM_GPU modelVMGPU;
 
     private long timeBuildModel;
@@ -101,7 +102,7 @@ public final class PSEModelExplicit extends ModelExplicit
         deadlocks = new TreeSet<Integer>();
         predecessorsViaReaction = new HashSet<Integer>();
 
-        this.gpu = true;
+        this.gpu = false;
     }
 
     // Accessors (for Model)
@@ -879,10 +880,10 @@ public final class PSEModelExplicit extends ModelExplicit
      * probability matrix (uniformised with rate {@code q}) and the vector's min/max
      * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
      * <p>
-     * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@link #vmMult},
+     * NB: Semantics of {@code mvMultExplicit} is <i>not</i> analogical to that of {@link #vmMult},
      * the difference is crucial:  {@code result[k]_i} in {@link #vmMult} is simply
      * the probability of being in state {@code k} after {@code i} iterations starting
-     * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
+     * from the initial state.  On the other hand, {@code mvMultExplicit}'s {@code result[k]_i}
      * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
      * is reached after {@code i} iterations starting from {@code k}.
      *
@@ -894,7 +895,7 @@ public final class PSEModelExplicit extends ModelExplicit
      * @param complement If true, {@code subset} is taken to be its complement
      * @param q uniformisation rate
      */
-    public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
+    public void mvMultExplicit(double vectMin[], double resultMin[], double vectMax[], double resultMax[], BitSet subset, boolean complement, double q)
             throws PrismException
     {
         if (subset == null) {
@@ -907,6 +908,7 @@ public final class PSEModelExplicit extends ModelExplicit
             subset.flip(0, stCnt - 1);
         }
 
+	    /*
         for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
             // Initialise the result
             resultMin[state] = vectMin[state];
@@ -917,7 +919,10 @@ public final class PSEModelExplicit extends ModelExplicit
                 resultMin[state] += mvMultMidSumEvalMin(trans, vectMin[succ], vectMin[state], q);
                 resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
             }
+        }
+        */
 
+	    for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
             for (Pair<Integer, Integer> transs : trsIO.get(state)) {
                 int trans = transs.first;
                 int succTrans = transs.second;
@@ -940,6 +945,12 @@ public final class PSEModelExplicit extends ModelExplicit
                 resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
             }
         }
+	    for (int i = 0; i < stCnt; i += (stCnt / 10))
+	    {
+		    System.err.printf("%s %s ", resultMin[i], resultMax[i]);
+	    }
+	    System.err.printf("\n");
+
 
         // Optimisation: Non-parametrised transitions
         for (int trans = 0; trans < trCnt; trans++) {
@@ -957,6 +968,155 @@ public final class PSEModelExplicit extends ModelExplicit
             resultMax[state] += rate * (vectMax[succ] - vectMax[state]) / q;
         }
     }
+
+	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
+	{
+		modelMVCPU.mvMult(vectMin, resultMin, vectMax, resultMax);
+	}
+
+	public void prepareForMVMult(BitSet set, boolean complement)
+	{
+		modelMVCPU = buildModelForMV_CPU(set, complement);
+	}
+
+	private PSEModelForMV_CPU buildModelForMV_CPU(BitSet subset, boolean complement)
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+
+		if (subset == null) {
+			// Loop over all states
+			subset = new BitSet(stCnt);
+			subset.set(0, stCnt - 1);
+		}
+
+		if (complement) {
+			subset.flip(0, stCnt - 1);
+		}
+
+		VectorOfDouble matOLowerVal = new VectorOfDouble();
+		VectorOfDouble matOUpperVal = new VectorOfDouble();
+		VectorOfInt matOTrg = new VectorOfInt();
+		int matOSrcCnt = subset.cardinality();
+		int[] matOSrc = new int [matOSrcCnt];
+		int[] matOSrcBeg = new int [matOSrcCnt + 1];
+		int matOPos = 0;
+
+		VectorOfDouble matIOLowerVal = new VectorOfDouble();
+		VectorOfDouble matIOUpperVal = new VectorOfDouble();
+		VectorOfInt matIOSrc = new VectorOfInt();
+		int matIOTrgCnt = subset.cardinality();
+		int[] matIOTrg = new int [matIOTrgCnt];
+		int[] matIOTrgBeg = new int [matIOTrgCnt + 1];
+		int matIOPos = 0;
+
+		VectorOfDouble matNPVal = new VectorOfDouble();
+		VectorOfInt matNPTrg = new VectorOfInt();
+		int matNPSrcCnt = subset.cardinality();
+		int[] matNPSrc = new int [matNPSrcCnt];
+		int[] matNPSrcBeg = new int [matNPSrcCnt + 1];
+		int matNPPos = 0;
+
+		int ii = 0;
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
+		{
+			matOSrc[ii] = state;
+			matIOTrg[ii] = state;
+			matNPSrc[ii] = state;
+
+			matOSrcBeg[ii] = matOPos;
+			matIOTrgBeg[ii] = matIOPos;
+			matNPSrcBeg[ii] = matNPPos;
+
+			List<Integer> stTrsO = trsOBySrc.get(state);
+			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+			List<Integer> stTrsNP = trsNPBySrc.get(state);
+
+			for (int t : stTrsO)
+			{
+				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					matOLowerVal.pushBack(valLower);
+					matOUpperVal.pushBack(valUpper);
+					matOTrg.pushBack(trStTrg[t]);
+					++matOPos;
+				}
+			}
+
+			for (Pair<Integer, Integer> p : stTrsIO)
+			{
+				final int t0 = p.first;
+				final int t1 = p.second;
+				final int v0 = trStSrc[t0];
+				final int v1 = trStTrg[t0]; // == trStSrc[t1] == state
+				final int v2 = trStTrg[t1];
+
+				double valLower = 0;
+				double valUpper = 0;
+				if (!subset.get(v0))
+				{
+					valLower = trRateLower[t0] * trRatePopul[t0] * qrec;
+					valUpper = trRateUpper[t0] * trRatePopul[t0] * qrec;
+				}
+				else
+				{
+					valLower = trRateLower[t1] * trRatePopul[t1] * qrec;
+					valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
+				}
+
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					matIOLowerVal.pushBack(valLower);
+					matIOUpperVal.pushBack(valUpper);
+					matIOSrc.pushBack(v2);
+					++matIOPos;
+				}
+			}
+
+			for (int t : stTrsNP)
+			{
+				int v0 = trStSrc[t]; // == state
+				int v1 = trStTrg[t];
+				final double val = trRateLower[t] * trRatePopul[t] * qrec;
+
+				if (val != 0)
+				{
+					matNPVal.pushBack(val);
+					matNPTrg.pushBack(v1);
+					++matNPPos;
+				}
+			}
+			++ii;
+		}
+		matOSrcBeg[ii] = matOPos;
+		matIOTrgBeg[ii] = matIOPos;
+		matNPSrcBeg[ii] = matNPPos;
+
+		return new PSEModelForMV_CPU
+				( stCnt
+				, matOLowerVal.data()
+				, matOUpperVal.data()
+				, matOTrg.data()
+				, matOSrc
+				, matOSrcBeg
+				, matOSrcCnt
+
+				, matIOLowerVal.data()
+				, matIOUpperVal.data()
+				, matIOSrc.data()
+				, matIOTrg
+				, matIOTrgBeg
+				, matIOTrgCnt
+
+				, matNPVal.data()
+				, matNPTrg.data()
+				, matNPSrc
+				, matNPSrcBeg
+				, matNPSrcCnt
+				);
+	}
+
 
     /**
      * Updates the transition rates of this parametrised CTMC according

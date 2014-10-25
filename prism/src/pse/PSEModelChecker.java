@@ -702,6 +702,7 @@ public final class PSEModelChecker extends PrismComponent
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 		mainLog.println();
 
+		model.prepareForMVMult(nonAbs, false);
 		totalIters = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
 			BoxRegion region = entry.getKey();
@@ -748,7 +749,8 @@ public final class PSEModelChecker extends PrismComponent
 			iters = 1;
 			while (iters <= right) {
 				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
+				//model.mvMultExplicit(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
