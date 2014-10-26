@@ -32,6 +32,7 @@ import java.util.*;
 import parser.Values;
 import parser.ast.Expression;
 import parser.ast.ModulesFile;
+import parser.ast.SystemBrackets;
 import prism.*;
 import explicit.CTMC;
 import explicit.ModelExplicit;
@@ -87,8 +88,8 @@ public final class PSEModelExplicit extends ModelExplicit
 	private PSEModelForVM_CPU modelVMCPU;
     private PSEModelForVM_GPU modelVMGPU;
 
-    private long timeBuildModel;
-    private long timeConfigureModel;
+    private long timeBuildModelVMMult;
+	private long timeBuildModelMVMult;
 
 
     /**
@@ -655,12 +656,8 @@ public final class PSEModelExplicit extends ModelExplicit
             , matTrgBeg
             );
 
-        timeBuildModel += System.nanoTime() - timeBeg;
-        System.err.printf("Total build time: %s\n", (double)timeBuildModel/1000000000.0);
-        System.err.printf("Total double cnt: %s; Total int cnt: %s\n"
-            , matIOLowerVal0.size() * 4 + matMinVal.size() + matMaxVal.size() + matVal.size()
-            , matIOSrc.size() + stCnt * 4
-            );
+        timeBuildModelVMMult += System.nanoTime() - timeBeg;
+        System.err.printf("Total build time model vmMult: %s\n", (double) timeBuildModelVMMult / 1000000000.0);
         return res;
     }
 
@@ -813,12 +810,8 @@ public final class PSEModelExplicit extends ModelExplicit
 					    , matTrgBeg
 			    );
 
-	    timeBuildModel += System.nanoTime() - timeBeg;
-	    System.err.printf("Total build time: %s\n", (double)timeBuildModel/1000000000.0);
-	    System.err.printf("Total double cnt: %s; Total int cnt: %s\n"
-			    , matIOLowerVal0.size() * 4 + matMinVal.size() + matMaxVal.size() + matVal.size()
-			    , matIOSrc.size() + stCnt * 4
-	    );
+	    timeBuildModelVMMult += System.nanoTime() - timeBeg;
+	    System.err.printf("Total build time: %s\n", (double) timeBuildModelVMMult /1000000000.0);
 	    return res;
     }
 
@@ -908,7 +901,6 @@ public final class PSEModelExplicit extends ModelExplicit
             subset.flip(0, stCnt - 1);
         }
 
-	    /*
         for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
             // Initialise the result
             resultMin[state] = vectMin[state];
@@ -920,7 +912,6 @@ public final class PSEModelExplicit extends ModelExplicit
                 resultMax[state] += mvMultMidSumEvalMax(trans, vectMax[succ], vectMax[state], q);
             }
         }
-        */
 
 	    for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
             for (Pair<Integer, Integer> transs : trsIO.get(state)) {
@@ -945,12 +936,6 @@ public final class PSEModelExplicit extends ModelExplicit
                 resultMax[state] += mvMultMidSumEvalMax(succTrans, vectMax[succ], vectMax[state], q);
             }
         }
-	    for (int i = 0; i < stCnt; i += (stCnt / 10))
-	    {
-		    System.err.printf("%s %s ", resultMin[i], resultMax[i]);
-	    }
-	    System.err.printf("\n");
-
 
         // Optimisation: Non-parametrised transitions
         for (int trans = 0; trans < trCnt; trans++) {
@@ -976,7 +961,10 @@ public final class PSEModelExplicit extends ModelExplicit
 
 	public void prepareForMVMult(BitSet set, boolean complement)
 	{
+		long timeBeg = System.currentTimeMillis();
 		modelMVCPU = buildModelForMV_CPU(set, complement);
+		timeBuildModelMVMult += System.currentTimeMillis() - timeBeg;
+		System.err.printf("Total build time for MV model: %s\n", (double)timeBuildModelMVMult / 1000.0);
 	}
 
 	private PSEModelForMV_CPU buildModelForMV_CPU(BitSet subset, boolean complement)
@@ -993,22 +981,6 @@ public final class PSEModelExplicit extends ModelExplicit
 			subset.flip(0, stCnt - 1);
 		}
 
-		VectorOfDouble matOLowerVal = new VectorOfDouble();
-		VectorOfDouble matOUpperVal = new VectorOfDouble();
-		VectorOfInt matOTrg = new VectorOfInt();
-		int matOSrcCnt = subset.cardinality();
-		int[] matOSrc = new int [matOSrcCnt];
-		int[] matOSrcBeg = new int [matOSrcCnt + 1];
-		int matOPos = 0;
-
-		VectorOfDouble matIOLowerVal = new VectorOfDouble();
-		VectorOfDouble matIOUpperVal = new VectorOfDouble();
-		VectorOfInt matIOSrc = new VectorOfInt();
-		int matIOTrgCnt = subset.cardinality();
-		int[] matIOTrg = new int [matIOTrgCnt];
-		int[] matIOTrgBeg = new int [matIOTrgCnt + 1];
-		int matIOPos = 0;
-
 		VectorOfDouble matNPVal = new VectorOfDouble();
 		VectorOfInt matNPTrg = new VectorOfInt();
 		int matNPSrcCnt = subset.cardinality();
@@ -1016,16 +988,17 @@ public final class PSEModelExplicit extends ModelExplicit
 		int[] matNPSrcBeg = new int [matNPSrcCnt + 1];
 		int matNPPos = 0;
 
-		int ii = 0;
+		int rowCntAll = 0;
+		int matRowCnt = 0;
+		int matValCnt = 0;
+		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matExplicit = new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(stCnt); // Array of rows.
+		for (int i = 0; i < stCnt; ++i) matExplicit.add(null);
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
 		{
-			matOSrc[ii] = state;
-			matIOTrg[ii] = state;
-			matNPSrc[ii] = state;
-
-			matOSrcBeg[ii] = matOPos;
-			matIOTrgBeg[ii] = matIOPos;
-			matNPSrcBeg[ii] = matNPPos;
+			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
+			matExplicit.set(state, matRow);
+			matNPSrc[rowCntAll] = state;
+			matNPSrcBeg[rowCntAll] = matNPPos;
 
 			List<Integer> stTrsO = trsOBySrc.get(state);
 			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
@@ -1035,12 +1008,15 @@ public final class PSEModelExplicit extends ModelExplicit
 			{
 				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
 				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+				final int col = trStTrg[t];
 				if (!(valLower == 0 && valUpper == 0))
 				{
-					matOLowerVal.pushBack(valLower);
-					matOUpperVal.pushBack(valUpper);
-					matOTrg.pushBack(trStTrg[t]);
-					++matOPos;
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
 				}
 			}
 
@@ -1065,13 +1041,21 @@ public final class PSEModelExplicit extends ModelExplicit
 					valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
 				}
 
+				final int col = v2;
 				if (!(valLower == 0 && valUpper == 0))
 				{
-					matIOLowerVal.pushBack(valLower);
-					matIOUpperVal.pushBack(valUpper);
-					matIOSrc.pushBack(v2);
-					++matIOPos;
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
 				}
+			}
+			if (!matRow.isEmpty())
+			{
+				++matRowCnt;
+				matValCnt += matRow.size();
 			}
 
 			for (int t : stTrsNP)
@@ -1087,27 +1071,48 @@ public final class PSEModelExplicit extends ModelExplicit
 					++matNPPos;
 				}
 			}
-			++ii;
+			++rowCntAll;
 		}
-		matOSrcBeg[ii] = matOPos;
-		matIOTrgBeg[ii] = matIOPos;
-		matNPSrcBeg[ii] = matNPPos;
+		matNPSrcBeg[rowCntAll] = matNPPos;
+
+		double[] matLowerVal = new double[matValCnt];
+		double[] matUpperVal = new double[matValCnt];
+		int[] matCol = new int[matValCnt];
+		int[] matRow = new int[matRowCnt];
+		int[] matRowBeg = new int[matRowCnt + 1];
+		int matPos = 0;
+
+		matRowCnt = 0;
+		for (int row = 0; row < stCnt; ++row)
+		{
+			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matExplicit.get(row);
+			if (matExplicitRow == null || matExplicitRow.isEmpty())
+			{
+				continue;
+			}
+
+			matRow[matRowCnt] = row;
+			matRowBeg[matRowCnt] = matPos;
+
+			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
+			{
+				matCol[matPos] = e.getKey();
+				matLowerVal[matPos] = e.getValue().first;
+				matUpperVal[matPos] = e.getValue().second;
+				++matPos;
+			}
+			++matRowCnt;
+		}
+		matRowBeg[matRowCnt] = matPos;
 
 		return new PSEModelForMV_CPU
 				( stCnt
-				, matOLowerVal.data()
-				, matOUpperVal.data()
-				, matOTrg.data()
-				, matOSrc
-				, matOSrcBeg
-				, matOSrcCnt
-
-				, matIOLowerVal.data()
-				, matIOUpperVal.data()
-				, matIOSrc.data()
-				, matIOTrg
-				, matIOTrgBeg
-				, matIOTrgCnt
+				, matLowerVal
+				, matUpperVal
+				, matCol
+				, matRow
+				, matRowBeg
+				, matRowCnt
 
 				, matNPVal.data()
 				, matNPTrg.data()
@@ -1129,7 +1134,6 @@ public final class PSEModelExplicit extends ModelExplicit
      */
     public void configureParameterSpace(BoxRegion region) throws PrismLangException
     {
-        final long timeBeg = System.nanoTime();
         int npCnt = 0;
         for (int t = 0; t < trCnt; ++t)
         {
@@ -1137,9 +1141,6 @@ public final class PSEModelExplicit extends ModelExplicit
             trRateUpper[t] = trRateExpr[t].evaluateDouble(region.getUpperBounds());
             if (!isParametrised(t)) ++npCnt;
         }
-
-        timeConfigureModel += System.nanoTime() - timeBeg;
-        System.err.printf("Total configure time: %s\n", (double)timeConfigureModel/1000000000.0);
 
         if (modelVMCPU != null) {
             modelVMCPU = buildModelForVM_CPU();
