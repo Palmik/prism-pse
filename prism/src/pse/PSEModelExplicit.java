@@ -954,12 +954,12 @@ public final class PSEModelExplicit extends ModelExplicit
         }
     }
 
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
+	final public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 	{
 		modelMVCPU.mvMult(vectMin, resultMin, vectMax, resultMax);
 	}
 
-	public void prepareForMVMult(BitSet set, boolean complement)
+	final public void prepareForMVMult(BitSet set, boolean complement)
 	{
 		long timeBeg = System.currentTimeMillis();
 		modelMVCPU = buildModelForMV_CPU(set, complement);
@@ -967,7 +967,7 @@ public final class PSEModelExplicit extends ModelExplicit
 		System.err.printf("Total build time for MV model: %s\n", (double)timeBuildModelMVMult / 1000.0);
 	}
 
-	private PSEModelForMV_CPU buildModelForMV_CPU(BitSet subset, boolean complement)
+	final private PSEModelForMV_CPU buildModelForMV_CPU(BitSet subset, boolean complement)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 
@@ -982,10 +982,10 @@ public final class PSEModelExplicit extends ModelExplicit
 		}
 
 		VectorOfDouble matNPVal = new VectorOfDouble();
-		VectorOfInt matNPTrg = new VectorOfInt();
-		int matNPSrcCnt = subset.cardinality();
-		int[] matNPSrc = new int [matNPSrcCnt];
-		int[] matNPSrcBeg = new int [matNPSrcCnt + 1];
+		VectorOfInt matNPCol = new VectorOfInt();
+		int matNPRowCnt = subset.cardinality();
+		int[] matNPRow = new int [matNPRowCnt];
+		int[] matNPRowBeg = new int [matNPRowCnt + 1];
 		int matNPPos = 0;
 
 		int rowCntAll = 0;
@@ -997,8 +997,8 @@ public final class PSEModelExplicit extends ModelExplicit
 		{
 			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
 			matExplicit.set(state, matRow);
-			matNPSrc[rowCntAll] = state;
-			matNPSrcBeg[rowCntAll] = matNPPos;
+			matNPRow[rowCntAll] = state;
+			matNPRowBeg[rowCntAll] = matNPPos;
 
 			List<Integer> stTrsO = trsOBySrc.get(state);
 			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
@@ -1058,6 +1058,7 @@ public final class PSEModelExplicit extends ModelExplicit
 				matValCnt += matRow.size();
 			}
 
+			int ps = matNPVal.size();
 			for (int t : stTrsNP)
 			{
 				int v0 = trStSrc[t]; // == state
@@ -1067,13 +1068,13 @@ public final class PSEModelExplicit extends ModelExplicit
 				if (val != 0)
 				{
 					matNPVal.pushBack(val);
-					matNPTrg.pushBack(v1);
+					matNPCol.pushBack(v1);
 					++matNPPos;
 				}
 			}
 			++rowCntAll;
 		}
-		matNPSrcBeg[rowCntAll] = matNPPos;
+		matNPRowBeg[rowCntAll] = matNPPos;
 
 		double[] matLowerVal = new double[matValCnt];
 		double[] matUpperVal = new double[matValCnt];
@@ -1115,10 +1116,10 @@ public final class PSEModelExplicit extends ModelExplicit
 				, matRowCnt
 
 				, matNPVal.data()
-				, matNPTrg.data()
-				, matNPSrc
-				, matNPSrcBeg
-				, matNPSrcCnt
+				, matNPCol.data()
+				, matNPRow
+				, matNPRowBeg
+				, matNPRowCnt
 				);
 	}
 

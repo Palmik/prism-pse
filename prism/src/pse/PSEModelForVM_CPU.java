@@ -3,7 +3,7 @@ package pse;
 import parser.ast.Expression;
 import prism.PrismException;
 
-public class PSEModelForVM_CPU
+public final class PSEModelForVM_CPU
 {
     public PSEModelForVM_CPU
             ( int stCnt, int trCnt
