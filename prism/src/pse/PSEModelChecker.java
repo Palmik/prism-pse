@@ -785,6 +785,7 @@ public final class PSEModelChecker extends PrismComponent
 
 			// Configure parameter space
 			model.configureParameterSpace(region);
+			model.prepareForMV(nonAbs, false);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
@@ -815,7 +816,7 @@ public final class PSEModelChecker extends PrismComponent
 			iters = 1;
 			while (iters <= right) {
 				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, nonAbs, false, q);
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -1011,6 +1012,7 @@ public final class PSEModelChecker extends PrismComponent
 
 			// Configure parameter space
 			model.configureParameterSpace(region);
+			model.prepareForVM();
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Start iterations
