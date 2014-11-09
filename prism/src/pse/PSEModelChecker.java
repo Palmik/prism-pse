@@ -1299,11 +1299,21 @@ public final class PSEModelChecker extends PrismComponent
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Start iterations
-			iters = 1;
-			totalIters++;
+			iters = left;
+			totalIters += left;
+
+			// Vector-matrix multiply
+			model.vmMult(solnMin, soln2Min, solnMax, soln2Max, left - 1);
+			// Swap vectors for next iter
+			tmpsoln = solnMin;
+			solnMin = soln2Min;
+			soln2Min = tmpsoln;
+			tmpsoln = solnMax;
+			solnMax = soln2Max;
+			soln2Max = tmpsoln;
 			while (iters <= right) {
 				// Vector-matrix multiply
-				model.vmMult(solnMin, soln2Min, solnMax, soln2Max);
+				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, 1);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;

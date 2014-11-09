@@ -83,7 +83,10 @@ public final class PSEModel extends ModelExplicit
 	private Map<Integer, List<Integer>> trsNPBySrc;
 	private Map<Integer, List<Integer>> trsNPByTrg;
 
+	final private boolean useGPU;
+
 	private PSEModelForVM modelVM;
+	private PSEModelForVM_GPU modelVM_GPU;
 	private PSEModelForMV modelMV;
 
 	/**
@@ -96,6 +99,8 @@ public final class PSEModel extends ModelExplicit
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
+
+		useGPU = true;
 	}
 
 	// Accessors (for Model)
@@ -512,7 +517,6 @@ public final class PSEModel extends ModelExplicit
 		    matMaxDiagVal[i] = 1;
 	    }
 
-
 	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
 	    VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
 	    VectorOfDouble matIOUpperVal0 = new VectorOfDouble();
@@ -608,29 +612,56 @@ public final class PSEModel extends ModelExplicit
 	    matTrgBeg[numStates] = matPos;
 	    matIOTrgBeg[numStates] = matIOPos;
 
-	    modelVM = new PSEModelForVM
-        ( numStates, numTransitions
-        , matIOLowerVal0.data()
-        , matIOLowerVal1.data()
-        , matIOUpperVal0.data()
-        , matIOUpperVal1.data()
-        , matIOSrc.data()
-        , matIOTrgBeg
+		if (useGPU) {
+			modelVM_GPU = new PSEModelForVM_GPU
+				(numStates, numTransitions
+					, matIOLowerVal0.data()
+					, matIOLowerVal1.data()
+					, matIOUpperVal0.data()
+					, matIOUpperVal1.data()
+					, matIOSrc.data()
+					, matIOTrgBeg
 
-        , matMinVal.data()
-        , matMinSrc.data()
-        , matMinTrgBeg
+					, matMinVal.data()
+					, matMinSrc.data()
+					, matMinTrgBeg
 
-        , matMaxVal.data()
-        , matMaxSrc.data()
-        , matMaxTrgBeg
+					, matMaxVal.data()
+					, matMaxSrc.data()
+					, matMaxTrgBeg
 
-        , matMinDiagVal
-        , matMaxDiagVal
-        , matVal.data()
-        , matSrc.data()
-        , matTrgBeg
-        );
+					, matMinDiagVal
+					, matMaxDiagVal
+					, matVal.data()
+					, matSrc.data()
+					, matTrgBeg
+				);
+		}
+		else {
+			modelVM = new PSEModelForVM
+				(numStates, numTransitions
+					, matIOLowerVal0.data()
+					, matIOLowerVal1.data()
+					, matIOUpperVal0.data()
+					, matIOUpperVal1.data()
+					, matIOSrc.data()
+					, matIOTrgBeg
+
+					, matMinVal.data()
+					, matMinSrc.data()
+					, matMinTrgBeg
+
+					, matMaxVal.data()
+					, matMaxSrc.data()
+					, matMaxTrgBeg
+
+					, matMinDiagVal
+					, matMaxDiagVal
+					, matVal.data()
+					, matSrc.data()
+					, matTrgBeg
+				);
+		}
 	}
 
 	/**
@@ -811,10 +842,15 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #mvMult(double[], double[], double[], double[])
 	 */
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
+	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
 			throws PrismException
 	{
-		modelVM.vmMult(vectMin, resultMin, vectMax, resultMax);
+		if (useGPU) {
+			modelVM_GPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+		}
+		else {
+			modelVM.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+		}
 	}
 
 	/**
@@ -833,7 +869,7 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMin vector to store minimised result in
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
-	 * @see #vmMult(double[], double[], double[], double[])
+	 * @see #vmMult(double[], double[], double[], double[], int)
 	 */
 	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 			throws PrismException
