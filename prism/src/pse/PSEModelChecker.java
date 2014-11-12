@@ -807,11 +807,23 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 
+			iters = left;
+			totalIters += left;
+
+			// Matrix-vector multiply
+			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left - 1);
+
+			// Swap vectors for next iter
+			tmpsoln = solnMin;
+			solnMin = soln2Min;
+			soln2Min = tmpsoln;
+			tmpsoln = solnMax;
+			solnMax = soln2Max;
+			soln2Max = tmpsoln;
 			// Start iterations
-			iters = 1;
 			while (iters <= right) {
 				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, 1);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -1089,10 +1101,22 @@ public final class PSEModelChecker extends PrismComponent
 			}
 
 			// Start iterations
-			iters = 1;
+			iters = left;
+			totalIters += left;
+
+			// Matrix-vector multiply
+			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left - 1);
+
+			// Swap vectors for next iter
+			tmpsoln = solnMin;
+			solnMin = soln2Min;
+			soln2Min = tmpsoln;
+			tmpsoln = solnMax;
+			solnMax = soln2Max;
+			soln2Max = tmpsoln;
 			while (iters <= right) {
 				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, 1);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -1311,9 +1335,10 @@ public final class PSEModelChecker extends PrismComponent
 			tmpsoln = solnMax;
 			solnMax = soln2Max;
 			soln2Max = tmpsoln;
+			int stepSize = 1; // This has to be 1 for now because of the sum
 			while (iters <= right) {
 				// Vector-matrix multiply
-				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, 1);
+				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, stepSize);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -1330,13 +1355,11 @@ public final class PSEModelChecker extends PrismComponent
 						sumMax[i] += weights[iters - left] * solnMax[i];
 					}
 					// After a number of iters (default 50), examine the partially computed result
-					if (iters % numItersExaminePartial == 0) {
-						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-					}
+				    decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 				}
 
-				iters++;
-				totalIters++;
+				iters += stepSize;
+				totalIters += stepSize;
 			}
 
 			// Examine this region's result after all the iters have been finished

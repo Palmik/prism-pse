@@ -83,11 +83,12 @@ public final class PSEModel extends ModelExplicit
 	private Map<Integer, List<Integer>> trsNPBySrc;
 	private Map<Integer, List<Integer>> trsNPByTrg;
 
-	final private boolean useGPU;
+	final private boolean useOpenCL;
 
 	private PSEModelForVM modelVM;
 	private PSEModelForVM_GPU modelVM_GPU;
 	private PSEModelForMV modelMV;
+	private PSEModelForMV_GPU modelMV_GPU;
 
 	/**
 	 * Constructs a new parametric model.
@@ -100,7 +101,8 @@ public final class PSEModel extends ModelExplicit
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
 
-		useGPU = true;
+		String envUseOpenCL = System.getenv("USE_OPENCL");
+		useOpenCL = envUseOpenCL != null && envUseOpenCL.equals("1");
 	}
 
 	// Accessors (for Model)
@@ -612,7 +614,9 @@ public final class PSEModel extends ModelExplicit
 	    matTrgBeg[numStates] = matPos;
 	    matIOTrgBeg[numStates] = matIOPos;
 
-		if (useGPU) {
+		if (useOpenCL) {
+			if (modelVM_GPU != null) { modelVM_GPU.release(); }
+
 			modelVM_GPU = new PSEModelForVM_GPU
 				(numStates, numTransitions
 					, matIOLowerVal0.data()
@@ -672,11 +676,12 @@ public final class PSEModel extends ModelExplicit
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 
-		subset = (BitSet)subset.clone();
 		if (subset == null) {
 			// Loop over all states
 			subset = new BitSet(numStates);
 			subset.set(0, numStates - 1);
+		} else {
+			subset = (BitSet)subset.clone();
 		}
 
 		if (complement) {
@@ -809,21 +814,41 @@ public final class PSEModel extends ModelExplicit
 		}
 		matRowBeg[matRowCnt] = matPos;
 
-		modelMV = new PSEModelForMV
-			( numStates
-			, matLowerVal
-			, matUpperVal
-			, matCol
-			, matRow
-			, matRowBeg
-			, matRowCnt
+		if (useOpenCL) {
+			if (modelMV_GPU != null) modelVM_GPU.release();
+			modelMV_GPU = new PSEModelForMV_GPU
+				(numStates
+					, matLowerVal
+					, matUpperVal
+					, matCol
+					, matRow
+					, matRowBeg
+					, matRowCnt
 
-			, matNPVal.data()
-			, matNPCol.data()
-			, matNPRow
-			, matNPRowBeg
-			, matNPRowCnt
-			);
+					, matNPVal.data()
+					, matNPCol.data()
+					, matNPRow
+					, matNPRowBeg
+					, matNPRowCnt
+				);
+		}
+		else {
+			modelMV = new PSEModelForMV
+				(numStates
+					, matLowerVal
+					, matUpperVal
+					, matCol
+					, matRow
+					, matRowBeg
+					, matRowCnt
+
+					, matNPVal.data()
+					, matNPCol.data()
+					, matNPRow
+					, matNPRowBeg
+					, matNPRowCnt
+				);
+		}
 	}
 
 	/**
@@ -840,12 +865,12 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMin vector to store minimised result in
 	 * @param vectMax vector to multiply by when computing maximised result
 	 * @param resultMax vector to store maximised result in
-	 * @see #mvMult(double[], double[], double[], double[])
+	 * @see #mvMult(double[], double[], double[], double[], int)
 	 */
 	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
 			throws PrismException
 	{
-		if (useGPU) {
+		if (useOpenCL) {
 			modelVM_GPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
 		}
 		else {
@@ -871,10 +896,15 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #vmMult(double[], double[], double[], double[], int)
 	 */
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
+	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
 			throws PrismException
 	{
-		modelMV.mvMult(vectMin, resultMin, vectMax, resultMax);
+		if (useOpenCL) {
+			modelMV_GPU.mvMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+		}
+		else {
+			modelMV.mvMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+		}
 	}
 
 	/**
@@ -893,8 +923,10 @@ public final class PSEModel extends ModelExplicit
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
-		modelVM = null; // This marks the model as dirty (i.e. it needs to be rebuilt)
+		modelVM = null;
+		modelVM_GPU = null;
 		modelMV = null;
+		modelMV_GPU = null;
 	}
 
 	/**

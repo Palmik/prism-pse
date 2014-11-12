@@ -37,6 +37,23 @@ public final class PSEModelForMV
 	}
 
 	final public void mvMult
+		( double min[], double resMin[]
+		, double max[], double resMax[]
+		, int iterationCnt
+		)
+	{
+		for (int i = 0; i < iterationCnt; ++i) {
+			mvMult(min, resMin, max, resMax);
+			final double[] tmp1 = resMin;
+			final double[] tmp2 = resMax;
+			resMin = min;
+			resMax = max;
+			min = tmp1;
+			max = tmp2;
+		}
+	}
+
+	final private void mvMult
 		( final double min[], final double resMin[]
 		, final double max[], final double resMax[]
 		)
