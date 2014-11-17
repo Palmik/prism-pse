@@ -17,8 +17,14 @@ public final class PSEModelForMV
 	, int[] matNPRow
 	, int[] matNPRowBeg
 	, int matNPRowCnt
+
+	, double[] weight
+	, double   weightDef
+	, int      weightOff
 	)
 	{
+		this.totalIterationCnt = 0;
+
 		this.stCnt = stCnt;
 		this.matLowerVal = matLowerVal;
 		this.matUpperVal = matUpperVal;
@@ -34,6 +40,12 @@ public final class PSEModelForMV
 		this.matNPRowBeg = matNPRowBeg;
 		this.matNPRowCnt = matNPRowCnt;
 		this.hasNPMat = matNPRowCnt > 0 && matNPRowBeg[matNPRowCnt] > 0;
+
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
+		this.sumMin = new double[stCnt];
+		this.sumMax = new double[stCnt];
 	}
 
 	final public void mvMult
@@ -44,6 +56,12 @@ public final class PSEModelForMV
 	{
 		for (int i = 0; i < iterationCnt; ++i) {
 			mvMult(min, resMin, max, resMax);
+			for (int j = 0; j < stCnt; ++j)
+			{
+				sumMin[j] += getSumWeight() * resMin[j];
+				sumMax[j] += getSumWeight() * resMax[j];
+			}
+
 			final double[] tmp1 = resMin;
 			final double[] tmp2 = resMax;
 			resMin = min;
@@ -51,6 +69,12 @@ public final class PSEModelForMV
 			min = tmp1;
 			max = tmp2;
 		}
+	}
+
+	final public void getSum(final double[] sumMin, final double[] sumMax)
+	{
+		System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
+		System.arraycopy(this.sumMax, 0, sumMax, 0, sumMax.length);
 	}
 
 	final private void mvMult
@@ -97,6 +121,15 @@ public final class PSEModelForMV
 		}
 	}
 
+	final private double getSumWeight()
+	{
+		if (totalIterationCnt >= weightOff)
+		{
+			return weight[totalIterationCnt - weightOff];
+		}
+		return weightDef;
+	}
+
 	private int stCnt;
 
 	final private double[] matLowerVal;
@@ -113,4 +146,11 @@ public final class PSEModelForMV
 	final private int[] matNPRowBeg;
 	final private int matNPRowCnt;
 	final private boolean hasNPMat;
+
+	private int totalIterationCnt;
+	final private double[] weight;
+	final private double weightDef;
+	final private int weightOff;
+	final private double[] sumMin;
+	final private double[] sumMax;
 }

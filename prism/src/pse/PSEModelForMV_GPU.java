@@ -20,6 +20,10 @@ public final class PSEModelForMV_GPU
 		, int[] matNPRow
 		, int[] matNPRowBeg
 		, int matNPRowCnt
+
+		, double[] weight
+		, double   weightDef
+		, int      weightOff
 		)
 	{
 		this.stCnt = stCnt;
@@ -35,10 +39,32 @@ public final class PSEModelForMV_GPU
 		this.enabledMatIO = matIORowCnt > 0 && matIORowBeg[matIORowCnt] > 0;
 		this.enabledMatNP = matNPRowCnt > 0 && matNPRowBeg[matNPRowCnt] > 0;
 
-		clKernelMatIOMin = clCreateKernel(clProgram(), "PSE_MV_IO", null);
-		clKernelMatIOMax = clCreateKernel(clProgram(), "PSE_MV_IO", null);
-		clKernelMatNPMin = clCreateKernel(clProgram(), "PSE_MV_NP", null);
-		clKernelMatNPMax = clCreateKernel(clProgram(), "PSE_MV_NP", null);
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
+		this.totalIterationCnt = 0;
+
+		clKernelMatIOMin = oclProgram.createKernel("PSE_MV_IO");
+		clKernelMatIOMax = oclProgram.createKernel("PSE_MV_IO");
+		clKernelMatNPMin = oclProgram.createKernel("PSE_MV_NP");
+		clKernelMatNPMax = oclProgram.createKernel("PSE_MV_NP");
+		clKernelSumMin = oclProgram.createKernel("WeightedSumTo");
+		clKernelSumMax = oclProgram.createKernel("WeightedSumTo");
+
+		{
+			final double[] zeroes = new double[stCnt];
+			final Pointer zeroes_ = Pointer.to(zeroes);
+			this.sumMin = clCreateBuffer(clContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * stCnt, zeroes_, null);
+			this.sumMax = clCreateBuffer(clContext(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * stCnt, zeroes_, null);
+		}
+
+		clSetKernelArg(clKernelSumMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
+		clSetKernelArg(clKernelSumMin, 3, Sizeof.cl_mem, Pointer.to(this.sumMin));
+
+		clSetKernelArg(clKernelSumMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
+		clSetKernelArg(clKernelSumMax, 3, Sizeof.cl_mem, Pointer.to(this.sumMax));
 
 		if (enabledMatIO) {
 			// Setup mat
@@ -110,9 +136,9 @@ public final class PSEModelForMV_GPU
 	}
 
 	final public void mvMult
-		( double min[], double resMin[]
-		, double max[], double resMax[]
-		, int iterationCnt
+		( final double min[], final double resMin[]
+		, final double max[], final double resMax[]
+		, final int iterationCnt
 		)
 	{
 		cl_mem minMem = minMem1;
@@ -129,6 +155,7 @@ public final class PSEModelForMV_GPU
 		final long[] lws = new long[]{1024};
 		final long[] gwsIO = new long[]{leastGreaterMultiple(matIORowCnt, lws[0])};
 		final long[] gwsNP = new long[]{leastGreaterMultiple(matNPRowCnt, lws[0])};
+		final long[] gwsSum = new long[]{leastGreaterMultiple(stCnt, lws[0])};
 
 		final cl_event[] evMatIOMin = new cl_event[]{new cl_event()};
 		final cl_event[] evMatIOMax = new cl_event[]{new cl_event()};
@@ -136,11 +163,13 @@ public final class PSEModelForMV_GPU
 		final cl_event[] evMatNPMax = new cl_event[]{new cl_event()};
 		final cl_event[] evCopyMin = new cl_event[]{new cl_event()};
 		final cl_event[] evCopyMax = new cl_event[]{new cl_event()};
+		final cl_event[] evSumMin = new cl_event[]{new cl_event()};
+		final cl_event[] evSumMax = new cl_event[]{new cl_event()};
 		for (int i = 0; i < iterationCnt; ++i) {
 			clEnqueueCopyBuffer(clCommandQueueMin(), minMem, resMinMem, 0, 0, Sizeof.cl_double * stCnt
-				, (i == 0) ? 0 : 1, (i == 0) ? null : evMatNPMin, evCopyMin[0]);
+				, (i == 0) ? 0 : 1, (i == 0) ? null : evSumMin, evCopyMin[0]);
 			clEnqueueCopyBuffer(clCommandQueueMax(), maxMem, resMaxMem, 0, 0, Sizeof.cl_double * stCnt
-				, (i == 0) ? 0 : 1, (i == 0) ? null : evMatNPMax, evCopyMax[0]);
+				, (i == 0) ? 0 : 1, (i == 0) ? null : evSumMax, evCopyMax[0]);
 
 			if (enabledMatIO) {
 				clSetKernelArg(clKernelMatIOMin, 6, Sizeof.cl_mem, Pointer.to(minMem));
@@ -184,6 +213,27 @@ public final class PSEModelForMV_GPU
 					, 1, evMatIOMax, evMatNPMax[0]);
 			}
 
+			if (sumWeight() > 0 || sumWeight() < 0)
+			{
+				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
+				clSetKernelArg(clKernelSumMin, 2, Sizeof.cl_mem, Pointer.to(resMinMem));
+				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelSumMin, 1, null
+					, gwsSum, lws
+					, 1, evMatNPMin, evSumMin[0]);
+
+				clSetKernelArg(clKernelSumMax, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
+				clSetKernelArg(clKernelSumMax, 2, Sizeof.cl_mem, Pointer.to(resMaxMem));
+				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelSumMax, 1, null
+					, gwsSum, lws
+					, 1, evMatNPMax, evSumMax[0]);
+			}
+			else {
+				clEnqueueMarkerWithWaitList(clCommandQueueMin()
+					, 1, evMatNPMin, evSumMin[0]);
+				clEnqueueMarkerWithWaitList(clCommandQueueMax()
+					, 1, evMatNPMax, evSumMax[0]);
+			}
+
 			// Swap
 			final cl_mem tmpMin = minMem;
 			final cl_mem tmpMax = maxMem;
@@ -191,6 +241,8 @@ public final class PSEModelForMV_GPU
 			maxMem = resMaxMem;
 			resMinMem = tmpMin;
 			resMaxMem = tmpMax;
+
+			++totalIterationCnt;
 		}
 		clFinish(clCommandQueueMin());
 		clFinish(clCommandQueueMax());
@@ -202,6 +254,13 @@ public final class PSEModelForMV_GPU
 		clReleaseEvent(evCopyMax[0]);
 		clEnqueueReadBuffer(clCommandQueueMin(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
 		clEnqueueReadBuffer(clCommandQueueMin(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
+		clFinish(clCommandQueueMin());
+	}
+
+	final public void getSum(final double[] sumMin, final double[] sumMax)
+	{
+		clEnqueueReadBuffer(clCommandQueueMin(), this.sumMin, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMin), 0, null, null);
+		clEnqueueReadBuffer(clCommandQueueMin(), this.sumMax, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMax), 0, null, null);
 		clFinish(clCommandQueueMin());
 	}
 
@@ -220,10 +279,14 @@ public final class PSEModelForMV_GPU
 		clReleaseMemObject(minMem2);
 		clReleaseMemObject(maxMem1);
 		clReleaseMemObject(maxMem2);
+		clReleaseMemObject(sumMin);
+		clReleaseMemObject(sumMax);
 		clReleaseKernel(clKernelMatIOMin);
 		clReleaseKernel(clKernelMatIOMax);
 		clReleaseKernel(clKernelMatNPMin);
 		clReleaseKernel(clKernelMatNPMax);
+		clReleaseKernel(clKernelSumMin);
+		clReleaseKernel(clKernelSumMax);
 		clReleaseCommandQueue(clCommandQueueMin);
 		clReleaseCommandQueue(clCommandQueueMax);
 		oclProgram.release();
@@ -234,12 +297,21 @@ public final class PSEModelForMV_GPU
 		return x + (z - x % z) % z;
 	}
 
-	final private cl_program clProgram() { return oclProgram.getProgram(); }
+	final private double sumWeight()
+	{
+		if (totalIterationCnt >= weightOff)
+		{
+			return weight[totalIterationCnt - weightOff + 1];
+		}
+		return weightDef;
+	}
+
 	final private cl_command_queue clCommandQueueMin() { return clCommandQueueMin; }
 	final private cl_command_queue clCommandQueueMax() { return clCommandQueueMax; }
 	final private cl_context clContext() { return oclProgram.getContext(); }
 
 	final private int stCnt;
+
 	final private boolean enabledMatIO;
 	final private boolean enabledMatNP;
 
@@ -251,6 +323,15 @@ public final class PSEModelForMV_GPU
 	final private cl_kernel clKernelMatIOMax;
 	final private cl_kernel clKernelMatNPMin;
 	final private cl_kernel clKernelMatNPMax;
+	final private cl_kernel clKernelSumMin;
+	final private cl_kernel clKernelSumMax;
+
+	private int totalIterationCnt;
+	final private cl_mem sumMin;
+	final private cl_mem sumMax;
+	final private double[] weight;
+	final private double   weightDef;
+	final private int      weightOff;
 
 	private final int matIORowCnt;
 	private cl_mem matIOLowerVal;

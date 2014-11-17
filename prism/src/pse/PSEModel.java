@@ -492,7 +492,11 @@ public final class PSEModel extends ModelExplicit
 		}
 	}
 
-    final public void prepareForVM()
+    final public void prepareForVM
+	    ( double[] weight
+		, double   weightDef
+		, int      weightOff
+		)
 	{
 	    final double qrec = 1.0 / getDefaultUniformisationRate();
 
@@ -639,6 +643,10 @@ public final class PSEModel extends ModelExplicit
 					, matVal.data()
 					, matSrc.data()
 					, matTrgBeg
+
+					, weight
+					, weightDef
+					, weightOff
 				);
 		}
 		else {
@@ -672,7 +680,12 @@ public final class PSEModel extends ModelExplicit
 	 * @param subset only do multiplication for these rows (null means "all")
 	 * @param complement if true, {@code subset} is taken to be its complement
 	 */
-	final public void prepareForMV(BitSet subset, boolean complement)
+	final public void prepareForMV
+		( BitSet subset, boolean complement
+		, double[] weight
+		, double   weightDef
+		, int      weightOff
+		)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 
@@ -817,7 +830,7 @@ public final class PSEModel extends ModelExplicit
 		if (useOpenCL) {
 			if (modelMV_GPU != null) modelVM_GPU.release();
 			modelMV_GPU = new PSEModelForMV_GPU
-				(numStates
+				( numStates
 					, matLowerVal
 					, matUpperVal
 					, matCol
@@ -830,6 +843,10 @@ public final class PSEModel extends ModelExplicit
 					, matNPRow
 					, matNPRowBeg
 					, matNPRowCnt
+
+					, weight
+					, weightDef
+					, weightOff
 				);
 		}
 		else {
@@ -847,7 +864,25 @@ public final class PSEModel extends ModelExplicit
 					, matNPRow
 					, matNPRowBeg
 					, matNPRowCnt
+
+					, weight
+					, weightDef
+					, weightOff
 				);
+		}
+	}
+
+	final public void getMVSum(final double[] sumMin, final double[] sumMax)
+	{
+		if (useOpenCL) {
+			modelMV_GPU.getSum(sumMin, sumMax);
+		}
+	}
+
+	final public void getVMSum(final double[] sumMin, final double[] sumMax)
+	{
+		if (useOpenCL) {
+			modelVM_GPU.getSum(sumMin, sumMax);
 		}
 	}
 
@@ -867,8 +902,12 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #mvMult(double[], double[], double[], double[], int)
 	 */
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
-			throws PrismException
+	public void vmMult
+		( final double vectMin[], final double resultMin[]
+		, final double vectMax[], final double resultMax[]
+		, final int iterationCnt
+		)
+		throws PrismException
 	{
 		if (useOpenCL) {
 			modelVM_GPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
@@ -896,8 +935,12 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #vmMult(double[], double[], double[], double[], int)
 	 */
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[], int iterationCnt)
-			throws PrismException
+	public void mvMult
+		( final double vectMin[], final double resultMin[]
+		, final double vectMax[], final double resultMax[]
+		, final int iterationCnt
+		)
+		throws PrismException
 	{
 		if (useOpenCL) {
 			modelMV_GPU.mvMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
