@@ -230,6 +230,8 @@ public class PSEModelForVM_GPU {
 					, 0, null, null);
 			}
 
+			++totalIterationCnt;
+
 			if (sumWeight() < 0 || sumWeight() > 0) {
 				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
 				clSetKernelArg(clKernelSumMin, 2, Sizeof.cl_mem, Pointer.to(resMinMem));
@@ -251,12 +253,11 @@ public class PSEModelForVM_GPU {
 			maxMem = resMaxMem;
 			resMinMem = tmpMin;
 			resMaxMem = tmpMax;
-
-			++totalIterationCnt;
 		}
 		clEnqueueReadBuffer(clCommandQueue(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
 		clEnqueueReadBuffer(clCommandQueue(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
 		clFinish(clCommandQueue());
+		System.err.printf("TOTAL ITERS: %d\n", totalIterationCnt);
 	}
 
 	final public void getSum(final double[] sumMin, final double[] sumMax)
@@ -303,7 +304,7 @@ public class PSEModelForVM_GPU {
 	{
 		if (totalIterationCnt >= weightOff)
 		{
-			return weight[totalIterationCnt - weightOff + 1];
+			return weight[totalIterationCnt - weightOff];
 		}
 		return weightDef;
 	}

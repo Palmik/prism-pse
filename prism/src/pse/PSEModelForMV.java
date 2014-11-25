@@ -56,6 +56,7 @@ public final class PSEModelForMV
 	{
 		for (int i = 0; i < iterationCnt; ++i) {
 			mvMult(min, resMin, max, resMax);
+			++totalIterationCnt;
 			for (int j = 0; j < stCnt; ++j)
 			{
 				sumMin[j] += getSumWeight() * resMin[j];
@@ -68,8 +69,6 @@ public final class PSEModelForMV
 			resMax = max;
 			min = tmp1;
 			max = tmp2;
-
-			++totalIterationCnt;
 		}
 	}
 

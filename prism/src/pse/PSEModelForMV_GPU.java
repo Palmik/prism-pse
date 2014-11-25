@@ -194,6 +194,8 @@ public final class PSEModelForMV_GPU
 					, 0, null, null);
 			}
 
+			++totalIterationCnt;
+
 			if (sumWeight() > 0 || sumWeight() < 0)
 			{
 				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
@@ -216,8 +218,6 @@ public final class PSEModelForMV_GPU
 			maxMem = resMaxMem;
 			resMinMem = tmpMin;
 			resMaxMem = tmpMax;
-
-			++totalIterationCnt;
 		}
 		clEnqueueReadBuffer(clCommandQueueMin(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
 		clEnqueueReadBuffer(clCommandQueueMax(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
@@ -269,7 +269,7 @@ public final class PSEModelForMV_GPU
 	{
 		if (totalIterationCnt >= weightOff)
 		{
-			return weight[totalIterationCnt - weightOff + 1];
+			return weight[totalIterationCnt - weightOff];
 		}
 		return weightDef;
 	}

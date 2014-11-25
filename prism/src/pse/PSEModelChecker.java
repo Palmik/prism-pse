@@ -807,11 +807,10 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 
+			// Matrix-vector multiply
+			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left);
 			iters = left;
 			totalIters += left;
-
-			// Matrix-vector multiply
-			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left - 1);
 
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
@@ -822,12 +821,20 @@ public final class PSEModelChecker extends PrismComponent
 			soln2Max = tmpsoln;
 			// Start iterations
 			while (iters <= right) {
-				int numIters = numItersExaminePartial;
-				if (iters + numIters > right + 1)
-				{
-					numIters = right - iters + 1;
-				}
+				// Add to sum
+				model.getMVSum(sumMin, sumMax);
+				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+
 				// Matrix-vector multiply
+				int numIters = numItersExaminePartial;
+				if (iters + numIters > right)
+				{
+					numIters = right - iters;
+				}
+				if (numIters == 0)
+				{
+					break;
+				}
 				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
 				// Swap vectors for next iter
@@ -837,10 +844,6 @@ public final class PSEModelChecker extends PrismComponent
 				tmpsoln = solnMax;
 				solnMax = soln2Max;
 				soln2Max = tmpsoln;
-
-				// Add to sum
-				model.getMVSum(sumMin, sumMax);
-				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 
 				iters+=numIters;
 				totalIters+=numIters;
@@ -1098,8 +1101,9 @@ public final class PSEModelChecker extends PrismComponent
 			}
 
 			// Start iterations
-			iters = 1;
-			totalIters += 1;
+			iters = numItersExaminePartial;
+			totalIters += numItersExaminePartial;
+			model.vmMult(solnMin, soln2Min, solnMax, soln2Max, numItersExaminePartial);
 
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
@@ -1109,8 +1113,20 @@ public final class PSEModelChecker extends PrismComponent
 			solnMax = soln2Max;
 			soln2Max = tmpsoln;
 			while (iters <= right) {
-				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left - 1);
+				model.getMVSum(sumMin, sumMax);
+				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
+
+				// Matrix-vector multiply
+				int numIters = numItersExaminePartial;
+				if (iters + numIters > right)
+				{
+					numIters = right - iters;
+				}
+				if (numIters == 0)
+				{
+					break;
+				}
+				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -1120,26 +1136,8 @@ public final class PSEModelChecker extends PrismComponent
 				solnMax = soln2Max;
 				soln2Max = tmpsoln;
 
-				// Add to sum
-				if (iters >= left) {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];
-					}
-				} else {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += solnMin[i] / q;
-						sumMax[i] += solnMax[i] / q;
-					}
-				}
-				
-				// After a number of iters (default 50), examine the partially computed result
-				if (iters % numItersExaminePartial == 0) {
-					decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-				}
-
-				iters++;
-				totalIters++;
+				iters+=numIters;
+				totalIters+=numIters;
 			}
 
 			// Examine this region's result after all the iters have been finished
@@ -1317,11 +1315,11 @@ public final class PSEModelChecker extends PrismComponent
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Start iterations
-			iters = left + 1;
-			totalIters += left + 1;
+			model.vmMult(solnMin, soln2Min, solnMax, soln2Max, left);
+			iters = left;
+			totalIters += left;
 
 			// Vector-matrix multiply
-			model.vmMult(solnMin, soln2Min, solnMax, soln2Max, left);
 			// Swap vectors for next iter
 			tmpsoln = solnMin;
 			solnMin = soln2Min;
@@ -1335,9 +1333,13 @@ public final class PSEModelChecker extends PrismComponent
 
 				// Vector-matrix multiply
 				int numIters = numItersExaminePartial;
-				if (iters + numIters > right + 1)
+				if (iters + numIters > right)
 				{
-					numIters = right - iters + 1;
+					numIters = right - iters;
+				}
+				if (numIters == 0)
+				{
+					break;
 				}
 				model.vmMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
