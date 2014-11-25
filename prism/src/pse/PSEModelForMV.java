@@ -68,6 +68,8 @@ public final class PSEModelForMV
 			resMax = max;
 			min = tmp1;
 			max = tmp2;
+
+			++totalIterationCnt;
 		}
 	}
 

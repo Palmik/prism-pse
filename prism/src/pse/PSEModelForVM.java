@@ -24,8 +24,14 @@ public final class PSEModelForVM
 	, double[] matVal
 	, int[] matSrc
 	, int[] matTrgBeg
+
+	, double[] weight
+	, double   weightDef
+	, int      weightOff
 	)
     {
+	    this.totalIterationCnt = 0;
+
         this.stCnt = stCnt;
         this.trCnt = trCnt;
 
@@ -50,7 +56,19 @@ public final class PSEModelForVM
         this.matVal = matVal;
         this.matSrc = matSrc;
         this.matTrgBeg = matTrgBeg;
+
+	    this.weight = weight;
+	    this.weightDef = weightDef;
+	    this.weightOff = weightOff;
+	    this.sumMin = new double[stCnt];
+	    this.sumMax = new double[stCnt];
     }
+
+	final public void getSum(final double[] sumMin, final double[] sumMax)
+	{
+		System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
+		System.arraycopy(this.sumMax, 0, sumMax, 0, sumMax.length);
+	}
 
     final public void vmMult
         ( double min[], double resMin[]
@@ -61,17 +79,22 @@ public final class PSEModelForVM
 	    for (int i = 0; i < iterationCnt; ++i)
 	    {
 		    vmMult(min, resMin, max, resMax);
+		    for (int j = 0; j < stCnt; ++j)
+		    {
+			    sumMin[j] += getSumWeight() * resMin[j];
+			    sumMax[j] += getSumWeight() * resMax[j];
+		    }
 		    final double[] tmp1 = resMin;
 		    final double[] tmp2 = resMax;
 		    resMin = min;
 		    resMax = max;
 		    min = tmp1;
 		    max = tmp2;
+		    ++totalIterationCnt;
 	    }
     }
 
-
-    final public void vmMult
+	final private void vmMult
         ( final double min[], final double resMin[]
         , final double max[], final double resMax[]
         )
@@ -199,7 +222,16 @@ public final class PSEModelForVM
 	  }
 	}
 
-    final private int stCnt;
+	final private double getSumWeight()
+	{
+		if (totalIterationCnt >= weightOff)
+		{
+			return weight[totalIterationCnt - weightOff];
+		}
+		return weightDef;
+	}
+
+	final private int stCnt;
     final private int trCnt;
 
     private double[] matIOLowerVal0;
@@ -223,4 +255,11 @@ public final class PSEModelForVM
     final private double[] matVal;
     final private int[] matSrc;
     final private int[] matTrgBeg;
+
+	private int totalIterationCnt;
+	final private double[] weight;
+	final private double weightDef;
+	final private int weightOff;
+	final private double[] sumMin;
+	final private double[] sumMax;
 }

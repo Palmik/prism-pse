@@ -672,6 +672,10 @@ public final class PSEModel extends ModelExplicit
 					, matVal.data()
 					, matSrc.data()
 					, matTrgBeg
+
+					, weight
+					, weightDef
+					, weightOff
 				);
 		}
 	}
@@ -877,12 +881,18 @@ public final class PSEModel extends ModelExplicit
 		if (useOpenCL) {
 			modelMV_GPU.getSum(sumMin, sumMax);
 		}
+		else {
+			modelMV.getSum(sumMin, sumMax);
+		}
 	}
 
 	final public void getVMSum(final double[] sumMin, final double[] sumMax)
 	{
 		if (useOpenCL) {
 			modelVM_GPU.getSum(sumMin, sumMax);
+		}
+		else {
+			modelVM.getSum(sumMin, sumMax);
 		}
 	}
 
