@@ -177,21 +177,14 @@ public class PSEModelForVM_GPU {
 		cl_mem resMinMem = minMem2;
 		cl_mem resMaxMem = maxMem2;
 
-		final cl_event evWrite[] = new cl_event[]{new cl_event(), new cl_event()};
-		clEnqueueWriteBuffer(clCommandQueue(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(min), 0, null, evWrite[0]);
-		clEnqueueWriteBuffer(clCommandQueue(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max), 0, null, evWrite[1]);
-		clWaitForEvents(2, evWrite);
-		clReleaseEvent(evWrite[0]);
-		clReleaseEvent(evWrite[1]);
+		clEnqueueWriteBuffer(clCommandQueue(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(min)
+			, 0, null, null);
+		clEnqueueWriteBuffer(clCommandQueue(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max)
+			, 0, null, null);
 
-		final long[] lws = new long[]{1024};
+		final long[] lws = new long[]{oclProgram.clLocalWorkSize(1024)};
 		final long[] gws = new long[]{leastGreaterMultiple(stCnt, lws[0])};
 
-		final cl_event[] evMat = new cl_event[]{new cl_event()};
-		final cl_event[] evMatIO = new cl_event[]{new cl_event()};
-		final cl_event[] evMatMin = new cl_event[]{new cl_event()};
-		final cl_event[] evMatMax = new cl_event[]{new cl_event()};
-		final cl_event[] evSumMinMax = new cl_event[]{new cl_event(), new cl_event()};
 		for (int i = 0; i < iterationCnt; ++i) {
 			if (enabledMat) {
 				clSetKernelArg(clKernelMat, 6, Sizeof.cl_mem, Pointer.to(minMem));
@@ -218,31 +211,23 @@ public class PSEModelForVM_GPU {
 			if (enabledMat) {
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMat, 1, null
 					, gws, lws
-					, (i == 0) ? 0 : evSumMinMax.length, (i == 0) ? null : evSumMinMax, evMat[0]);
-			} else {
-				clEnqueueMarkerWithWaitList(clCommandQueue()
-					, (i == 0) ? 0 : evSumMinMax.length, (i == 0) ? null : evSumMinMax, evMat[0]);
+					, 0, null, null);
 			}
 
 			if (enabledMatIO) {
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMatIO, 1, null
 					, gws, lws
-					, evMat.length, evMat, evMatIO[0]);
-			} else {
-				clEnqueueMarkerWithWaitList(clCommandQueue(), evMat.length, evMat, evMatIO[0]);
+					, 0, null, null);
 			}
 
 			if (enabledMatMinMax) {
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMatMin, 1, null
 					, gws, lws
-					, evMatIO.length, evMatIO, evMatMin[0]);
+					, 0, null, null);
 
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMatMax, 1, null
 					, gws, lws
-					, evMatIO.length, evMatIO, evMatMax[0]);
-			} else {
-				clEnqueueMarkerWithWaitList(clCommandQueue(), evMatIO.length, evMatIO, evMatMin[0]);
-				clEnqueueMarkerWithWaitList(clCommandQueue(), evMatIO.length, evMatIO, evMatMax[0]);
+					, 0, null, null);
 			}
 
 			if (sumWeight() < 0 || sumWeight() > 0) {
@@ -250,19 +235,13 @@ public class PSEModelForVM_GPU {
 				clSetKernelArg(clKernelSumMin, 2, Sizeof.cl_mem, Pointer.to(resMinMem));
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelSumMin, 1, null
 					, gws, lws
-					, 1, evMatMin, evSumMinMax[0]);
+					, 0, null, null);
 
 				clSetKernelArg(clKernelSumMax, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
 				clSetKernelArg(clKernelSumMax, 2, Sizeof.cl_mem, Pointer.to(resMaxMem));
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelSumMax, 1, null
 					, gws, lws
-					, 1, evMatMax, evSumMinMax[1]);
-			}
-			else {
-				clEnqueueMarkerWithWaitList(clCommandQueue()
-					, 1, evMatMin, evSumMinMax[0]);
-				clEnqueueMarkerWithWaitList(clCommandQueue()
-					, 1, evMatMax, evSumMinMax[1]);
+					, 0, null, null);
 			}
 
 			// Swap
@@ -275,12 +254,6 @@ public class PSEModelForVM_GPU {
 
 			++totalIterationCnt;
 		}
-		for (cl_event e : evMat) clReleaseEvent(e);
-		for (cl_event e : evMatIO) clReleaseEvent(e);
-		for (cl_event e : evMatMin) clReleaseEvent(e);
-		for (cl_event e : evMatMax) clReleaseEvent(e);
-		for (cl_event e : evSumMinMax) clReleaseEvent(e);
-		clFinish(clCommandQueue());
 		clEnqueueReadBuffer(clCommandQueue(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
 		clEnqueueReadBuffer(clCommandQueue(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
 		clFinish(clCommandQueue());

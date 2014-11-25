@@ -79,6 +79,18 @@ final public class OCLProgram
 		clReleaseContext(clContext);
 	}
 
+	// The local worksize, can be overwritten by the onv variable OCL_LWS
+	int clLocalWorkSize(int def)
+	{
+		String envOCL_LWS = System.getenv("OCL_LWS");
+		int res = def;
+		if (envOCL_LWS != null)
+		{
+			res = Integer.parseInt(envOCL_LWS);
+		}
+		return res;
+	}
+
 	public final cl_context getContext() {
 		return clContext;
 	}

@@ -101,8 +101,8 @@ public final class PSEModel extends ModelExplicit
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
 
-		String envUseOpenCL = System.getenv("USE_OPENCL");
-		useOpenCL = envUseOpenCL != null && envUseOpenCL.equals("1");
+		String envOCL = System.getenv("OCL");
+		useOpenCL = envOCL != null && envOCL.equals("1");
 	}
 
 	// Accessors (for Model)
