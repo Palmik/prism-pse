@@ -4,7 +4,7 @@ import org.jocl.*;
 
 import static org.jocl.CL.*;
 
-public class OCLProgram
+final public class OCLProgram
 {
 	public OCLProgram()
 	{
@@ -57,17 +57,22 @@ public class OCLProgram
 		clBuildProgram(clProgram, 0, null, null, null, null);
 	}
 
-	public cl_command_queue createCommandQueue()
+	final public cl_command_queue createCommandQueue()
 	{
-		return clCreateCommandQueue(clContext, clDeviceId, 0, null);
+		return createCommandQueue(0);
 	}
 
-	public cl_kernel createKernel(String name)
+	final public cl_command_queue createCommandQueue(int params)
+	{
+		return clCreateCommandQueue(clContext, clDeviceId, params, null);
+	}
+
+	final public cl_kernel createKernel(String name)
 	{
 		return clCreateKernel(clProgram, name, null);
 	}
 
-	public final void release()
+	final public void release()
 	{
 		clReleaseProgram(clProgram);
 		clReleaseCommandQueue(clCommandQueue);
