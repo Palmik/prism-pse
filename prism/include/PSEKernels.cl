@@ -78,117 +78,96 @@ __kernel void PSE_MV_NP
             dot = MAD(rate, in[v1] - in[v0], dot);
         }
         out[v0] = dot;
-	}
+	  }
 }
 
+__kernel void PSE_VM_I
+  ( const uint matRowCnt
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
 
-__kernel void SpMV1_CS
-  ( const uint stCnt
-  , __global real const* restrict val
-  , __global uint const* restrict trg
-  , __global uint const* restrict srcBeg
-
-  , __global real const* restrict vi
-  , __global real* restrict vo
+  , __global real const* restrict in
+  , __global real* restrict out
   )
 {
   int v0 = get_global_id(0);
 
-  if (v0 < stCnt)
+  if (v0 < matRowCnt)
   {
-    uint cb = srcBeg[v0];
-    uint ce = srcBeg[v0 + 1];
-    real dot = vo[v0];
+    uint cb = matRowBeg[v0];
+    uint ce = matRowBeg[v0 + 1];
+    real dot = out[v0];
     for (uint i = cb; i < ce; ++i)
     {
-      dot = MAD(val[i], vi[trg[i]], dot);
+      dot = MAD(matVal[i], in[matCol[i]], dot);
     }
-    vo[v0] = dot;
+    out[v0] = dot;
   }
 }
 
-__kernel void SpMV2_CS
-  ( const uint stCnt
-  , __global real const* restrict diagVal1
-  , __global real const* restrict diagVal2
-  , __global real const* restrict val
-  , __global uint const* restrict trg
-  , __global uint const* restrict srcBeg
+__kernel void PSE_VM_NP
+  ( const uint matRowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
 
-  , __global real const* restrict vi1
-  , __global real const* restrict vi2
-  , __global real* restrict vo1
-  , __global real* restrict vo2
+  , __global real const* restrict in
+  , __global real* restrict out
   )
 {
   int v0 = get_global_id(0);
 
-  if (v0 < stCnt)
+  if (v0 < matRowCnt)
   {
-    real dot1 = vi1[v0] * diagVal1[v0]; //vo1[v0] + vi1[v0] * diagVal1[v0];
-    real dot2 = vi2[v0] * diagVal2[v0]; //vo2[v0] + vi2[v0] * diagVal2[v0];
+    real dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
 
-    uint cb = srcBeg[v0];
-    uint ce = srcBeg[v0 + 1];
-
+    uint cb = matRowBeg[v0];
+    uint ce = matRowBeg[v0 + 1];
     for (uint i = cb; i < ce; ++i)
     {
-      dot1 = MAD(val[i], vi1[trg[i]], dot1);
-      dot2 = MAD(val[i], vi2[trg[i]], dot2);
+      dot = MAD(matVal[i], in[matCol[i]], dot);
     }
-    vo1[v0] = dot1;
-    vo2[v0] = dot2;
+    out[v0] = dot;
   }
 }
 
-__kernel void SpMVIO_CS
-  ( const uint stCnt
-  , __global real const* restrict lowerVal0
-  , __global real const* restrict lowerVal1
-  , __global real const* restrict upperVal0
-  , __global real const* restrict upperVal1
-  , __global uint const* restrict src
-  , __global uint const* restrict trgBeg
+__kernel void PSE_VM_IO
+  ( const uint matRowCnt
+  , __global real const* restrict matLowerVal0
+  , __global real const* restrict matLowerVal1
+  , __global real const* restrict matUpperVal0
+  , __global real const* restrict matUpperVal1
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
 
-  , __global real const* restrict min0
-  , __global real const* restrict max0
-  , __global real* restrict min1
-  , __global real* restrict max1
+  , __global real const* restrict in
+  , __global real* restrict out
   )
 {
   int v1 = get_global_id(0);
 
-  if (v1 < stCnt)
+  if (v1 < matRowCnt)
   {
-    real dot1 = min1[v1];
-    real dot2 = max1[v1];
+    real dot = out[v1];
 
-    uint cb = trgBeg[v1];
-    uint ce = trgBeg[v1 + 1];
+    uint cb = matRowBeg[v1];
+    uint ce = matRowBeg[v1 + 1];
 
     for (uint i = cb; i < ce; ++i)
     {
-      const uint v0 = src[i];
-      const real rlowerMin = (lowerVal0[i] * min0[v0] - lowerVal1[i] * min0[v1]);
-      const real rupperMax = (upperVal0[i] * max0[v0] - upperVal1[i] * max0[v1]);
-      if (rlowerMin > 0.0)
+      const uint v0 = matCol[i];
+      const real rlower = (matLowerVal0[i] * in[v0] - matLowerVal1[i] * in[v1]);
+      if (rlower > 0.0)
       {
-        dot1 += rlowerMin;
+        dot += rlower;
       }
       else
       {
-        dot1 += (upperVal0[i] * min0[v0] - upperVal1[i] * min0[v1]);
-      }
-      if (rupperMax > 0.0)
-      {
-        dot2 += rupperMax;
-      }
-      else
-      {
-        dot2 += (lowerVal0[i] * max0[v0] - lowerVal1[i] * max0[v1]);
+        dot += (matUpperVal0[i] * in[v0] - matUpperVal1[i] * in[v1]);
       }
     }
-    min1[v1] = dot1;
-    max1[v1] = dot2;
+    out[v1] = dot;
   }
 }

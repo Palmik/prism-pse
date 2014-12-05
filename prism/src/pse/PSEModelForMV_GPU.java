@@ -167,6 +167,11 @@ public final class PSEModelForMV_GPU
 				clSetKernelArg(clKernelMatIOMin, 7, Sizeof.cl_mem, Pointer.to(resMinMem));
 				clSetKernelArg(clKernelMatIOMax, 6, Sizeof.cl_mem, Pointer.to(maxMem));
 				clSetKernelArg(clKernelMatIOMax, 7, Sizeof.cl_mem, Pointer.to(resMaxMem));
+
+				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatIOMin, 1, null
+					, gwsIO, lws, 0, null, null);
+				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatIOMax, 1, null
+					, gwsIO, lws, 0, null, null);
 			}
 
 			if (enabledMatNP) {
@@ -174,24 +179,11 @@ public final class PSEModelForMV_GPU
 				clSetKernelArg(clKernelMatNPMin, 6, Sizeof.cl_mem, Pointer.to(resMinMem));
 				clSetKernelArg(clKernelMatNPMax, 5, Sizeof.cl_mem, Pointer.to(maxMem));
 				clSetKernelArg(clKernelMatNPMax, 6, Sizeof.cl_mem, Pointer.to(resMaxMem));
-			}
 
-			if (enabledMatIO) {
-				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatIOMin, 1, null
-					, gwsIO, lws
-					, 0, null, null);
-				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatIOMax, 1, null
-					, gwsIO, lws
-					, 0, null, null);
-			}
-
-			if (enabledMatNP) {
 				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatNPMin, 1, null
-					, gwsNP, lws
-					, 0, null, null);
+					, gwsNP, lws, 0, null, null);
 				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatNPMax, 1, null
-					, gwsNP, lws
-					, 0, null, null);
+					, gwsNP, lws, 0, null, null);
 			}
 
 			++totalIterationCnt;
