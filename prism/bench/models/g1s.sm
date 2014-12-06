@@ -1,0 +1,91 @@
+ctmc
+
+// constants
+const int M = 55; // maximal number of species
+
+
+// initial nuber of species
+const int InitA = 0;
+const int InitB = 0;
+const int Inita = 0; 
+const int Initb = 0;
+const int InitaA = 0;
+const int InitbB = 1;
+const int InitaB = 1;
+const int InitbA = 0;
+
+// base rates
+const double comp = 100;
+const double diss = 10;
+const double prod = 1;
+const double degr = 0.1;
+const double degrA = 0.1;
+const double prodB = 0.05;
+
+module g1s
+	
+	AA : [0..M] init InitA;
+	B : [0..M] init InitB;
+    a : [0..M] init Inita;
+    b : [0..M] init Initb;
+    aA : [0..M] init InitaA;
+    aB : [0..M] init InitaB;
+    bA : [0..M] init InitbA;
+    bB : [0..M] init InitbB;
+
+
+        // e1 : A + a -> aA
+	[] (aA < M) & (a > 0) & (AA > 0)  ->  comp*AA*a  : (aA'= aA + 1) & (AA' = AA - 1) & (a' = a - 1);
+    
+	    // e2 : aA -> a + A
+	[] (aA > 0) & (a < M) & (AA < M)  ->  diss*aA  : (AA'= AA + 1) & (a' = a + 1) & (aA'= aA - 1);
+    
+         // e3 : a -> A + a
+	[] (AA < M) & (a > 0) ->  prod*a  : (AA'= AA + 1);
+    
+        // e4 : A -> 0
+	[] (AA > 0)  ->  degrA*AA  : (AA' = AA - 1);
+
+    
+    
+        // e5 : B + b -> bB
+	[] (bB < M) & (b > 0) & (B > 0)  ->  comp*B*b  : (bB'= bB + 1) & (B' = B - 1) & (b' = b - 1);
+    
+	    // e6 : bB -> b + B
+	[] (bB > 0) & (b < M) & (B < M)  ->  diss*bB  : (B' = B + 1) & (b' = b + 1) & (bB' = bB - 1);
+    
+         // e7 : bB -> bB + B
+	[] (B < M) & (bB > 0)  ->  prod*bB  : (B' = B + 1);
+    
+        // e8 : B -> 0
+	[] (B > 0)  ->  degr*B  : (B' = B - 1);
+    
+    
+         // e9 : A + b -> bA
+    [] (bA < M) & (b > 0) & (AA > 0)  ->  comp*AA*b  : (bA'= bA + 1) & (AA' = AA - 1) & (b' = b - 1);
+    
+	    // e10 : bA -> b + A
+	[] (bA > 0) & (b < M) & (AA < M)  ->  diss*bA  : (AA' = AA + 1) & (b' = b + 1) & (bA' = bA - 1);
+    
+          // e11 : B + a -> aB
+	[] (aB < M) & (a > 0) & (B > 0)  ->  comp*a*B  : (aB'= aB + 1) & (B' = B - 1) & (a' = a - 1);
+    
+    
+        // e12 : aB -> B + a
+	[] (aB > 0) & (B < M) & (a < M)  ->  diss*aB  : (B' = B + 1) & (a' = a + 1) & (aB' = aB - 1);
+    
+         // e13 : aB -> aB + A
+	[] (AA < M) & (aB > 0)  ->  prod*aB  : (AA' = AA + 1);
+
+    
+        // e14 : b -> b + B
+    [] (b > 0) & (B < M) -> prodB* b : (B' = B + 1);
+    
+
+	
+endmodule
+
+rewards
+    B > 5 : 1;
+endrewards
+
