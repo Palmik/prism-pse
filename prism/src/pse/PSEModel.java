@@ -88,7 +88,7 @@ public final class PSEModel extends ModelExplicit
 	private PSEModelForVM modelVM;
 	private PSEModelForVM_GPU modelVM_GPU;
 	private PSEModelForMV modelMV;
-	private PSEModelForMV_GPU_CSR_VECTOR modelMV_GPU;
+	private PSEModelForMV_GPU modelMV_GPU;
 
 	/**
 	 * Constructs a new parametric model.
@@ -816,7 +816,7 @@ public final class PSEModel extends ModelExplicit
 
 		if (useOpenCL) {
 			if (modelMV_GPU != null) modelVM_GPU.release();
-			modelMV_GPU = new PSEModelForMV_GPU_CSR_VECTOR
+			modelMV_GPU = new PSEModelForMV_GPU
 				( numStates
 					, matLowerVal
 					, matUpperVal
