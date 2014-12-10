@@ -88,7 +88,7 @@ public final class PSEModel extends ModelExplicit
 	private PSEModelForVM modelVM;
 	private PSEModelForVM_GPU modelVM_GPU;
 	private PSEModelForMV modelMV;
-	private PSEModelForMV_GPU modelMV_GPU;
+	private PSEModelForMV_GPU_CSR_VECTOR modelMV_GPU;
 
 	/**
 	 * Constructs a new parametric model.
@@ -500,27 +500,23 @@ public final class PSEModel extends ModelExplicit
 	{
 	    final double qrec = 1.0 / getDefaultUniformisationRate();
 
-	    VectorOfDouble matMinVal = new VectorOfDouble();
-	    VectorOfInt matMinSrc = new VectorOfInt();
-	    int[] matMinTrgBeg = new int [numStates + 1];
-	    int matMinPos = 0;
+	    VectorOfDouble matIMinVal = new VectorOfDouble();
+		VectorOfDouble matIMaxVal = new VectorOfDouble();
+	    VectorOfInt matISrc = new VectorOfInt();
+	    int[] matITrgBeg = new int [numStates + 1];
+	    int matIPos = 0;
 
-	    VectorOfDouble matMaxVal = new VectorOfDouble();
-	    VectorOfInt matMaxSrc = new VectorOfInt();
-	    int[] matMaxTrgBeg = new int [numStates + 1];
-	    int matMaxPos = 0;
-
-	    VectorOfDouble matVal = new VectorOfDouble();
-	    VectorOfInt matSrc = new VectorOfInt();
-	    int[] matTrgBeg = new int [numStates + 1];
+	    VectorOfDouble matNPVal = new VectorOfDouble();
+	    VectorOfInt matNPSrc = new VectorOfInt();
+	    int[] matNPTrgBeg = new int [numStates + 1];
 	    int matPos = 0;
 
-	    double[] matMinDiagVal = new double[numStates];
-	    double[] matMaxDiagVal = new double[numStates];
+	    double[] matNPMinDiagVal = new double[numStates];
+	    double[] matNPMaxDiagVal = new double[numStates];
 	    for (int i = 0; i < numStates; ++i)
 	    {
-		    matMinDiagVal[i] = 1;
-		    matMaxDiagVal[i] = 1;
+		    matNPMinDiagVal[i] = 1;
+		    matNPMaxDiagVal[i] = 1;
 	    }
 
 	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
@@ -533,9 +529,8 @@ public final class PSEModel extends ModelExplicit
 
 	    for (int state = 0; state < numStates; ++state)
 	    {
-		    matMinTrgBeg[state] = matMinPos;
-		    matMaxTrgBeg[state] = matMaxPos;
-		    matTrgBeg[state] = matPos;
+		    matITrgBeg[state] = matIPos;
+		    matNPTrgBeg[state] = matPos;
 		    matIOTrgBeg[state] = matIOPos;
 
 		    List<Integer> stTrsI = trsI.get(state);
@@ -581,41 +576,35 @@ public final class PSEModel extends ModelExplicit
 		    {
 			    final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
 			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
-			    if (valMin != 0)
+			    if (valMin != 0 || valMax != 0)
 			    {
-				    matMinVal.pushBack(valMin);
-				    matMinSrc.pushBack(trStSrc[t]);
-				    ++matMinPos;
-			    }
-			    if (valMax != 0)
-			    {
-				    matMaxVal.pushBack(valMax);
-				    matMaxSrc.pushBack(trStSrc[t]);
-				    ++matMaxPos;
+				    matIMinVal.pushBack(valMin);
+				    matIMaxVal.pushBack(valMax);
+				    matISrc.pushBack(trStSrc[t]);
+				    ++matIPos;
 			    }
 		    }
 		    for (Integer t : stTrsO)
 		    {
-			    matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
-			    matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
+			    matNPMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
+			    matNPMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
 		    }
 
 		    for (Integer t : stTrsNP)
 		    {
 			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
-			    matMinDiagVal[trStSrc[t]] -= val;
-			    matMaxDiagVal[trStSrc[t]] -= val;
+			    matNPMinDiagVal[trStSrc[t]] -= val;
+			    matNPMaxDiagVal[trStSrc[t]] -= val;
 			    if (val != 0)
 			    {
-				    matVal.pushBack(val);
-				    matSrc.pushBack(trStSrc[t]);
+				    matNPVal.pushBack(val);
+				    matNPSrc.pushBack(trStSrc[t]);
 				    ++matPos;
 			    }
 		    }
 	    }
-	    matMinTrgBeg[numStates] = matMinPos;
-	    matMaxTrgBeg[numStates] = matMaxPos;
-	    matTrgBeg[numStates] = matPos;
+	    matITrgBeg[numStates] = matIPos;
+	    matNPTrgBeg[numStates] = matPos;
 	    matIOTrgBeg[numStates] = matIOPos;
 
 		if (useOpenCL) {
@@ -630,19 +619,16 @@ public final class PSEModel extends ModelExplicit
 					, matIOSrc.data()
 					, matIOTrgBeg
 
-					, matMinVal.data()
-					, matMinSrc.data()
-					, matMinTrgBeg
+					, matIMinVal.data()
+					, matIMaxVal.data()
+					, matISrc.data()
+					, matITrgBeg
 
-					, matMaxVal.data()
-					, matMaxSrc.data()
-					, matMaxTrgBeg
-
-					, matMinDiagVal
-					, matMaxDiagVal
-					, matVal.data()
-					, matSrc.data()
-					, matTrgBeg
+					, matNPMinDiagVal
+					, matNPMaxDiagVal
+					, matNPVal.data()
+					, matNPSrc.data()
+					, matNPTrgBeg
 
 					, weight
 					, weightDef
@@ -659,19 +645,16 @@ public final class PSEModel extends ModelExplicit
 					, matIOSrc.data()
 					, matIOTrgBeg
 
-					, matMinVal.data()
-					, matMinSrc.data()
-					, matMinTrgBeg
+					, matIMinVal.data()
+					, matIMaxVal.data()
+					, matISrc.data()
+					, matITrgBeg
 
-					, matMaxVal.data()
-					, matMaxSrc.data()
-					, matMaxTrgBeg
-
-					, matMinDiagVal
-					, matMaxDiagVal
-					, matVal.data()
-					, matSrc.data()
-					, matTrgBeg
+					, matNPMinDiagVal
+					, matNPMaxDiagVal
+					, matNPVal.data()
+					, matNPSrc.data()
+					, matNPTrgBeg
 
 					, weight
 					, weightDef
@@ -833,7 +816,7 @@ public final class PSEModel extends ModelExplicit
 
 		if (useOpenCL) {
 			if (modelMV_GPU != null) modelVM_GPU.release();
-			modelMV_GPU = new PSEModelForMV_GPU
+			modelMV_GPU = new PSEModelForMV_GPU_CSR_VECTOR
 				( numStates
 					, matLowerVal
 					, matUpperVal
@@ -894,6 +877,13 @@ public final class PSEModel extends ModelExplicit
 		else {
 			modelVM.getSum(sumMin, sumMax);
 		}
+		/*
+		for (int i = 0; i < numStates / 10; ++i)
+		{
+			System.err.printf("%s ", sumMin[i]);
+		}
+		System.err.printf("\n");
+		*/
 	}
 
 	/**

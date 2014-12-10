@@ -44,10 +44,10 @@ public final class PSEModelForMV_GPU
 		this.weightOff = weightOff;
 		this.totalIterationCnt = 0;
 
-		clKernelMatIOMin = oclProgram.createKernel("PSE_MV_IO");
-		clKernelMatIOMax = oclProgram.createKernel("PSE_MV_IO");
-		clKernelMatNPMin = oclProgram.createKernel("PSE_MV_NP");
-		clKernelMatNPMax = oclProgram.createKernel("PSE_MV_NP");
+		clKernelMatIOMin = oclProgram.createKernel("PSE_MV_IO_CSR_SCALAR");
+		clKernelMatIOMax = oclProgram.createKernel("PSE_MV_IO_CSR_SCALAR");
+		clKernelMatNPMin = oclProgram.createKernel("PSE_MV_NP_CSR_SCALAR");
+		clKernelMatNPMax = oclProgram.createKernel("PSE_MV_NP_CSR_SCALAR");
 		clKernelSumMin = oclProgram.createKernel("WeightedSumTo");
 		clKernelSumMax = oclProgram.createKernel("WeightedSumTo");
 
@@ -188,7 +188,7 @@ public final class PSEModelForMV_GPU
 
 			++totalIterationCnt;
 
-			if (sumWeight() > 0 || sumWeight() < 0)
+			if (sumWeight() != 0)
 			{
 				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
 				clSetKernelArg(clKernelSumMin, 2, Sizeof.cl_mem, Pointer.to(resMinMem));

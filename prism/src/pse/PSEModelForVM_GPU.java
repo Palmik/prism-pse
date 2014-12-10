@@ -1,36 +1,37 @@
 package pse;
 
 import org.jocl.*;
+
+import java.math.BigDecimal;
+
 import static org.jocl.CL.*;
 
 public class PSEModelForVM_GPU {
 	public PSEModelForVM_GPU
-		( int stCnt, int trCnt
-		, double[] matIOLowerVal0
-		, double[] matIOLowerVal1
-		, double[] matIOUpperVal0
-		, double[] matIOUpperVal1
-		, int[] matIOSrc
-		, int[] matIOTrgBeg
+	( int stCnt, int trCnt
+	, double[] matIOLowerVal0
+	, double[] matIOLowerVal1
+	, double[] matIOUpperVal0
+	, double[] matIOUpperVal1
+	, int[] matIOSrc
+	, int[] matIOTrgBeg
 
-		, double[] matMinVal
-		, int[] matMinSrc
-		, int[] matMinTrgBeg
+	, double[] matIMinVal
+	, double[] matIMaxVal
+	, int[] matISrc
+	, int[] matITrgBeg
 
-		, double[] matMaxVal
-		, int[] matMaxSrc
-		, int[] matMaxTrgBeg
+	, double[] matOMinDiagVal
+	, double[] matOMaxDiagVal
+	, double[] matNPVal
+	, int[] matNPSrc
+	, int[] matNPTrgBeg
 
-		, double[] matMinDiagVal
-		, double[] matMaxDiagVal
-		, double[] matVal
-		, int[] matSrc
-		, int[] matTrgBeg
-
-		, double[] weight
-		, double   weightDef
-		, int      weightOff
-		) {
+	, double[] weight
+	, double   weightDef
+	, int      weightOff
+	) {
+		this.diag = matOMinDiagVal;
 		this.stCnt = stCnt;
 		this.trCnt = trCnt;
 
@@ -40,16 +41,21 @@ public class PSEModelForVM_GPU {
 
 		setExceptionsEnabled(true);
 
-		this.enabledMatNP = matTrgBeg[stCnt] > 0;
+		this.enabledMatNP = matNPTrgBeg[stCnt] > 0;
 		this.enabledMatIO = matIOTrgBeg[stCnt] > 0;
-		this.enabledMatMinMax = matMinTrgBeg[stCnt] > 0;
+		this.enabledMatI = matITrgBeg[stCnt] > 0;
 
-		clKernelMatNPMin = oclProgram.createKernel("PSE_VM_NP");
-		clKernelMatNPMax = oclProgram.createKernel("PSE_VM_NP");
+		if (enabledMatI || enabledMatIO) {
+			clKernelMatNPMin = oclProgram.createKernel("PSE_VM_NP");
+			clKernelMatNPMax = oclProgram.createKernel("PSE_VM_NP");
+		}
+		else {
+			clKernelMatNPMin = oclProgram.createKernel("PSE_VM_NP");
+		}
 		clKernelMatIOMin = oclProgram.createKernel("PSE_VM_IO");
 		clKernelMatIOMax = oclProgram.createKernel("PSE_VM_IO");
-		clKernelMatMin = oclProgram.createKernel("PSE_VM_I");
-		clKernelMatMax = oclProgram.createKernel("PSE_VM_I");
+		clKernelMatIMin = oclProgram.createKernel("PSE_VM_I");
+		clKernelMatIMax = oclProgram.createKernel("PSE_VM_I");
 		clKernelSumMin = oclProgram.createKernel("WeightedSumTo");
 		clKernelSumMax = oclProgram.createKernel("WeightedSumTo");
 
@@ -75,16 +81,16 @@ public class PSEModelForVM_GPU {
 
 		if (enabledMatNP) {
 			// Setup mat
-			final Pointer matVal_ = Pointer.to(matVal);
-			final Pointer matSrc_ = Pointer.to(matSrc);
-			final Pointer matTrgBeg_ = Pointer.to(matTrgBeg);
-			final Pointer matMinDiagVal_ = Pointer.to(matMinDiagVal);
-			final Pointer matMaxDiagVal_ = Pointer.to(matMaxDiagVal);
+			final Pointer matVal_ = Pointer.to(matNPVal);
+			final Pointer matSrc_ = Pointer.to(matNPSrc);
+			final Pointer matTrgBeg_ = Pointer.to(matNPTrgBeg);
+			final Pointer matMinDiagVal_ = Pointer.to(matOMinDiagVal);
+			final Pointer matMaxDiagVal_ = Pointer.to(matOMaxDiagVal);
 
 			this.matNPVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matTrgBeg[stCnt], matVal_, null);
+				Sizeof.cl_double * matNPTrgBeg[stCnt], matVal_, null);
 			this.matNPSrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matTrgBeg[stCnt], matSrc_, null);
+				Sizeof.cl_uint * matNPTrgBeg[stCnt], matSrc_, null);
 			this.matNPTrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_uint * (stCnt + 1), matTrgBeg_, null);
 			this.matOMinDiagVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -98,47 +104,40 @@ public class PSEModelForVM_GPU {
 			clSetKernelArg(clKernelMatNPMin, 3, Sizeof.cl_mem, Pointer.to(this.matNPSrc));
 			clSetKernelArg(clKernelMatNPMin, 4, Sizeof.cl_mem, Pointer.to(this.matNPTrgBeg));
 
-			clSetKernelArg(clKernelMatNPMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
-			clSetKernelArg(clKernelMatNPMax, 1, Sizeof.cl_mem, Pointer.to(this.matOMaxDiagVal));
-			clSetKernelArg(clKernelMatNPMax, 2, Sizeof.cl_mem, Pointer.to(this.matNPVal));
-			clSetKernelArg(clKernelMatNPMax, 3, Sizeof.cl_mem, Pointer.to(this.matNPSrc));
-			clSetKernelArg(clKernelMatNPMax, 4, Sizeof.cl_mem, Pointer.to(this.matNPTrgBeg));
+			if (enabledMatI || enabledMatIO) {
+				clSetKernelArg(clKernelMatNPMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
+				clSetKernelArg(clKernelMatNPMax, 1, Sizeof.cl_mem, Pointer.to(this.matOMaxDiagVal));
+				clSetKernelArg(clKernelMatNPMax, 2, Sizeof.cl_mem, Pointer.to(this.matNPVal));
+				clSetKernelArg(clKernelMatNPMax, 3, Sizeof.cl_mem, Pointer.to(this.matNPSrc));
+				clSetKernelArg(clKernelMatNPMax, 4, Sizeof.cl_mem, Pointer.to(this.matNPTrgBeg));
+			}
 		}
 
-		if (enabledMatMinMax) {
+		if (enabledMatI) {
 			// Setup mat min
-			final Pointer matMinVal_ = Pointer.to(matMinVal);
-			final Pointer matMinSrc_ = Pointer.to(matMinSrc);
-			final Pointer matMinTrgBeg_ = Pointer.to(matMinTrgBeg);
-
-			this.matIMinVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matMinTrgBeg[stCnt], matMinVal_, null);
-			this.matIMinSrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matMinTrgBeg[stCnt], matMinSrc_, null);
-			this.matIMinTrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * (stCnt + 1), matMinTrgBeg_, null);
-
-			clSetKernelArg(clKernelMatMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
-			clSetKernelArg(clKernelMatMin, 1, Sizeof.cl_mem, Pointer.to(this.matIMinVal));
-			clSetKernelArg(clKernelMatMin, 2, Sizeof.cl_mem, Pointer.to(this.matIMinSrc));
-			clSetKernelArg(clKernelMatMin, 3, Sizeof.cl_mem, Pointer.to(this.matIMinTrgBeg));
-
-			// Setup mat max
-			final Pointer matMaxVal_ = Pointer.to(matMaxVal);
-			final Pointer matMaxSrc_ = Pointer.to(matMaxSrc);
-			final Pointer matMaxTrgBeg_ = Pointer.to(matMaxTrgBeg);
+			final Pointer matIMinVal_ = Pointer.to(matIMinVal);
+			final Pointer matIMaxVal_ = Pointer.to(matIMaxVal);
+			final Pointer matISrc_ = Pointer.to(matISrc);
+			final Pointer matITrgBeg_ = Pointer.to(matITrgBeg);
 
 			this.matIMaxVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matMaxTrgBeg[stCnt], matMaxVal_, null);
-			this.matIMaxSrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matMaxTrgBeg[stCnt], matMaxSrc_, null);
-			this.matIMaxTrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * (stCnt + 1), matMaxTrgBeg_, null);
+				Sizeof.cl_double * matITrgBeg[stCnt], matIMaxVal_, null);
+			this.matIMinVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * matITrgBeg[stCnt], matIMinVal_, null);
+			this.matISrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_uint * matITrgBeg[stCnt], matISrc_, null);
+			this.matITrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_uint * (stCnt + 1), matITrgBeg_, null);
 
-			clSetKernelArg(clKernelMatMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
-			clSetKernelArg(clKernelMatMax, 1, Sizeof.cl_mem, Pointer.to(this.matIMaxVal));
-			clSetKernelArg(clKernelMatMax, 2, Sizeof.cl_mem, Pointer.to(this.matIMaxSrc));
-			clSetKernelArg(clKernelMatMax, 3, Sizeof.cl_mem, Pointer.to(this.matIMaxTrgBeg));
+			clSetKernelArg(clKernelMatIMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
+			clSetKernelArg(clKernelMatIMin, 1, Sizeof.cl_mem, Pointer.to(this.matIMinVal));
+			clSetKernelArg(clKernelMatIMin, 2, Sizeof.cl_mem, Pointer.to(this.matISrc));
+			clSetKernelArg(clKernelMatIMin, 3, Sizeof.cl_mem, Pointer.to(this.matITrgBeg));
+
+			clSetKernelArg(clKernelMatIMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{stCnt}));
+			clSetKernelArg(clKernelMatIMax, 1, Sizeof.cl_mem, Pointer.to(this.matIMaxVal));
+			clSetKernelArg(clKernelMatIMax, 2, Sizeof.cl_mem, Pointer.to(this.matISrc));
+			clSetKernelArg(clKernelMatIMax, 3, Sizeof.cl_mem, Pointer.to(this.matITrgBeg));
 		}
 
 		if (enabledMatIO) {
@@ -159,7 +158,7 @@ public class PSEModelForVM_GPU {
 			this.matIOUpperVal1 = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_double * matIOTrgBeg[stCnt], matIOUpperVal1_, null);
 			this.matIOSrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matTrgBeg[stCnt], matIOSrc_, null);
+				Sizeof.cl_uint * matNPTrgBeg[stCnt], matIOSrc_, null);
 			this.matIOTrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_uint * (stCnt + 1), matIOTrgBeg_, null);
 
@@ -205,11 +204,12 @@ public class PSEModelForVM_GPU {
 			if (enabledMatNP) {
 				clSetKernelArg(clKernelMatNPMin, 5, Sizeof.cl_mem, Pointer.to(minMem));
 				clSetKernelArg(clKernelMatNPMin, 6, Sizeof.cl_mem, Pointer.to(resMinMem));
-				clSetKernelArg(clKernelMatNPMax, 5, Sizeof.cl_mem, Pointer.to(maxMem));
-				clSetKernelArg(clKernelMatNPMax, 6, Sizeof.cl_mem, Pointer.to(resMaxMem));
-
 				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatNPMin, 1, null, gws, lws, 0, null, null);
-				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatNPMax, 1, null, gws, lws, 0, null, null);
+				if (enabledMatI || enabledMatIO) {
+					clSetKernelArg(clKernelMatNPMax, 5, Sizeof.cl_mem, Pointer.to(maxMem));
+					clSetKernelArg(clKernelMatNPMax, 6, Sizeof.cl_mem, Pointer.to(resMaxMem));
+					clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatNPMax, 1, null, gws, lws, 0, null, null);
+				}
 			}
 
 			if (enabledMatIO) {
@@ -222,33 +222,34 @@ public class PSEModelForVM_GPU {
 				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatIOMax, 1, null, gws, lws, 0, null, null);
 			}
 
-			if (enabledMatMinMax) {
-				clSetKernelArg(clKernelMatMin, 4, Sizeof.cl_mem, Pointer.to(minMem));
-				clSetKernelArg(clKernelMatMin, 5, Sizeof.cl_mem, Pointer.to(resMinMem));
-				clSetKernelArg(clKernelMatMax, 4, Sizeof.cl_mem, Pointer.to(maxMem));
-				clSetKernelArg(clKernelMatMax, 5, Sizeof.cl_mem, Pointer.to(resMaxMem));
+			if (enabledMatI) {
+				clSetKernelArg(clKernelMatIMin, 4, Sizeof.cl_mem, Pointer.to(minMem));
+				clSetKernelArg(clKernelMatIMin, 5, Sizeof.cl_mem, Pointer.to(resMinMem));
+				clSetKernelArg(clKernelMatIMax, 4, Sizeof.cl_mem, Pointer.to(maxMem));
+				clSetKernelArg(clKernelMatIMax, 5, Sizeof.cl_mem, Pointer.to(resMaxMem));
 
-				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatMin, 1, null
+				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelMatIMin, 1, null
 					, gws, lws, 0, null, null);
 
-				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatMax, 1, null
+				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelMatIMax, 1, null
 					, gws, lws, 0, null, null);
 			}
 
 			++totalIterationCnt;
 
-			if (sumWeight() < 0 || sumWeight() > 0) {
-				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
+			if (getSumWeight() != 0) {
+				clSetKernelArg(clKernelSumMin, 1, Sizeof.cl_double, Pointer.to(new double[]{getSumWeight()}));
 				clSetKernelArg(clKernelSumMin, 2, Sizeof.cl_mem, Pointer.to(resMinMem));
 				clEnqueueNDRangeKernel(clCommandQueueMin(), clKernelSumMin, 1, null
 					, gws, lws
 					, 0, null, null);
-
-				clSetKernelArg(clKernelSumMax, 1, Sizeof.cl_double, Pointer.to(new double[]{sumWeight()}));
-				clSetKernelArg(clKernelSumMax, 2, Sizeof.cl_mem, Pointer.to(resMaxMem));
-				clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelSumMax, 1, null
-					, gws, lws
-					, 0, null, null);
+				if (enabledMatI || enabledMatIO) {
+					clSetKernelArg(clKernelSumMax, 1, Sizeof.cl_double, Pointer.to(new double[]{getSumWeight()}));
+					clSetKernelArg(clKernelSumMax, 2, Sizeof.cl_mem, Pointer.to(resMaxMem));
+					clEnqueueNDRangeKernel(clCommandQueueMax(), clKernelSumMax, 1, null
+						, gws, lws
+						, 0, null, null);
+				}
 			}
 
 			// Swap
@@ -259,18 +260,34 @@ public class PSEModelForVM_GPU {
 			resMinMem = tmpMin;
 			resMaxMem = tmpMax;
 		}
-		clEnqueueReadBuffer(clCommandQueueMin(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
-		clEnqueueReadBuffer(clCommandQueueMax(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
-		clFinish(clCommandQueueMin());
-		clFinish(clCommandQueueMax());
+		if (enabledMatI || enabledMatIO) {
+			clEnqueueReadBuffer(clCommandQueueMin(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
+			clEnqueueReadBuffer(clCommandQueueMax(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
+			clFinish(clCommandQueueMin());
+			clFinish(clCommandQueueMax());
+		}
+		else {
+			clEnqueueReadBuffer(clCommandQueueMin(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMin), 0, null, null);
+			clEnqueueReadBuffer(clCommandQueueMax(), minMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(resMax), 0, null, null);
+			clFinish(clCommandQueueMin());
+			clFinish(clCommandQueueMax());
+		}
 	}
 
 	final public void getSum(final double[] sumMin, final double[] sumMax)
 	{
-		clEnqueueReadBuffer(clCommandQueueMin(), this.sumMin, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMin), 0, null, null);
-		clEnqueueReadBuffer(clCommandQueueMax(), this.sumMax, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMax), 0, null, null);
-		clFinish(clCommandQueueMin());
-		clFinish(clCommandQueueMax());
+		if (enabledMatI || enabledMatIO) {
+			clEnqueueReadBuffer(clCommandQueueMin(), this.sumMin, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMin), 0, null, null);
+			clEnqueueReadBuffer(clCommandQueueMax(), this.sumMax, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMax), 0, null, null);
+			clFinish(clCommandQueueMin());
+			clFinish(clCommandQueueMax());
+		}
+		else {
+			clEnqueueReadBuffer(clCommandQueueMin(), this.sumMin, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMin), 0, null, null);
+			clEnqueueReadBuffer(clCommandQueueMax(), this.sumMin, true, 0, Sizeof.cl_double * stCnt, Pointer.to(sumMax), 0, null, null);
+			clFinish(clCommandQueueMin());
+			clFinish(clCommandQueueMax());
+		}
 	}
 
 	public void release() {
@@ -283,11 +300,9 @@ public class PSEModelForVM_GPU {
 		clReleaseMemObject(matIOSrc);
 		clReleaseMemObject(matIOTrgBeg);
 		clReleaseMemObject(matIMinVal);
-		clReleaseMemObject(matIMinSrc);
-		clReleaseMemObject(matIMinTrgBeg);
+		clReleaseMemObject(matISrc);
+		clReleaseMemObject(matITrgBeg);
 		clReleaseMemObject(matIMaxVal);
-		clReleaseMemObject(matIMaxSrc);
-		clReleaseMemObject(matIMaxTrgBeg);
 		clReleaseMemObject(matOMinDiagVal);
 		clReleaseMemObject(matOMaxDiagVal);
 		clReleaseMemObject(matNPVal);
@@ -297,8 +312,8 @@ public class PSEModelForVM_GPU {
 		clReleaseKernel(clKernelMatNPMax);
 		clReleaseKernel(clKernelMatIOMin);
 		clReleaseKernel(clKernelMatIOMax);
-		clReleaseKernel(clKernelMatMin);
-		clReleaseKernel(clKernelMatMax);
+		clReleaseKernel(clKernelMatIMin);
+		clReleaseKernel(clKernelMatIMax);
 		clReleaseCommandQueue(clCommandQueueMin);
 		oclProgram.release();
 	}
@@ -308,7 +323,7 @@ public class PSEModelForVM_GPU {
 		return x + (z - x % z) % z;
 	}
 
-	final private double sumWeight()
+	final private double getSumWeight()
 	{
 		if (totalIterationCnt >= weightOff)
 		{
@@ -326,7 +341,7 @@ public class PSEModelForVM_GPU {
 
 	final private boolean enabledMatNP;
 	final private boolean enabledMatIO;
-	final private boolean enabledMatMinMax;
+	final private boolean enabledMatI;
 
 	final private OCLProgram oclProgram;
 	final private cl_command_queue clCommandQueueMin;
@@ -334,8 +349,8 @@ public class PSEModelForVM_GPU {
 
 	private cl_kernel clKernelMatIOMin;
 	private cl_kernel clKernelMatIOMax;
-	private cl_kernel clKernelMatMin;
-	private cl_kernel clKernelMatMax;
+	private cl_kernel clKernelMatIMin;
+	private cl_kernel clKernelMatIMax;
 	private cl_kernel clKernelMatNPMin;
 	private cl_kernel clKernelMatNPMax;
 	final private cl_kernel clKernelSumMin;
@@ -355,13 +370,10 @@ public class PSEModelForVM_GPU {
 	private cl_mem matIOSrc;
 	private cl_mem matIOTrgBeg;
 
-	private cl_mem matIMinVal;
-	private cl_mem matIMinSrc;
-	private cl_mem matIMinTrgBeg;
-
 	private cl_mem matIMaxVal;
-	private cl_mem matIMaxSrc;
-	private cl_mem matIMaxTrgBeg;
+	private cl_mem matIMinVal;
+	private cl_mem matISrc;
+	private cl_mem matITrgBeg;
 
 	private cl_mem matOMinDiagVal;
 	private cl_mem matOMaxDiagVal;
@@ -373,5 +385,5 @@ public class PSEModelForVM_GPU {
 	final private cl_mem maxMem1;
 	final private cl_mem minMem2;
 	final private cl_mem maxMem2;
-
+	double[] diag;
 }

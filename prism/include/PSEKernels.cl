@@ -1,6 +1,8 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 
+#define WARP_SIZE 32
+
 //#define MAD(A, B, C) (mad(A,B,C))
 #define MAD(A, B, C) ((A) * (B) + (C))
 
@@ -20,7 +22,7 @@ __kernel void WeightedSumTo
     }
 }
 
-__kernel void PSE_MV_IO
+__kernel void PSE_MV_IO_CSR_SCALAR
   ( const uint matRowCnt
   , __global real const* restrict matLowerVal
   , __global real const* restrict matUpperVal
@@ -53,7 +55,7 @@ __kernel void PSE_MV_IO
     }
 }
 
-__kernel void PSE_MV_NP
+__kernel void PSE_MV_NP_CSR_SCALAR
   ( const uint matRowCnt
   , __global real const* restrict matVal
   , __global uint const* restrict matCol
@@ -78,7 +80,52 @@ __kernel void PSE_MV_NP
             dot = MAD(rate, in[v1] - in[v0], dot);
         }
         out[v0] = dot;
-	  }
+	}
+}
+
+__kernel void PSE_MV_NP_CSR_VECTOR
+  ( const uint matRowCnt
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRow
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict in
+  , __global real* restrict out
+
+  , __local volatile real* sdata
+  )
+{
+    uint id = get_global_id(0);
+    uint warp_id = id / WARP_SIZE; // == The warp of this worker
+    uint warp_pos = id & (WARP_SIZE - 1); // == id % WARP_SIZE == The position of this worker within the warp
+    uint warp_cnt = get_global_size(0) / WARP_SIZE;
+    for (uint ii = warp_id; ii < matRowCnt; ii += warp_cnt)
+    {
+        const uint v0 = matRow[ii];
+        const uint tb = matRowBeg[ii];
+        const uint te = matRowBeg[ii + 1];
+        real dot = out[v0];
+        for (uint jj = tb + warp_pos; jj < te; jj += WARP_SIZE)
+        {
+            const uint v1 = matCol[jj];
+            const real rate = matVal[jj];
+            dot = MAD(rate, in[v1] - in[v0], dot);
+        }
+
+        const int i = get_local_id(0);
+        sdata[i] = dot;
+        sdata[i] = dot += sdata[i + 16];
+        sdata[i] = dot += sdata[i + 8];
+        sdata[i] = dot += sdata[i + 4];
+        sdata[i] = dot += sdata[i + 2];
+        sdata[i] = dot += sdata[i + 1];
+
+        if (warp_pos == 0)
+        {
+            out[v0] = dot;
+        }
+	}
 }
 
 __kernel void PSE_VM_I
