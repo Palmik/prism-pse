@@ -90,5 +90,35 @@
         }
       ]
     }
+  , { path => 'models/gene-reg.sm'
+    , parameters =>
+      [ { value => 'k1=0.17:0.17001 20'
+        , options =>
+          [ { pse => { time => 0.5625 } }
+          , { pse => { time => 1.125 } }
+          , { pse => { time => 2.5 } }
+          , { pse => { time => 5 } }
+          , { pse => { time => 10 } }
+          , { psecheck => { csl => 'P=? [F=40 RbsRibosome = 1]' } }
+          , { psecheck => { csl => 'P=? [F=80 RbsRibosome = 2]' } }
+          , { psecheck => { csl => 'P=? [F=160 RbsRibosome = 2]' } }
+          , { psecheck => { csl => 'P=? [F=320 RbsRibosome = 2]' } }
+          ]
+        }
+      , { value => 'k1=0.17:0.17001 20'
+        , options =>
+          [ { pse => { time => 0.5625 } }
+          , { pse => { time => 1.125 } }
+          , { pse => { time => 2.5 } }
+          , { pse => { time => 5 } }
+          , { pse => { time => 10 } }
+          , { psecheck => { csl => 'P=? [F=40 RbsRibosome = 1]' } }
+          , { psecheck => { csl => 'P=? [F=80 RbsRibosome = 2]' } }
+          , { psecheck => { csl => 'P=? [F=160 RbsRibosome = 2]' } }
+          , { psecheck => { csl => 'P=? [F=320 RbsRibosome = 2]' } }
+          ]
+        }
+      ]
+    }
   ]
 }

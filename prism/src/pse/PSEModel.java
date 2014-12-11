@@ -447,6 +447,8 @@ public final class PSEModel extends ModelExplicit
 	 */
 	public void computeInOutTransitions()
 	{
+		System.out.printf("State cnt: %s\n", numStates);
+		System.out.printf("Trans cnt: %s\n", numTransitions);
 		if (trsI != null)
 			return;
 

@@ -36,7 +36,7 @@ sub run_prism_bench
   my $ocl0_avg = 0;
   for (1..$rep)
   {
-    my $t = run_prism($prism, $args, { OCL => 0 });
+    my $t = run_prism($prism, $args, { PRISM_JAVAMAXMEM => '3g', OCL => 0 });
     print "$t\n";
     $ocl0_avg += $t;
   }
@@ -47,7 +47,7 @@ sub run_prism_bench
   my $ocl1_avg = 0;
   for (1..$rep)
   {
-    my $t = run_prism($prism, $args, { OCL => 1, OCL_LWS => 64 });
+    my $t = run_prism($prism, $args, { PRISM_JAVAMAXMEM => '3g', OCL => 1, OCL_LWS => 64 });
     print "$t\n";
     $ocl1_avg += $t;
   }
