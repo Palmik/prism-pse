@@ -1,0 +1,56 @@
+ctmc
+
+const double k1 = 0.17;
+const double k2 = 10;
+const double k3 = 1;
+const double k4 = 1;
+const double k5 = 0.015;
+const double k6 = 0.17;
+const double k7 = 0.45;
+const double k8 = 0.4;
+const double k9 = 0.015;
+const double k10 = 6.42e-5;
+const double k11 = 0.3;
+
+const int maxPop = 9;
+
+const int initPLac = 1;
+const int initRNAP = 1;
+const int initPLacRNAP = 0;
+const int initTrLacZ1 = 0;
+const int initTrLacZ2 = 0;
+const int initRibosome = 9;
+const int initRbsRibosome = 0;
+const int initRbsLacZ = 0;
+const int initTrRbsLacZ = 0;
+const int initLacZ = 0;
+const int initdgrLacZ = 0;
+const int initdgrRbsLacZ = 0;
+
+module GEN
+
+PLac: [0..maxPop] init initPLac;
+RNAP: [0..maxPop] init initRNAP;
+PLacRNAP: [0..maxPop] init initPLacRNAP;
+TrLacZ1: [0..maxPop] init initTrLacZ1;
+TrLacZ2: [0..maxPop] init initTrLacZ2;
+Ribosome: [0..maxPop] init initRibosome;
+RbsRibosome: [0..maxPop] init initRbsRibosome;
+RbsLacZ: [0..maxPop] init initRbsLacZ;
+TrRbsLacZ: [0..maxPop] init initTrRbsLacZ;
+LacZ: [0..maxPop] init initLacZ;
+dgrLacZ: [0..maxPop] init initdgrLacZ;
+dgrRbsLacZ: [0..maxPop] init initdgrRbsLacZ;
+
+[]PLac > 0 & RNAP > 0 & PLacRNAP < maxPop                             ->  k1*PLac*RNAP : (PLac'= PLac-1) & (RNAP'= RNAP-1) & (PLacRNAP' = PLacRNAP+1);
+[]PLacRNAP > 0 & PLac < maxPop & RNAP < maxPop                        ->  k2*PLacRNAP  : (PLac'= PLac+1) & (RNAP'= RNAP+1) & (PLacRNAP' = PLacRNAP-1);
+[]PLacRNAP > 0 & TrLacZ1 < maxPop                                     ->  k3*PLacRNAP  : (PLacRNAP' = PLacRNAP-1) & (TrLacZ1' = TrLacZ1+1);
+[]TrLacZ1  > 0 & TrLacZ2 < maxPop & PLac < maxPop  & RbsLacZ < maxPop ->  k4*TrLacZ1   : (TrLacZ1' = TrLacZ1-1) & (TrLacZ2' = TrLacZ2+1) & (PLac'= PLac+1) & (RbsLacZ'= RbsLacZ+1);
+[]TrLacZ2  > 0 & RNAP < maxPop                                        ->  k5*TrLacZ2   : (TrLacZ2' = TrLacZ2-1) & (RNAP'= RNAP+1);
+[]Ribosome  > 0 & RbsLacZ > 0 & RbsRibosome < maxPop                  ->  k6*Ribosome*RbsLacZ  : (Ribosome' = Ribosome-1) & (RbsLacZ'= RbsLacZ-1) & (RbsRibosome' = RbsRibosome+1);
+[]RbsRibosome > 0 & Ribosome < maxPop & RbsLacZ < maxPop              ->  k7*RbsRibosome  : (Ribosome' = Ribosome+1) & (RbsLacZ'= RbsLacZ+1) & (RbsRibosome' = RbsRibosome-1);
+[]RbsRibosome > 0 & TrRbsLacZ < maxPop & RbsLacZ < maxPop             ->  k8*RbsRibosome  : (TrRbsLacZ' = TrRbsLacZ+1) & (RbsLacZ'= RbsLacZ+1) & (RbsRibosome' = RbsRibosome-1);
+[]TrRbsLacZ  > 0 & LacZ < maxPop                                      ->  k9*TrRbsLacZ  : (TrRbsLacZ' = TrRbsLacZ-1) & (LacZ'= LacZ+1);
+[]LacZ  > 0 & dgrLacZ < maxPop                                        ->  k10*LacZ  : (LacZ' = LacZ-1) & (dgrLacZ'= dgrLacZ+1);
+[]RbsLacZ  > 0 & dgrRbsLacZ < maxPop                                  ->  k11*RbsLacZ  : (RbsLacZ' = RbsLacZ-1) & (dgrRbsLacZ'= dgrRbsLacZ+1);
+endmodule

@@ -120,5 +120,33 @@
         }
       ]
     }
+  , { path => 'models/google.sm'
+    , parameters =>
+      [ { value => 'repair_rate=0.95:1 20'
+        , options =>
+          [ { pse => { time => 2.5 } }
+          , { pse => { time => 5 } }
+          , { pse => { time => 10 } }
+          , { pse => { time => 20 } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,10] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,20] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,40] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,80] service_level_3], disaster)'' } }
+          ]
+        }
+      , { value => 'repair_rate=1:1 20'
+        , options =>
+          [ { pse => { time => 2.5 } }
+          , { pse => { time => 5 } }
+          , { pse => { time => 10 } }
+          , { pse => { time => 20 } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,10] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,20] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,40] service_level_3], disaster)'' } }
+          , { psecheck => { csl => 'filter(print, P=? [ F[0,80] service_level_3], disaster)'' } }
+          ]
+        }
+      ]
+    }
   ]
 }

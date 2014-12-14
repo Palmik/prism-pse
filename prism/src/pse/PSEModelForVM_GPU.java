@@ -158,7 +158,7 @@ public class PSEModelForVM_GPU {
 			this.matIOUpperVal1 = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_double * matIOTrgBeg[stCnt], matIOUpperVal1_, null);
 			this.matIOSrc = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matNPTrgBeg[stCnt], matIOSrc_, null);
+				Sizeof.cl_uint * matIOTrgBeg[stCnt], matIOSrc_, null);
 			this.matIOTrgBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
 				Sizeof.cl_uint * (stCnt + 1), matIOTrgBeg_, null);
 

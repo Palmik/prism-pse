@@ -91,11 +91,15 @@ final public class OCLProgram
 		return res;
 	}
 
-	public final cl_context getContext() {
+	final public cl_device_id getDeviceId() {
+		return clDeviceId;
+	}
+
+	final public cl_context getContext() {
 		return clContext;
 	}
 
-	public final cl_program getProgram() {
+	final public cl_program getProgram() {
 		return clProgram;
 	}
 
