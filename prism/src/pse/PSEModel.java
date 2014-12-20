@@ -85,10 +85,10 @@ public final class PSEModel extends ModelExplicit
 
 	final private boolean useOpenCL;
 
-	private PSEModelForVM modelVM;
-	private PSEModelForVM_GPU modelVM_GPU;
-	private PSEModelForMV modelMV;
-	private PSEModelForMV_GPU modelMV_GPU;
+	private PSEVMMult modelVM;
+	private PSEVMMult_OCL modelVM_GPU;
+	private PSEMVMult modelMV;
+	private PSEMVMult_OCL modelMV_GPU;
 
 	/**
 	 * Constructs a new parametric model.
@@ -612,7 +612,7 @@ public final class PSEModel extends ModelExplicit
 		if (useOpenCL) {
 			if (modelVM_GPU != null) { modelVM_GPU.release(); }
 
-			modelVM_GPU = new PSEModelForVM_GPU
+			modelVM_GPU = new PSEVMMult_OCL
 				(numStates, numTransitions
 					, matIOLowerVal0.data()
 					, matIOLowerVal1.data()
@@ -638,7 +638,7 @@ public final class PSEModel extends ModelExplicit
 				);
 		}
 		else {
-			modelVM = new PSEModelForVM
+			modelVM = new PSEVMMult
 				(numStates, numTransitions
 					, matIOLowerVal0.data()
 					, matIOLowerVal1.data()
@@ -818,7 +818,7 @@ public final class PSEModel extends ModelExplicit
 
 		if (useOpenCL) {
 			if (modelMV_GPU != null) modelVM_GPU.release();
-			modelMV_GPU = new PSEModelForMV_GPU
+			modelMV_GPU = new PSEMVMult_OCL
 				( numStates
 					, matLowerVal
 					, matUpperVal
@@ -839,7 +839,7 @@ public final class PSEModel extends ModelExplicit
 				);
 		}
 		else {
-			modelMV = new PSEModelForMV
+			modelMV = new PSEMVMult
 				(numStates
 					, matLowerVal
 					, matUpperVal

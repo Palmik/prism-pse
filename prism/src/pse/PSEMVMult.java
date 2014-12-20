@@ -1,27 +1,27 @@
 package pse;
 
-public final class PSEModelForMV
+public final class PSEMVMult
 {
-	public PSEModelForMV
-	( int stCnt
+	public PSEMVMult
+		(int stCnt
 
-	, double[] matLowerVal
-	, double[] matUpperVal
-	, int[] matCol
-	, int[] matRow
-	, int[] matRowBeg
-	, int matRowCnt
+			, double[] matLowerVal
+			, double[] matUpperVal
+			, int[] matCol
+			, int[] matRow
+			, int[] matRowBeg
+			, int matRowCnt
 
-	, double[] matNPVal
-	, int[] matNPCol
-	, int[] matNPRow
-	, int[] matNPRowBeg
-	, int matNPRowCnt
+			, double[] matNPVal
+			, int[] matNPCol
+			, int[] matNPRow
+			, int[] matNPRowBeg
+			, int matNPRowCnt
 
-	, double[] weight
-	, double   weightDef
-	, int      weightOff
-	)
+			, double[] weight
+			, double weightDef
+			, int weightOff
+		)
 	{
 		this.totalIterationCnt = 0;
 

@@ -3,27 +3,27 @@ package pse;
 import org.jocl.*;
 import static org.jocl.CL.*;
 
-public final class PSEModelForMV_GPU
+public final class PSEMVMult_OCL
 {
-	public PSEModelForMV_GPU
-		( int stCnt
+	public PSEMVMult_OCL
+		(int stCnt
 
-		, double[] matIOLowerVal
-		, double[] matIOUpperVal
-		, int[] matIOCol
-		, int[] matIORow
-		, int[] matIORowBeg
-		, int matIORowCnt
+			, double[] matIOLowerVal
+			, double[] matIOUpperVal
+			, int[] matIOCol
+			, int[] matIORow
+			, int[] matIORowBeg
+			, int matIORowCnt
 
-		, double[] matNPVal
-		, int[] matNPCol
-		, int[] matNPRow
-		, int[] matNPRowBeg
-		, int matNPRowCnt
+			, double[] matNPVal
+			, int[] matNPCol
+			, int[] matNPRow
+			, int[] matNPRowBeg
+			, int matNPRowCnt
 
-		, double[] weight
-		, double   weightDef
-		, int      weightOff
+			, double[] weight
+			, double weightDef
+			, int weightOff
 		)
 	{
 		this.stCnt = stCnt;
@@ -31,6 +31,11 @@ public final class PSEModelForMV_GPU
 		this.oclProgram = new OCLProgram();
 		this.clCommandQueueMin = oclProgram.createCommandQueue();
 		this.clCommandQueueMax = oclProgram.createCommandQueue();
+
+		int maxSubs[] = new int[]{0};
+		clGetDeviceInfo(oclProgram.getDeviceId(), CL_DEVICE_PARTITION_MAX_SUB_DEVICES, Sizeof.cl_uint, Pointer.to(maxSubs), null);
+		System.out.printf("MAX SUBS %s\n", maxSubs[0]);
+
 
 		setExceptionsEnabled(true);
 

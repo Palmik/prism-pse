@@ -6,31 +6,31 @@ import java.math.BigDecimal;
 
 import static org.jocl.CL.*;
 
-public class PSEModelForVM_GPU {
-	public PSEModelForVM_GPU
-	( int stCnt, int trCnt
-	, double[] matIOLowerVal0
-	, double[] matIOLowerVal1
-	, double[] matIOUpperVal0
-	, double[] matIOUpperVal1
-	, int[] matIOSrc
-	, int[] matIOTrgBeg
+public class PSEVMMult_OCL {
+	public PSEVMMult_OCL
+		(int stCnt, int trCnt
+			, double[] matIOLowerVal0
+			, double[] matIOLowerVal1
+			, double[] matIOUpperVal0
+			, double[] matIOUpperVal1
+			, int[] matIOSrc
+			, int[] matIOTrgBeg
 
-	, double[] matIMinVal
-	, double[] matIMaxVal
-	, int[] matISrc
-	, int[] matITrgBeg
+			, double[] matIMinVal
+			, double[] matIMaxVal
+			, int[] matISrc
+			, int[] matITrgBeg
 
-	, double[] matOMinDiagVal
-	, double[] matOMaxDiagVal
-	, double[] matNPVal
-	, int[] matNPSrc
-	, int[] matNPTrgBeg
+			, double[] matOMinDiagVal
+			, double[] matOMaxDiagVal
+			, double[] matNPVal
+			, int[] matNPSrc
+			, int[] matNPTrgBeg
 
-	, double[] weight
-	, double   weightDef
-	, int      weightOff
-	) {
+			, double[] weight
+			, double weightDef
+			, int weightOff
+		) {
 		this.diag = matOMinDiagVal;
 		this.stCnt = stCnt;
 		this.trCnt = trCnt;

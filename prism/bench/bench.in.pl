@@ -98,7 +98,6 @@
           , { pse => { time => 1.125 } }
           , { pse => { time => 2.5 } }
           , { pse => { time => 5 } }
-          , { pse => { time => 10 } }
           , { psecheck => { csl => 'P=? [F=40 RbsRibosome = 1]' } }
           , { psecheck => { csl => 'P=? [F=80 RbsRibosome = 2]' } }
           , { psecheck => { csl => 'P=? [F=160 RbsRibosome = 2]' } }
@@ -111,7 +110,6 @@
           , { pse => { time => 1.125 } }
           , { pse => { time => 2.5 } }
           , { pse => { time => 5 } }
-          , { pse => { time => 10 } }
           , { psecheck => { csl => 'P=? [F=40 RbsRibosome = 1]' } }
           , { psecheck => { csl => 'P=? [F=80 RbsRibosome = 2]' } }
           , { psecheck => { csl => 'P=? [F=160 RbsRibosome = 2]' } }
