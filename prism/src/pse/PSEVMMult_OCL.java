@@ -2,8 +2,6 @@ package pse;
 
 import org.jocl.*;
 
-import java.math.BigDecimal;
-
 import static org.jocl.CL.*;
 
 public class PSEVMMult_OCL {
@@ -197,7 +195,7 @@ public class PSEVMMult_OCL {
 		clEnqueueWriteBuffer(clCommandQueueMax(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max)
 			, 0, null, null);
 
-		final long[] lws = new long[]{oclProgram.clLocalWorkSize(1024)};
+		final long[] lws = new long[]{OCLProgram.localWorkSize(1024)};
 		final long[] gws = new long[]{leastGreaterMultiple(stCnt, lws[0])};
 
 		for (int i = 0; i < iterationCnt; ++i) {

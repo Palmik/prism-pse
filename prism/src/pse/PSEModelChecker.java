@@ -691,7 +691,6 @@ public final class PSEModelChecker extends PrismComponent
 	 * @throws PrismException
 	 * @throws DecompositionProcedure.DecompositionNeeded thrown by decomposition
 	 * procedure if it found the results to be too inaccurate
-	 * @see PSEModel#mvMult
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
@@ -700,10 +699,7 @@ public final class PSEModelChecker extends PrismComponent
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, iters, totalIters;
-		double solnMin[], soln2Min[], sumMin[];
-		double solnMax[], soln2Max[], sumMax[];
-		double tmpsoln[];
+		int i, n;
 		long timer;
 		// Fox-Glynn stuff
 		FoxGlynn fg;
@@ -722,6 +718,8 @@ public final class PSEModelChecker extends PrismComponent
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is all ones, this is easy.
 		if ((nonAbs != null && nonAbs.isEmpty()) || (t == 0)) {
 			if (multProbs.isAllOnes()) {
+				double solnMin[];
+				double solnMax[];
 				for (BoxRegion region : multProbs.keySet()) {
 					if (previousResult.hasRegion(region)) {
 						regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
@@ -764,97 +762,27 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		totalIters = 0;
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
-			BoxRegion region = entry.getKey();
-
-			// If the previous region values contain probs for this region, i.e. the region
-			// has not been decomposed, then just use the previous result directly.
-			if (previousResult.hasRegion(region)) {
-				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
-				continue;
-			}
-
-			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
-			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
-
-			// Configure parameter space
-			model.configureParameterSpace(region);
-			model.prepareForMV(nonAbs, false, weights, 0, left);
-			mainLog.println("Computing probabilities for parameter region " + region);
-
-			// Create solution vectors
-			solnMin = new double[n];
-			soln2Min = new double[n];
-			sumMin = new double[n];
-			solnMax = new double[n];
-			soln2Max = new double[n];
-			sumMax = new double[n];
-
-			// Initialise solution vectors.
-			// Vectors soln/soln2 are multProbs[i] for target states.
-			// Vector sum is all zeros (done by array creation).
-			for (i = 0; i < n; i++) {
-				solnMin[i] = soln2Min[i] = targetMin.get(i) ? multProbsMin[i] : 0.0;
-				solnMax[i] = soln2Max[i] = targetMax.get(i) ? multProbsMax[i] : 0.0;
-			}
-
-			// If necessary, do 0th element of summation (doesn't require any matrix powers)
-			if (left == 0) {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[0] * solnMin[i];
-					sumMax[i] += weights[0] * solnMax[i];
-				}
-			}
-
-			// Matrix-vector multiply
-			model.mvMult(solnMin, soln2Min, solnMax, soln2Max, left);
-			iters = left;
-			totalIters += left;
-
-			// Swap vectors for next iter
-			tmpsoln = solnMin;
-			solnMin = soln2Min;
-			soln2Min = tmpsoln;
-			tmpsoln = solnMax;
-			solnMax = soln2Max;
-			soln2Max = tmpsoln;
-			// Start iterations
-			while (iters <= right) {
-				// Add to sum
-				model.getMVSum(sumMin, sumMax);
-				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-				// Matrix-vector multiply
-				int numIters = numItersExaminePartial;
-				if (iters + numIters > right)
-				{
-					numIters = right - iters;
-				}
-				if (numIters == 0)
-				{
-					break;
-				}
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
-
-				// Swap vectors for next iter
-				tmpsoln = solnMin;
-				solnMin = soln2Min;
-				soln2Min = tmpsoln;
-				tmpsoln = solnMax;
-				solnMax = soln2Max;
-				soln2Max = tmpsoln;
-
-				iters+=numIters;
-				totalIters+=numIters;
-			}
-
-			// Examine this region's result after all the iters have been finished
-			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-			// Store result
-			regionValues.put(region, sumMin, sumMax);
+		PSETransientBackwardsBody body;
+		if (model.useOpenCL()) {
+			body = new PSETransientBackwardsBody_OCL();
+		} else {
+			body = new PSETransientBackwardsBody_CPU();
 		}
+
+		int totalIters = body.doWork
+			( model
+			, targetMin
+			, targetMax
+			, nonAbs, false
+			, weights, 0
+			, left, right
+			, numItersExaminePartial
+			, decompositionProcedure
+			, multProbs
+			, previousResult
+			, regionValues
+			, mainLog
+			);
 
 		// Negate if necessary
 		if (negate) {
@@ -979,6 +907,7 @@ public final class PSEModelChecker extends PrismComponent
 			DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
+		if (true) { throw new RuntimeException("Not implemented"); }
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n, iters, totalIters;
 		double solnMin[], soln2Min[], sumMin[];
@@ -1068,7 +997,7 @@ public final class PSEModelChecker extends PrismComponent
 
 			// Configure parameter space
 			model.configureParameterSpace(region);
-			model.prepareForMV(null, false, weights, 1 / q, left);
+			//model.prepareForMV(null, false, weights, 1 / q, left);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
@@ -1113,7 +1042,7 @@ public final class PSEModelChecker extends PrismComponent
 			solnMax = soln2Max;
 			soln2Max = tmpsoln;
 			while (iters <= right) {
-				model.getMVSum(sumMin, sumMax);
+				//model.getMVSum(sumMin, sumMax);
 				decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
 
 				// Matrix-vector multiply
@@ -1126,7 +1055,7 @@ public final class PSEModelChecker extends PrismComponent
 				{
 					break;
 				}
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
+				//model.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;

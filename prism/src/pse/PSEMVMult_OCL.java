@@ -3,58 +3,52 @@ package pse;
 import org.jocl.*;
 import static org.jocl.CL.*;
 
-public final class PSEMVMult_OCL
+public final class PSEMVMult_OCL implements PSEMVMult
 {
 	public PSEMVMult_OCL
-		(int stCnt
+		( int stCnt
 
-			, double[] matIOLowerVal
-			, double[] matIOUpperVal
-			, int[] matIOCol
-			, int[] matIORow
-			, int[] matIORowBeg
-			, int matIORowCnt
+		, double[] matIOLowerVal
+		, double[] matIOUpperVal
 
-			, double[] matNPVal
-			, int[] matNPCol
-			, int[] matNPRow
-			, int[] matNPRowBeg
-			, int matNPRowCnt
+		, double[] matNPVal
 
-			, double[] weight
-			, double weightDef
-			, int weightOff
+		, double[] weight
+		, double weightDef
+		, int weightOff
+
+		, PSEMVMultTopology_OCL topo
+		, PSEMVMultSettings_OCL opts
 		)
 	{
 		this.stCnt = stCnt;
+		this.topo = topo;
+		this.clContext = opts.clContext;
 
-		this.oclProgram = new OCLProgram();
-		this.clCommandQueueMin = oclProgram.createCommandQueue();
-		this.clCommandQueueMax = oclProgram.createCommandQueue();
+		this.clCommandQueueMin = clCreateCommandQueue(clContext, opts.clDeviceIdMin, 0, null);
+		this.clCommandQueueMax = clCreateCommandQueue(clContext, opts.clDeviceIdMax, 0, null);
 
-		int maxSubs[] = new int[]{0};
-		clGetDeviceInfo(oclProgram.getDeviceId(), CL_DEVICE_PARTITION_MAX_SUB_DEVICES, Sizeof.cl_uint, Pointer.to(maxSubs), null);
-		System.out.printf("MAX SUBS %s\n", maxSubs[0]);
-
+		//int maxSubs[] = new int[]{0};
+		//clGetDeviceInfo(oclProgram.getDeviceId(), CL_DEVICE_PARTITION_MAX_SUB_DEVICES, Sizeof.cl_uint, Pointer.to(maxSubs), null);
+		//System.out.printf("MAX SUBS %s\n", maxSubs[0]);
 
 		setExceptionsEnabled(true);
 
-		this.matIORowCnt = matIORowCnt;
-		this.matNPRowCnt = matNPRowCnt;
-		this.enabledMatIO = matIORowCnt > 0 && matIORowBeg[matIORowCnt] > 0;
-		this.enabledMatNP = matNPRowCnt > 0 && matNPRowBeg[matNPRowCnt] > 0;
+		this.enabledMatIO = topo.matIORowCnt > 0 && topo.matIORowBegHost[topo.matIORowCnt] > 0;
+		this.enabledMatNP = topo.matNPRowCnt > 0 && topo.matNPRowBegHost[topo.matNPRowCnt] > 0;
 
 		this.weight = weight;
 		this.weightDef = weightDef;
 		this.weightOff = weightOff;
 		this.totalIterationCnt = 0;
 
-		clKernelMatIOMin = oclProgram.createKernel("PSE_MV_IO_CSR_SCALAR");
-		clKernelMatIOMax = oclProgram.createKernel("PSE_MV_IO_CSR_SCALAR");
-		clKernelMatNPMin = oclProgram.createKernel("PSE_MV_NP_CSR_SCALAR");
-		clKernelMatNPMax = oclProgram.createKernel("PSE_MV_NP_CSR_SCALAR");
-		clKernelSumMin = oclProgram.createKernel("WeightedSumTo");
-		clKernelSumMax = oclProgram.createKernel("WeightedSumTo");
+		clProgram = OCLProgram.createProgram(OCLProgram.SOURCE, clContext);
+		clKernelMatIOMin = OCLProgram.createKernel("PSE_MV_IO_CSR_SCALAR", clProgram);
+		clKernelMatIOMax = OCLProgram.createKernel("PSE_MV_IO_CSR_SCALAR", clProgram);
+		clKernelMatNPMin = OCLProgram.createKernel("PSE_MV_NP_CSR_SCALAR", clProgram);
+		clKernelMatNPMax = OCLProgram.createKernel("PSE_MV_NP_CSR_SCALAR", clProgram);
+		clKernelSumMin = OCLProgram.createKernel("WeightedSumTo", clProgram);
+		clKernelSumMax = OCLProgram.createKernel("WeightedSumTo", clProgram);
 
 		{
 			final double[] zeroes = new double[stCnt];
@@ -75,69 +69,90 @@ public final class PSEMVMult_OCL
 			// Setup mat
 			final Pointer matIOLowerVal_ = Pointer.to(matIOLowerVal);
 			final Pointer matIOUpperVal_ = Pointer.to(matIOUpperVal);
-			final Pointer matIOCol_ = Pointer.to(matIOCol);
-			final Pointer matIORow_ = Pointer.to(matIORow);
-			final Pointer matIORowBeg_ = Pointer.to(matIORowBeg);
 
 			this.matIOLowerVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matIORowBeg[matIORowCnt], matIOLowerVal_, null);
+				Sizeof.cl_double * topo.matIORowBegHost[topo.matIORowCnt], matIOLowerVal_, null);
 			this.matIOUpperVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matIORowBeg[matIORowCnt], matIOUpperVal_, null);
-			this.matIOCol = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matIORowBeg[matIORowCnt], matIOCol_, null);
-			this.matIORow = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matIORowCnt, matIORow_, null);
-			this.matIORowBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * (matIORowCnt + 1), matIORowBeg_, null);
+				Sizeof.cl_double * topo.matIORowBegHost[topo.matIORowCnt], matIOUpperVal_, null);
 
-			clSetKernelArg(clKernelMatIOMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{matIORowCnt}));
+			clSetKernelArg(clKernelMatIOMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{topo.matIORowCnt}));
 			clSetKernelArg(clKernelMatIOMin, 1, Sizeof.cl_mem, Pointer.to(this.matIOLowerVal));
 			clSetKernelArg(clKernelMatIOMin, 2, Sizeof.cl_mem, Pointer.to(this.matIOUpperVal));
-			clSetKernelArg(clKernelMatIOMin, 3, Sizeof.cl_mem, Pointer.to(this.matIOCol));
-			clSetKernelArg(clKernelMatIOMin, 4, Sizeof.cl_mem, Pointer.to(this.matIORow));
-			clSetKernelArg(clKernelMatIOMin, 5, Sizeof.cl_mem, Pointer.to(this.matIORowBeg));
+			clSetKernelArg(clKernelMatIOMin, 3, Sizeof.cl_mem, Pointer.to(topo.matIOCol));
+			clSetKernelArg(clKernelMatIOMin, 4, Sizeof.cl_mem, Pointer.to(topo.matIORow));
+			clSetKernelArg(clKernelMatIOMin, 5, Sizeof.cl_mem, Pointer.to(topo.matIORowBeg));
 
-			clSetKernelArg(clKernelMatIOMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{matIORowCnt}));
+			clSetKernelArg(clKernelMatIOMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{topo.matIORowCnt}));
 			clSetKernelArg(clKernelMatIOMax, 1, Sizeof.cl_mem, Pointer.to(this.matIOUpperVal));
 			clSetKernelArg(clKernelMatIOMax, 2, Sizeof.cl_mem, Pointer.to(this.matIOLowerVal));
-			clSetKernelArg(clKernelMatIOMax, 3, Sizeof.cl_mem, Pointer.to(this.matIOCol));
-			clSetKernelArg(clKernelMatIOMax, 4, Sizeof.cl_mem, Pointer.to(this.matIORow));
-			clSetKernelArg(clKernelMatIOMax, 5, Sizeof.cl_mem, Pointer.to(this.matIORowBeg));
+			clSetKernelArg(clKernelMatIOMax, 3, Sizeof.cl_mem, Pointer.to(topo.matIOCol));
+			clSetKernelArg(clKernelMatIOMax, 4, Sizeof.cl_mem, Pointer.to(topo.matIORow));
+			clSetKernelArg(clKernelMatIOMax, 5, Sizeof.cl_mem, Pointer.to(topo.matIORowBeg));
 		}
 
 		if (enabledMatNP) {
 			// Setup mat
 			final Pointer matNPVal_ = Pointer.to(matNPVal);
-			final Pointer matNPCol_ = Pointer.to(matNPCol);
-			final Pointer matNPRow_ = Pointer.to(matNPRow);
-			final Pointer matNPRowBeg_ = Pointer.to(matNPRowBeg);
 
 			this.matNPVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_double * matNPRowBeg[matNPRowCnt], matNPVal_, null);
-			this.matNPCol = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matNPRowBeg[matNPRowCnt], matNPCol_, null);
-			this.matNPRow = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matNPRowCnt, matNPRow_, null);
-			this.matNPRowBeg = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * (matNPRowCnt + 1), matNPRowBeg_, null);
+				Sizeof.cl_double * topo.matNPRowBegHost[topo.matNPRowCnt], matNPVal_, null);
 
-			clSetKernelArg(clKernelMatNPMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{matNPRowCnt}));
+			clSetKernelArg(clKernelMatNPMin, 0, Sizeof.cl_uint, Pointer.to(new int[]{topo.matNPRowCnt}));
 			clSetKernelArg(clKernelMatNPMin, 1, Sizeof.cl_mem, Pointer.to(this.matNPVal));
-			clSetKernelArg(clKernelMatNPMin, 2, Sizeof.cl_mem, Pointer.to(this.matNPCol));
-			clSetKernelArg(clKernelMatNPMin, 3, Sizeof.cl_mem, Pointer.to(this.matNPRow));
-			clSetKernelArg(clKernelMatNPMin, 4, Sizeof.cl_mem, Pointer.to(this.matNPRowBeg));
+			clSetKernelArg(clKernelMatNPMin, 2, Sizeof.cl_mem, Pointer.to(topo.matNPCol));
+			clSetKernelArg(clKernelMatNPMin, 3, Sizeof.cl_mem, Pointer.to(topo.matNPRow));
+			clSetKernelArg(clKernelMatNPMin, 4, Sizeof.cl_mem, Pointer.to(topo.matNPRowBeg));
 
-			clSetKernelArg(clKernelMatNPMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{matNPRowCnt}));
+			clSetKernelArg(clKernelMatNPMax, 0, Sizeof.cl_uint, Pointer.to(new int[]{topo.matNPRowCnt}));
 			clSetKernelArg(clKernelMatNPMax, 1, Sizeof.cl_mem, Pointer.to(this.matNPVal));
-			clSetKernelArg(clKernelMatNPMax, 2, Sizeof.cl_mem, Pointer.to(this.matNPCol));
-			clSetKernelArg(clKernelMatNPMax, 3, Sizeof.cl_mem, Pointer.to(this.matNPRow));
-			clSetKernelArg(clKernelMatNPMax, 4, Sizeof.cl_mem, Pointer.to(this.matNPRowBeg));
+			clSetKernelArg(clKernelMatNPMax, 2, Sizeof.cl_mem, Pointer.to(topo.matNPCol));
+			clSetKernelArg(clKernelMatNPMax, 3, Sizeof.cl_mem, Pointer.to(topo.matNPRow));
+			clSetKernelArg(clKernelMatNPMax, 4, Sizeof.cl_mem, Pointer.to(topo.matNPRowBeg));
 		}
 
 		minMem1 = clCreateBuffer(clContext(), CL_MEM_READ_WRITE, Sizeof.cl_double * stCnt, null, null);
 		minMem2 = clCreateBuffer(clContext(), CL_MEM_READ_WRITE, Sizeof.cl_double * stCnt, null, null);
 		maxMem1 = clCreateBuffer(clContext(), CL_MEM_READ_WRITE, Sizeof.cl_double * stCnt, null, null);
 		maxMem2 = clCreateBuffer(clContext(), CL_MEM_READ_WRITE, Sizeof.cl_double * stCnt, null, null);
+	}
+
+	final public void update
+		( double[] matIOLowerVal
+		, double[] matIOUpperVal
+		, double[] matNPVal
+		)
+	{
+		if (enabledMatIO) {
+			clReleaseMemObject(this.matIOLowerVal);
+			clReleaseMemObject(this.matIOUpperVal);
+			// Setup mat
+			final Pointer matIOLowerVal_ = Pointer.to(matIOLowerVal);
+			final Pointer matIOUpperVal_ = Pointer.to(matIOUpperVal);
+
+			this.matIOLowerVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * this.topo.matIORowBegHost[this.topo.matIORowCnt], matIOLowerVal_, null);
+			this.matIOUpperVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * this.topo.matIORowBegHost[this.topo.matIORowCnt], matIOUpperVal_, null);
+
+			clSetKernelArg(clKernelMatIOMin, 1, Sizeof.cl_mem, Pointer.to(this.matIOLowerVal));
+			clSetKernelArg(clKernelMatIOMin, 2, Sizeof.cl_mem, Pointer.to(this.matIOUpperVal));
+
+			clSetKernelArg(clKernelMatIOMax, 1, Sizeof.cl_mem, Pointer.to(this.matIOUpperVal));
+			clSetKernelArg(clKernelMatIOMax, 2, Sizeof.cl_mem, Pointer.to(this.matIOLowerVal));
+		}
+
+		if (enabledMatNP) {
+			clReleaseMemObject(this.matNPVal);
+
+			final Pointer matNPVal_ = Pointer.to(matNPVal);
+
+			this.matNPVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_double * this.topo.matNPRowBegHost[this.topo.matNPRowCnt], matNPVal_, null);
+
+			clSetKernelArg(clKernelMatNPMin, 1, Sizeof.cl_mem, Pointer.to(this.matNPVal));
+
+			clSetKernelArg(clKernelMatNPMax, 1, Sizeof.cl_mem, Pointer.to(this.matNPVal));
+		}
 	}
 
 	final public void mvMult
@@ -156,9 +171,9 @@ public final class PSEMVMult_OCL
 		clEnqueueWriteBuffer(clCommandQueueMax(), maxMem, true, 0, Sizeof.cl_double * stCnt, Pointer.to(max)
 			, 0, null, null);
 
-		final long[] lws = new long[]{oclProgram.clLocalWorkSize(1024)};
-		final long[] gwsIO = new long[]{leastGreaterMultiple(matIORowCnt, lws[0])};
-		final long[] gwsNP = new long[]{leastGreaterMultiple(matNPRowCnt, lws[0])};
+		final long[] lws = new long[]{OCLProgram.localWorkSize(1024)};
+		final long[] gwsIO = new long[]{leastGreaterMultiple(this.topo.matIORowCnt, lws[0])};
+		final long[] gwsNP = new long[]{leastGreaterMultiple(this.topo.matNPRowCnt, lws[0])};
 		final long[] gwsSum = new long[]{leastGreaterMultiple(stCnt, lws[0])};
 
 		for (int i = 0; i < iterationCnt; ++i) {
@@ -233,13 +248,7 @@ public final class PSEMVMult_OCL
 	{
 		clReleaseMemObject(matIOLowerVal);
 		clReleaseMemObject(matIOUpperVal);
-		clReleaseMemObject(matIOCol);
-		clReleaseMemObject(matIORow);
-		clReleaseMemObject(matIORowBeg);
 		clReleaseMemObject(matNPVal);
-		clReleaseMemObject(matNPCol);
-		clReleaseMemObject(matNPRow);
-		clReleaseMemObject(matNPRowBeg);
 		clReleaseMemObject(minMem1);
 		clReleaseMemObject(minMem2);
 		clReleaseMemObject(maxMem1);
@@ -254,7 +263,8 @@ public final class PSEMVMult_OCL
 		clReleaseKernel(clKernelSumMax);
 		clReleaseCommandQueue(clCommandQueueMin);
 		clReleaseCommandQueue(clCommandQueueMax);
-		oclProgram.release();
+		clReleaseContext(clContext);
+		clReleaseProgram(clProgram);
 	}
 
 	private static long leastGreaterMultiple(long x, long z)
@@ -273,14 +283,15 @@ public final class PSEMVMult_OCL
 
 	final private cl_command_queue clCommandQueueMin() { return clCommandQueueMin; }
 	final private cl_command_queue clCommandQueueMax() { return clCommandQueueMax; }
-	final private cl_context clContext() { return oclProgram.getContext(); }
+	final private cl_context clContext() { return clContext; }
 
 	final private int stCnt;
-
+	final private PSEMVMultTopology_OCL topo;
 	final private boolean enabledMatIO;
 	final private boolean enabledMatNP;
 
-	final private OCLProgram oclProgram;
+	final private cl_program clProgram;
+	final private cl_context clContext;
 	final private cl_command_queue clCommandQueueMin;
 	final private cl_command_queue clCommandQueueMax;
 
@@ -298,18 +309,10 @@ public final class PSEMVMult_OCL
 	final private double   weightDef;
 	final private int      weightOff;
 
-	private final int matIORowCnt;
 	private cl_mem matIOLowerVal;
 	private cl_mem matIOUpperVal;
-	private cl_mem matIOCol;
-	private cl_mem matIORow;
-	private cl_mem matIORowBeg;
 
-	private final int matNPRowCnt;
 	private cl_mem matNPVal;
-	private cl_mem matNPCol;
-	private cl_mem matNPRow;
-	private cl_mem matNPRowBeg;
 
 	final private cl_mem minMem1;
 	final private cl_mem minMem2;

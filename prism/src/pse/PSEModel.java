@@ -86,9 +86,7 @@ public final class PSEModel extends ModelExplicit
 	final private boolean useOpenCL;
 
 	private PSEVMMult modelVM;
-	private PSEVMMult_OCL modelVM_GPU;
-	private PSEMVMult modelMV;
-	private PSEMVMult_OCL modelMV_GPU;
+	private PSEVMMult_OCL modelVM_OCL;
 
 	/**
 	 * Constructs a new parametric model.
@@ -239,6 +237,8 @@ public final class PSEModel extends ModelExplicit
 		s += "Transitions: " + getNumTransitions() + "\n";
 		return s;
 	}
+
+	boolean useOpenCL() { return useOpenCL; }
 
 	/**
 	 * Allocates memory for subsequent construction of model. 
@@ -610,9 +610,9 @@ public final class PSEModel extends ModelExplicit
 	    matIOTrgBeg[numStates] = matIOPos;
 
 		if (useOpenCL) {
-			if (modelVM_GPU != null) { modelVM_GPU.release(); }
+			if (modelVM_OCL != null) { modelVM_OCL.release(); }
 
-			modelVM_GPU = new PSEVMMult_OCL
+			modelVM_OCL = new PSEVMMult_OCL
 				(numStates, numTransitions
 					, matIOLowerVal0.data()
 					, matIOLowerVal1.data()
@@ -665,15 +665,15 @@ public final class PSEModel extends ModelExplicit
 		}
 	}
 
-	/**
-	 * @param subset only do multiplication for these rows (null means "all")
-	 * @param complement if true, {@code subset} is taken to be its complement
-	 */
-	final public void prepareForMV
+	final public void createMVMult_OCL
 		( BitSet subset, boolean complement
 		, double[] weight
 		, double   weightDef
 		, int      weightOff
+
+		, Output<PSEMVMult_OCL> mult
+		, Output<PSEMVMultTopology_OCL> topo
+		, PSEMVMultSettings_OCL opts
 		)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
@@ -698,15 +698,15 @@ public final class PSEModel extends ModelExplicit
 		int matNPPos = 0;
 
 		int rowCntAll = 0;
-		int matRowCnt = 0;
-		int matValCnt = 0;
-		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matExplicit =
-				new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
-		for (int i = 0; i < numStates; ++i) matExplicit.add(null);
+		int matIORowCnt = 0;
+		int matIOValCnt = 0;
+		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matIOExplicit =
+			new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
+		for (int i = 0; i < numStates; ++i) matIOExplicit.add(null);
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
 		{
 			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
-			matExplicit.set(state, matRow);
+			matIOExplicit.set(state, matRow);
 			matNPRow[rowCntAll] = state;
 			matNPRowBeg[rowCntAll] = matNPPos;
 
@@ -764,8 +764,8 @@ public final class PSEModel extends ModelExplicit
 			}
 			if (!matRow.isEmpty())
 			{
-				++matRowCnt;
-				matValCnt += matRow.size();
+				++matIORowCnt;
+				matIOValCnt += matRow.size();
 			}
 
 			int ps = matNPVal.size();
@@ -786,95 +786,250 @@ public final class PSEModel extends ModelExplicit
 		}
 		matNPRowBeg[rowCntAll] = matNPPos;
 
-		double[] matLowerVal = new double[matValCnt];
-		double[] matUpperVal = new double[matValCnt];
-		int[] matCol = new int[matValCnt];
-		int[] matRow = new int[matRowCnt];
-		int[] matRowBeg = new int[matRowCnt + 1];
+		double[] matIOLowerVal = new double[matIOValCnt];
+		double[] matIOUpperVal = new double[matIOValCnt];
+		int[] matIOCol = new int[matIOValCnt];
+		int[] matIORow = new int[matIORowCnt];
+		int[] matIORowBeg = new int[matIORowCnt + 1];
 		int matPos = 0;
 
-		matRowCnt = 0;
+		matIORowCnt = 0;
 		for (int row = 0; row < numStates; ++row)
 		{
-			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matExplicit.get(row);
+			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matIOExplicit.get(row);
 			if (matExplicitRow == null || matExplicitRow.isEmpty())
 			{
 				continue;
 			}
 
-			matRow[matRowCnt] = row;
-			matRowBeg[matRowCnt] = matPos;
+			matIORow[matIORowCnt] = row;
+			matIORowBeg[matIORowCnt] = matPos;
 
 			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
 			{
-				matCol[matPos] = e.getKey();
-				matLowerVal[matPos] = e.getValue().first;
-				matUpperVal[matPos] = e.getValue().second;
+				matIOCol[matPos] = e.getKey();
+				matIOLowerVal[matPos] = e.getValue().first;
+				matIOUpperVal[matPos] = e.getValue().second;
 				++matPos;
 			}
-			++matRowCnt;
+			++matIORowCnt;
 		}
-		matRowBeg[matRowCnt] = matPos;
+		matIORowBeg[matIORowCnt] = matPos;
+		if (topo.value == null)
+		{
+			topo.value = new PSEMVMultTopology_OCL
+				( matIOCol
+				, matIORow
+				, matIORowBeg
+				, matIORowCnt
+				, matNPCol.data()
+				, matNPRow
+				, matNPRowBeg
+				, matNPRowCnt
+				, opts.clContext
+				);
+		}
 
-		if (useOpenCL) {
-			if (modelMV_GPU != null) modelVM_GPU.release();
-			modelMV_GPU = new PSEMVMult_OCL
+		if (mult.value == null)
+		{
+			mult.value = new PSEMVMult_OCL
 				( numStates
-					, matLowerVal
-					, matUpperVal
-					, matCol
-					, matRow
-					, matRowBeg
-					, matRowCnt
-
-					, matNPVal.data()
-					, matNPCol.data()
-					, matNPRow
-					, matNPRowBeg
-					, matNPRowCnt
-
-					, weight
-					, weightDef
-					, weightOff
+				, matIOLowerVal
+				, matIOUpperVal
+				, matNPVal.data()
+				, weight
+				, weightDef
+				, weightOff
+				, topo.value
+				, opts
 				);
 		}
-		else {
-			modelMV = new PSEMVMult
-				(numStates
-					, matLowerVal
-					, matUpperVal
-					, matCol
-					, matRow
-					, matRowBeg
-					, matRowCnt
-
-					, matNPVal.data()
-					, matNPCol.data()
-					, matNPRow
-					, matNPRowBeg
-					, matNPRowCnt
-
-					, weight
-					, weightDef
-					, weightOff
-				);
+		else
+		{
+			mult.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
 		}
 	}
 
-	final public void getMVSum(final double[] sumMin, final double[] sumMax)
+	final public void createMVMult_CPU
+		(BitSet subset, boolean complement
+			, double[] weight
+			, double weightDef
+			, int weightOff
+
+			, Output<PSEMVMult_CPU> mult
+		)
 	{
-		if (useOpenCL) {
-			modelMV_GPU.getSum(sumMin, sumMax);
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+
+		if (subset == null) {
+			// Loop over all states
+			subset = new BitSet(numStates);
+			subset.set(0, numStates - 1);
+		} else {
+			subset = (BitSet)subset.clone();
 		}
-		else {
-			modelMV.getSum(sumMin, sumMax);
+
+		if (complement) {
+			subset.flip(0, numStates - 1);
+		}
+
+		VectorOfDouble matNPVal = new VectorOfDouble();
+		VectorOfInt matNPCol = new VectorOfInt();
+		int matNPRowCnt = subset.cardinality();
+		int[] matNPRow = new int [matNPRowCnt];
+		int[] matNPRowBeg = new int [matNPRowCnt + 1];
+		int matNPPos = 0;
+
+		int rowCntAll = 0;
+		int matIORowCnt = 0;
+		int matIOValCnt = 0;
+		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matIOExplicit =
+				new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
+		for (int i = 0; i < numStates; ++i) matIOExplicit.add(null);
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
+		{
+			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
+			matIOExplicit.set(state, matRow);
+			matNPRow[rowCntAll] = state;
+			matNPRowBeg[rowCntAll] = matNPPos;
+
+			List<Integer> stTrsO = trsO.get(state);
+			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+			List<Integer> stTrsNP = trsNPBySrc.get(state);
+
+			for (int t : stTrsO)
+			{
+				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+				final int col = trStTrg[t];
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+				}
+			}
+
+			for (Pair<Integer, Integer> p : stTrsIO)
+			{
+				final int t0 = p.first;
+				final int t1 = p.second;
+				final int v0 = trStSrc[t0];
+				final int v1 = trStTrg[t0]; // == trStSrc[t1] == state
+				final int v2 = trStTrg[t1];
+
+				double valLower = 0;
+				double valUpper = 0;
+				if (!subset.get(v0))
+				{
+					valLower = trRateLower[t0] * trRatePopul[t0] * qrec;
+					valUpper = trRateUpper[t0] * trRatePopul[t0] * qrec;
+				}
+				else
+				{
+					valLower = trRateLower[t1] * trRatePopul[t1] * qrec;
+					valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
+				}
+
+				final int col = v2;
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+				}
+			}
+			if (!matRow.isEmpty())
+			{
+				++matIORowCnt;
+				matIOValCnt += matRow.size();
+			}
+
+			int ps = matNPVal.size();
+			for (int t : stTrsNP)
+			{
+				int v0 = trStSrc[t]; // == state
+				int v1 = trStTrg[t];
+				final double val = trRateLower[t] * trRatePopul[t] * qrec;
+
+				if (val != 0)
+				{
+					matNPVal.pushBack(val);
+					matNPCol.pushBack(v1);
+					++matNPPos;
+				}
+			}
+			++rowCntAll;
+		}
+		matNPRowBeg[rowCntAll] = matNPPos;
+
+		double[] matIOLowerVal = new double[matIOValCnt];
+		double[] matIOUpperVal = new double[matIOValCnt];
+		int[] matIOCol = new int[matIOValCnt];
+		int[] matIORow = new int[matIORowCnt];
+		int[] matIORowBeg = new int[matIORowCnt + 1];
+		int matPos = 0;
+
+		matIORowCnt = 0;
+		for (int row = 0; row < numStates; ++row)
+		{
+			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matIOExplicit.get(row);
+			if (matExplicitRow == null || matExplicitRow.isEmpty())
+			{
+				continue;
+			}
+
+			matIORow[matIORowCnt] = row;
+			matIORowBeg[matIORowCnt] = matPos;
+
+			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
+			{
+				matIOCol[matPos] = e.getKey();
+				matIOLowerVal[matPos] = e.getValue().first;
+				matIOUpperVal[matPos] = e.getValue().second;
+				++matPos;
+			}
+			++matIORowCnt;
+		}
+		matIORowBeg[matIORowCnt] = matPos;
+
+		if (mult.value == null) {
+			mult.value = new PSEMVMult_CPU
+				(numStates
+					, matIOLowerVal
+					, matIOUpperVal
+					, matIOCol
+					, matIORow
+					, matIORowBeg
+					, matIORowCnt
+
+					, matNPVal.data()
+					, matNPCol.data()
+					, matNPRow
+					, matNPRowBeg
+					, matNPRowCnt
+
+					, weight
+					, weightDef
+					, weightOff
+				);
+		}
+		else
+		{
+			mult.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
 		}
 	}
 
 	final public void getVMSum(final double[] sumMin, final double[] sumMax)
 	{
 		if (useOpenCL) {
-			modelVM_GPU.getSum(sumMin, sumMax);
+			modelVM_OCL.getSum(sumMin, sumMax);
 		}
 		else {
 			modelVM.getSum(sumMin, sumMax);
@@ -912,43 +1067,10 @@ public final class PSEModel extends ModelExplicit
 		throws PrismException
 	{
 		if (useOpenCL) {
-			modelVM_GPU.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
+			modelVM_OCL.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
 		}
 		else {
 			modelVM.vmMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
-		}
-	}
-
-	/**
-	 * Does a matrix-vector multiplication for this parametrised CTMC's transition
-	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
-	 * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
-	 * <p>
-	 * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@code vmMult},
-	 * the difference is crucial:  {@code result[k]_i} in {@code vmMult} is simply
-	 * the probability of being in state {@code k} after {@code i} iterations starting
-	 * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
-	 * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
-	 * is reached after {@code i} iterations starting from {@code k}.
-	 *
-	 * @param vectMin vector to multiply by when computing minimised result
-	 * @param resultMin vector to store minimised result in
-	 * @param vectMax vector to multiply by when computing maximised result
-	 * @param resultMax vector to store maximised result in
-	 * @see #vmMult(double[], double[], double[], double[], int)
-	 */
-	public void mvMult
-		( final double vectMin[], final double resultMin[]
-		, final double vectMax[], final double resultMax[]
-		, final int iterationCnt
-		)
-		throws PrismException
-	{
-		if (useOpenCL) {
-			modelMV_GPU.mvMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
-		}
-		else {
-			modelMV.mvMult(vectMin, resultMin, vectMax, resultMax, iterationCnt);
 		}
 	}
 
@@ -969,9 +1091,7 @@ public final class PSEModel extends ModelExplicit
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
 		modelVM = null;
-		modelVM_GPU = null;
-		modelMV = null;
-		modelMV_GPU = null;
+		modelVM_OCL = null;
 	}
 
 	/**
