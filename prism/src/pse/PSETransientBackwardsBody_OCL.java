@@ -11,6 +11,16 @@ import static org.jocl.CL.*;
 
 public final class PSETransientBackwardsBody_OCL implements PSETransientBackwardsBody
 {
+	public PSETransientBackwardsBody_OCL(int n)
+	{
+		solnMin = new double[n];
+		soln2Min = new double[n];
+		sumMin = new double[n];
+		solnMax = new double[n];
+		soln2Max = new double[n];
+		sumMax = new double[n];
+	}
+
 	public int doWork
 		( PSEModel model
 
@@ -48,14 +58,16 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 		double[] tmpsoln;
 
 		Output<PSEMVMultTopology_OCL> topo = new Output<PSEMVMultTopology_OCL>();
-		Output<PSEMVMult_OCL> mult = new Output<PSEMVMult_OCL>();
+		Output<PSEMVMult_OCL>[] mult_ = new Output[]{new Output<PSEMVMult_OCL>()};
 		PSEMVMultSettings_OCL opts = new PSEMVMultSettings_OCL();
 		cl_platform_id[] clPlatformIds = OCLProgram.getPlatformIds();
 		cl_device_id[] clDeviceIds = OCLProgram.getDeviceIds(clPlatformIds[0], CL_DEVICE_TYPE_ALL);
 		opts.clDeviceIdMax = clDeviceIds[0];
 		opts.clDeviceIdMin = clDeviceIds[0];
 		opts.clContext = OCLProgram.createContext(clPlatformIds[0], new cl_device_id[]{clDeviceIds[0]});
-		model.createMVMult_OCL(subset, complement, weight, weightDef, fgL, mult, topo, opts);
+		model.createMVMult_OCL(subset, complement, weight, weightDef, fgL, opts, topo, mult_);
+
+		PSEMVMult_OCL mult = mult_[0].value;
 		for (Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : in) {
 			BoxRegion region = entry.getKey();
 
@@ -71,7 +83,7 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 
 			// Configure parameter space
 			model.configureParameterSpace(region);
-			model.createMVMult_OCL(subset, complement, weight, weightDef, fgL, mult, topo, opts);
+			model.createMVMult_OCL(subset, complement, weight, weightDef, fgL, opts, topo, mult_);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
@@ -93,7 +105,7 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 			}
 
 			// Matrix-vector multiply
-			mult.value.mvMult(solnMin, soln2Min, solnMax, soln2Max, fgL);
+			mult.mvMult(solnMin, soln2Min, solnMax, soln2Max, fgL);
 			iters = fgL;
 			itersTotal += fgL;
 
@@ -107,7 +119,7 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 			// Start iterations
 			while (iters <= fgR) {
 				// Add to sum
-				mult.value.getSum(sumMin, sumMax);
+				mult.getSum(sumMin, sumMax);
 				decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
 
 				// Matrix-vector multiply
@@ -120,7 +132,7 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 				{
 					break;
 				}
-				mult.value.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
+				mult.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
@@ -142,4 +154,10 @@ public final class PSETransientBackwardsBody_OCL implements PSETransientBackward
 		}
 		return itersTotal;
 	}
+	final private double[] solnMin;
+	final private double[] soln2Min;
+	final private double[] sumMin;
+	final private double[] solnMax;
+	final private double[] soln2Max;
+	final private double[] sumMax;
 }

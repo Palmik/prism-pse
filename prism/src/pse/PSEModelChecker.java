@@ -764,7 +764,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		PSETransientBackwardsBody body;
 		if (model.useOpenCL()) {
-			body = new PSETransientBackwardsBody_OCL();
+			body = new PSETransientBackwardsBody_OCL(model.getNumStates());
 		} else {
 			body = new PSETransientBackwardsBody_CPU();
 		}

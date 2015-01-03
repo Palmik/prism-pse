@@ -80,6 +80,7 @@ public final class OCLProgram
 		clGetDeviceIDs(clPlatformId, clDeviceType, clDevicesCnt[0], clDevices, null);
 
 		return clDevices;
+
 	}
 
 	public static cl_context createContext(cl_platform_id clPlatformId, cl_device_id[] clDeviceIds)

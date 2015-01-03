@@ -671,9 +671,9 @@ public final class PSEModel extends ModelExplicit
 		, double   weightDef
 		, int      weightOff
 
-		, Output<PSEMVMult_OCL> mult
-		, Output<PSEMVMultTopology_OCL> topo
 		, PSEMVMultSettings_OCL opts
+		, Output<PSEMVMultTopology_OCL> topo
+		, Output<PSEMVMult_OCL>[] mult
 		)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
@@ -830,23 +830,22 @@ public final class PSEModel extends ModelExplicit
 				);
 		}
 
-		if (mult.value == null)
-		{
-			mult.value = new PSEMVMult_OCL
-				( numStates
-				, matIOLowerVal
-				, matIOUpperVal
-				, matNPVal.data()
-				, weight
-				, weightDef
-				, weightOff
-				, topo.value
-				, opts
-				);
-		}
-		else
-		{
-			mult.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
+		for (Output<PSEMVMult_OCL> m : mult) {
+			if (m.value == null) {
+				m.value = new PSEMVMult_OCL
+					(numStates
+						, matIOLowerVal
+						, matIOUpperVal
+						, matNPVal.data()
+						, weight
+						, weightDef
+						, weightOff
+						, topo.value
+						, opts
+					);
+			} else {
+				m.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
+			}
 		}
 	}
 
@@ -856,7 +855,7 @@ public final class PSEModel extends ModelExplicit
 			, double weightDef
 			, int weightOff
 
-			, Output<PSEMVMult_CPU> mult
+			, Output<PSEMVMult_CPU>[] mult
 		)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
@@ -999,9 +998,10 @@ public final class PSEModel extends ModelExplicit
 		}
 		matIORowBeg[matIORowCnt] = matPos;
 
-		if (mult.value == null) {
-			mult.value = new PSEMVMult_CPU
-				(numStates
+		for (Output<PSEMVMult_CPU> m : mult) {
+			if (m.value == null) {
+				m.value = new PSEMVMult_CPU
+					( numStates
 					, matIOLowerVal
 					, matIOUpperVal
 					, matIOCol
@@ -1018,11 +1018,10 @@ public final class PSEModel extends ModelExplicit
 					, weight
 					, weightDef
 					, weightOff
-				);
-		}
-		else
-		{
-			mult.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
+					);
+			} else {
+				m.value.update(matIOLowerVal, matIOUpperVal, matNPVal.data());
+			}
 		}
 	}
 

@@ -44,8 +44,9 @@ public final class PSETransientBackwardsBody_CPU implements PSETransientBackward
 		double[] sumMax = new double[n];
 		double[] tmpsoln;
 
-		Output<PSEMVMult_CPU> mult = new Output<PSEMVMult_CPU>();
-		model.createMVMult_CPU(subset, complement, weight, weightDef, fgL, mult);
+		Output<PSEMVMult_CPU>[] mult_ = new Output[]{new Output<PSEMVMult_CPU>()};
+		model.createMVMult_CPU(subset, complement, weight, weightDef, fgL, mult_);
+		PSEMVMult_CPU mult = mult_[0].value;
 		for (Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : in) {
 			BoxRegion region = entry.getKey();
 
@@ -61,7 +62,7 @@ public final class PSETransientBackwardsBody_CPU implements PSETransientBackward
 
 			// Configure parameter space
 			model.configureParameterSpace(region);
-			model.createMVMult_CPU(subset, complement, weight, weightDef, fgL, mult);
+			model.createMVMult_CPU(subset, complement, weight, weightDef, fgL, mult_);
 			mainLog.println("Computing probabilities for parameter region " + region);
 
 			// Create solution vectors
@@ -83,7 +84,7 @@ public final class PSETransientBackwardsBody_CPU implements PSETransientBackward
 			}
 
 			// Matrix-vector multiply
-			mult.value.mvMult(solnMin, soln2Min, solnMax, soln2Max, fgL);
+			mult.mvMult(solnMin, soln2Min, solnMax, soln2Max, fgL);
 			iters = fgL;
 			itersTotal += fgL;
 
@@ -97,7 +98,7 @@ public final class PSETransientBackwardsBody_CPU implements PSETransientBackward
 			// Start iterations
 			while (iters <= fgR) {
 				// Add to sum
-				mult.value.getSum(sumMin, sumMax);
+				mult.getSum(sumMin, sumMax);
 				decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
 
 				// Matrix-vector multiply
@@ -110,7 +111,7 @@ public final class PSETransientBackwardsBody_CPU implements PSETransientBackward
 				{
 					break;
 				}
-				mult.value.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
+				mult.mvMult(solnMin, soln2Min, solnMax, soln2Max, numIters);
 
 				// Swap vectors for next iter
 				tmpsoln = solnMin;
