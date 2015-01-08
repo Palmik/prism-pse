@@ -5,11 +5,11 @@ import org.jocl.cl_platform_id;
 import prism.PrismException;
 import prism.PrismLog;
 
-import java.util.BitSet;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.jocl.CL.CL_DEVICE_TYPE_ALL;
 
@@ -17,6 +17,7 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 {
 	public final class Worker implements Runnable
 	{
+
 		public Worker
 			( PSEModel model
 			, Lock modelLock
@@ -79,9 +80,6 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 			solnMax = new double[n];
 			soln2Max = new double[n];
 			sumMax = new double[n];
-
-			decompositionNeeded = false;
-
 		}
 
 		@Override
@@ -152,7 +150,7 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 					while (iters <= fgR) {
 						// Add to sum
 						mult.getSum(sumMin, sumMax);
-						decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
+						decompositionProcedure.examinePartialComputation(null /* out */, region, sumMin, sumMax);
 
 						// Matrix-vector multiply
 						int numIters = itersCheckInterval;
@@ -177,7 +175,7 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 					}
 
 					// Examine this region's result after all the iters have been finished
-					decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
+					decompositionProcedure.examinePartialComputation(null /* out */, region, sumMin, sumMax);
 
 					// Store result
 					outLock.lock();
@@ -185,13 +183,22 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 					outLock.unlock();
 				}
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
-				decompositionNeeded = true;
+				decompositionNeededException = e;
 			} catch (PrismException e) {
-
+				prismException = e;
 			}
 		}
 
-		private boolean decompositionNeeded;
+		public DecompositionProcedure.DecompositionNeeded getDecompositionNeededException() {
+			return decompositionNeededException;
+		}
+
+		public PrismException getPrismException() {
+			return prismException;
+		}
+
+		private DecompositionProcedure.DecompositionNeeded decompositionNeededException;
+		private PrismException prismException;
 
 		private double[] solnMin;
 		private double[] soln2Min;
@@ -251,20 +258,11 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 		, PrismLog mainLog
 		) throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
-		final int n = model.getNumStates();
-
-		int iters;
 		int itersTotal = 0;
 
-		double[] solnMin = new double[n];
-		double[] soln2Min = new double[n];
-		double[] sumMin = new double[n];
-		double[] solnMax = new double[n];
-		double[] soln2Max = new double[n];
-		double[] sumMax = new double[n];
-		double[] tmpsoln;
-
+		// TODO: Base this on number of states.
 		int multCnt = Math.min(in.size(), 2);
+
 		Output<PSEMVMultTopology_OCL> topo = new Output<PSEMVMultTopology_OCL>();
 		Output<PSEMVMult_OCL>[] mult = new Output[multCnt];
 		for (int i = 0; i < mult.length; ++i) {
@@ -278,12 +276,78 @@ public final class PSETransientBackwardsBody_OCL_Multi implements PSETransientBa
 		opts.clDeviceIdMin = clDeviceIds[0];
 		opts.clContext = OCLProgram.createContext(clPlatformIds[0], new cl_device_id[]{clDeviceIds[0]});
 		model.createMVMult_OCL(subset, complement, weight, weightDef, fgL, opts, topo, mult);
-		Thread[] workers = new Thread[mult.length];
-		for (int i = 0; i < workers.length; ++i) {
-			workers[i] = new Worker
-				( 
-				)
+		Lock modelLock = new ReentrantLock();
+		Lock outLock = new ReentrantLock();
+
+		BlockingQueue<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> inQueue =
+			new LinkedBlockingQueue<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>>(Math.max(20, in.size() * 2));
+		for (Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> e : in) {
+			try {
+				inQueue.put(e);
+			} catch (InterruptedException err) {
+				throw new PrismException("TransientBackwardsBody_OCL_Multi -- could not construct the input queue");
+			}
 		}
+
+		this.worker = new Worker[mult.length];
+		this.workerThread = new Thread[mult.length];
+		for (int i = 0; i < workerThread.length; ++i) {
+			worker[i] = new Worker
+				( model
+				, modelLock
+				, opts
+				, topo.value
+			    , mult[i].value
+			    , targetMin
+				, targetMax
+				, subset, complement
+				, weight
+				, weightDef
+				, fgL
+				, fgR
+				, itersCheckInterval
+				, decompositionProcedure
+				, inQueue
+				, outPrev
+				, out
+				, outLock
+				, mainLog
+				);
+			workerThread[i] = new Thread(worker[i]);
+		}
+		for (Thread w : workerThread) {
+			try {
+				w.join();
+			} catch (InterruptedException err) {
+				throw new PrismException("TransientBackwardsBody_OCL_Multi -- could not join the threads");
+			}
+		}
+
+		LabelledBoxRegions regionsToDecompose = null;
+		for (Worker w : worker) {
+			DecompositionProcedure.DecompositionNeeded decompositionNeeded = w.getDecompositionNeededException();
+			if (decompositionNeeded != null) {
+				if (regionsToDecompose == null) {
+					regionsToDecompose = new LabelledBoxRegions();
+				}
+				for (BoxRegion region : decompositionNeeded.getRegionsToDecompose()) {
+					regionsToDecompose.add(region, "inaccurate region");
+				}
+			}
+		}
+		if (regionsToDecompose != null) {
+			throw new DecompositionProcedure.DecompositionNeeded("significant inaccuracy", regionsToDecompose);
+		}
+
+		for (Worker w : worker) {
+			if (w.getPrismException() != null) {
+				throw w.getPrismException();
+			}
+		}
+
 		return itersTotal;
 	}
+
+	private Worker[] worker;
+	private Thread[] workerThread;
 }

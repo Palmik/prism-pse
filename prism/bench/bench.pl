@@ -57,6 +57,10 @@ sub run_prism_bench
 
 sub main
 {
+  if (scalar @ARGV != 2) {
+    print "Usage: $0 <path to bench definition> <number of repetitions>\n";
+    return;
+  }
   my $def = do $ARGV[0];
   if (my $err = $@)
   {
