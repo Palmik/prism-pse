@@ -29,21 +29,12 @@ package pse;
 
 import java.io.File;
 import java.util.BitSet;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import parser.Values;
-import parser.ast.Expression;
-import parser.ast.ExpressionFilter;
+import parser.ast.*;
 import parser.ast.ExpressionFilter.FilterOperator;
-import parser.ast.ExpressionLabel;
-import parser.ast.ExpressionProb;
-import parser.ast.ExpressionReward;
-import parser.ast.ExpressionTemporal;
-import parser.ast.ExpressionUnaryOp;
-import parser.ast.ModulesFile;
-import parser.ast.PropertiesFile;
-import parser.ast.RelOp;
-import parser.ast.RewardStruct;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
 import prism.PrismComponent;
@@ -690,21 +681,18 @@ public final class PSEModelChecker extends PrismComponent
 	 * @see PSEModel#mvMult
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
-			BitSet targetMin, BitSet nonAbsMin, BitSet targetMax, BitSet nonAbsMax,
+			final BitSet targetMin, final BitSet nonAbsMin, final BitSet targetMax, final BitSet nonAbsMax,
 			double t, BoxRegionValues multProbs, DecompositionProcedure decompositionProcedure,
 			BoxRegionValues previousResult, boolean negate)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, iters, totalIters;
-		double solnMin[], soln2Min[], sumMin[];
-		double solnMax[], soln2Max[], sumMax[];
-		double tmpsoln[];
+		int i, n;
 		long timer;
 		// Fox-Glynn stuff
 		FoxGlynn fg;
 		int left, right;
-		double termCritParam, q, qt, acc, weights[], totalWeight;
+		double termCritParam, q, qt, acc, weight[], totalWeight;
 
 		assert nonAbsMin.equals(nonAbsMax);
 		BitSet nonAbs = nonAbsMin;
@@ -717,6 +705,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Optimisations: If (nonAbs is empty or t = 0) and multProbs is all ones, this is easy.
 		if ((nonAbs != null && nonAbs.isEmpty()) || (t == 0)) {
+			double[] solnMin, solnMax;
 			if (multProbs.isAllOnes()) {
 				for (BoxRegion region : multProbs.keySet()) {
 					if (previousResult.hasRegion(region)) {
@@ -749,10 +738,10 @@ public final class PSEModelChecker extends PrismComponent
 		right = fg.getRightTruncationPoint();
 		if (right < 0)
 			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		weights = fg.getWeights();
+		weight = fg.getWeights();
 		totalWeight = fg.getTotalWeight();
 		for (i = left; i <= right; i++) {
-			weights[i - left] /= totalWeight;
+			weight[i - left] /= totalWeight;
 		}
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 		mainLog.println();
@@ -760,84 +749,27 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		totalIters = 0;
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
-			BoxRegion region = entry.getKey();
-
-			// If the previous region values contain probs for this region, i.e. the region
-			// has not been decomposed, then just use the previous result directly.
-			if (previousResult.hasRegion(region)) {
-				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
-				continue;
-			}
-
-			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
-			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
-
-			// Configure parameter space
-			model.evaluateParameters(region);
-			model.prepareForMV(nonAbs, false);
-			mainLog.println("Computing probabilities for parameter region " + region);
-
-			// Create solution vectors
-			solnMin = new double[n];
-			soln2Min = new double[n];
-			sumMin = new double[n];
-			solnMax = new double[n];
-			soln2Max = new double[n];
-			sumMax = new double[n];
-
-			// Initialise solution vectors.
-			// Vectors soln/soln2 are multProbs[i] for target states.
-			// Vector sum is all zeros (done by array creation).
-			for (i = 0; i < n; i++) {
-				solnMin[i] = soln2Min[i] = targetMin.get(i) ? multProbsMin[i] : 0.0;
-				solnMax[i] = soln2Max[i] = targetMax.get(i) ? multProbsMax[i] : 0.0;
-			}
-
-			// If necessary, do 0th element of summation (doesn't require any matrix powers)
-			if (left == 0) {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[0] * solnMin[i];
-					sumMax[i] += weights[0] * solnMax[i];
+		PSEMultManager multManager = Utility.makeMVMultManager(model, nonAbs, false);
+		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		{
+			@Override
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			{
+				final double[] inMin = entry.getValue().getMin().getDoubleArray();
+				final double[] inMax = entry.getValue().getMax().getDoubleArray();
+				for (int i = 0; i < solnMin.length; i++) {
+					solnMin[i] = targetMin.get(i) ? inMin[i] : 0.0;
+					solnMax[i] = targetMax.get(i) ? inMax[i] : 0.0;
 				}
 			}
+		};
 
-			// Start iterations
-			iters = 1;
-			while (iters <= right) {
-				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
-
-				// Swap vectors for next iter
-				tmpsoln = solnMin;
-				solnMin = soln2Min;
-				soln2Min = tmpsoln;
-				tmpsoln = solnMax;
-				solnMax = soln2Max;
-				soln2Max = tmpsoln;
-
-				// Add to sum
-				if (iters >= left) {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];
-					}
-					// After a number of iters (default 50), examine the partially computed result
-					if (iters % numItersExaminePartial == 0) {
-						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-					}
-				}
-
-				iters++;
-				totalIters++;
-			}
-
-			// Examine this region's result after all the iters have been finished
-			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-			// Store result
-			regionValues.put(region, sumMin, sumMax);
+		int totalIters = 0;
+		try {
+			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weight, 0, left, right,
+				numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues, mainLog);
+		} finally {
+			multManager.release();
 		}
 
 		// Negate if necessary
@@ -959,15 +891,12 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 */
 	public BoxRegionValues computeCumulativeRewards(PSEModel model,
-			MCRewards mcRewards, double t, BoxRegionValues multProbs,
+			final MCRewards mcRewards, double t, BoxRegionValues multProbs,
 			DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, iters, totalIters;
-		double solnMin[], soln2Min[], sumMin[];
-		double solnMax[], soln2Max[], sumMax[];
-		double tmpsoln[];
+		int i, n, totalIters;
 		long timer;
 		// Fox-Glynn stuff
 		FoxGlynn fg;
@@ -1034,110 +963,25 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		totalIters = 0;
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : multProbs) {
-			BoxRegion region = entry.getKey();
-
-			// If the previous region values contain probs for this region, i.e. the region
-			// has not been decomposed, then just use the previous result directly.
-			if (previousResult.hasRegion(region)) {
-				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
-				continue;
-			}
-
-			/*
-			double[] multProbsMin = entry.getValue().getMin().getDoubleArray();
-			double[] multProbsMax = entry.getValue().getMax().getDoubleArray();
-			*/
-
-			// Configure parameter space
-			model.evaluateParameters(region);
-			model.prepareForMV(null, false);
-			mainLog.println("Computing probabilities for parameter region " + region);
-
-			// Create solution vectors
-			solnMin = new double[n];
-			soln2Min = new double[n];
-			sumMin = new double[n];
-			solnMax = new double[n];
-			soln2Max = new double[n];
-			sumMax = new double[n];
-
-			// Initialise solution vectors.
-			for (i = 0; i < n; i++) {
-				solnMin[i] = mcRewards.getStateReward(i);
-				solnMax[i] = mcRewards.getStateReward(i);
-			}
-
-			// do 0th element of summation (doesn't require any matrix powers)
-			if (left == 0) {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[0] * solnMin[i];
-					sumMax[i] += weights[0] * solnMax[i];
-				}
-			} else {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += solnMin[i] / q;
-					sumMax[i] += solnMax[i] / q;
+		PSEMultManager multManager = Utility.makeMVMultManager(model, null, false);
+		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		{
+			@Override
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			{
+				for (int i = 0; i < solnMin.length; i++) {
+					solnMin[i] = mcRewards.getStateReward(i);
+					solnMax[i] = mcRewards.getStateReward(i);
 				}
 			}
+		};
 
-			// Start iterations
-			iters = 1;
-			while (iters <= right) {
-				// Matrix-vector multiply				
-				model.mvMult(solnMin, soln2Min, solnMax, soln2Max);
-
-				// Swap vectors for next iter
-				tmpsoln = solnMin;
-				solnMin = soln2Min;
-				soln2Min = tmpsoln;
-				tmpsoln = solnMax;
-				solnMax = soln2Max;
-				soln2Max = tmpsoln;
-
-				// Add to sum
-				if (iters >= left) {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];
-					}
-				} else {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += solnMin[i] / q;
-						sumMax[i] += solnMax[i] / q;
-					}
-				}
-				
-				// After a number of iters (default 50), examine the partially computed result
-				if (iters % numItersExaminePartial == 0) {
-					decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-				}
-
-				iters++;
-				totalIters++;
-			}
-
-			// Examine this region's result after all the iters have been finished
-			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-			// Store result
-			regionValues.put(region, sumMin, sumMax);
+		try {
+			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weights, 1.0 / q, left, right,
+				numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues, mainLog);
+		} finally {
+			multManager.release();
 		}
-
-		/*
-		// Negate if necessary
-		if (negate) {
-			// Subtract all min/max values from 1 and swap
-			for (BoxRegionValues.StateValuesPair pair: regionValues.values()) {
-				pair.getMin().timesConstant(-1.0);
-				pair.getMin().plusConstant(1.0);
-				pair.getMax().timesConstant(-1.0);
-				pair.getMax().plusConstant(1.0);
-				pair.swap();
-			}
-		}
-		*/
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);
@@ -1214,15 +1058,12 @@ public final class PSEModelChecker extends PrismComponent
 			throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, iters, totalIters;
-		double solnMin[], soln2Min[], sumMin[];
-		double solnMax[], soln2Max[], sumMax[];
-		double tmpsoln[];
+		int i;
 		long timer;
 		// Fox-Glynn stuff
 		FoxGlynn fg;
 		int left, right;
-		double termCritParam, q, qt, acc, weights[], totalWeight;
+		double termCritParam, q, qt, acc, weight[], totalWeight;
 
 		if (previousResult == null) {
 			previousResult = new BoxRegionValues(model);
@@ -1235,9 +1076,6 @@ public final class PSEModelChecker extends PrismComponent
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutTransitions();
 
-		// Store num states
-		n = model.getNumStates();
-
 		// Get uniformisation rate; do Fox-Glynn
 		q = model.getDefaultUniformisationRate();
 		qt = q * t;
@@ -1249,85 +1087,34 @@ public final class PSEModelChecker extends PrismComponent
 		right = fg.getRightTruncationPoint();
 		if (right < 0)
 			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		weights = fg.getWeights();
+		weight = fg.getWeights();
 		totalWeight = fg.getTotalWeight();
 		for (i = left; i <= right; i++)
-			weights[i - left] /= totalWeight;
+			weight[i - left] /= totalWeight;
 		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		totalIters = 0;
-		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : initDist) {
-			BoxRegion region = entry.getKey();
-			
-			// If the previous region values contain probs for this region, i.e. the region
-			// has not been decomposed, then just use the previous result directly.
-			if (previousResult.hasRegion(region)) {
-				regionValues.put(region, previousResult.getMin(region), previousResult.getMax(region));
-				continue;
+		PSEMultManager multManager = Utility.makeVMMultManager(model);
+		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		{
+			@Override
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			{
+				final double[] inMin = entry.getValue().getMin().getDoubleArray();
+				final double[] inMax = entry.getValue().getMax().getDoubleArray();
+				System.arraycopy(inMin, 0, solnMin, 0, solnMin.length);
+				System.arraycopy(inMax, 0, solnMax, 0, solnMax.length);
 			}
+		};
 
-			// Create and initialise solution vectors.
-			// Don't need to do soln2 since will be immediately overwritten.
-			// Vector sum is all zeros (done by array creation).
-			solnMin = entry.getValue().getMin().getDoubleArray().clone();
-			soln2Min = new double[n];
-			sumMin = new double[n];
-			solnMax = entry.getValue().getMax().getDoubleArray().clone();
-			soln2Max = new double[n];
-			sumMax = new double[n];
-
-			// If necessary, do 0th element of summation (doesn't require any matrix powers)
-			if (left == 0) {
-				for (i = 0; i < n; i++) {
-					sumMin[i] += weights[0] * solnMin[i];
-					sumMax[i] += weights[0] * solnMax[i];
-				}
-			}
-
-			// Configure parameter space
-			model.evaluateParameters(region);
-			model.prepareForVM();
-			mainLog.println("Computing probabilities for parameter region " + region);
-
-			// Start iterations
-			iters = 1;
-			totalIters++;
-			while (iters <= right) {
-				// Vector-matrix multiply
-				model.vmMult(solnMin, soln2Min, solnMax, soln2Max);
-
-				// Swap vectors for next iter
-				tmpsoln = solnMin;
-				solnMin = soln2Min;
-				soln2Min = tmpsoln;
-				tmpsoln = solnMax;
-				solnMax = soln2Max;
-				soln2Max = tmpsoln;
-
-				// Add to sum
-				if (iters >= left) {
-					for (i = 0; i < n; i++) {
-						sumMin[i] += weights[iters - left] * solnMin[i];
-						sumMax[i] += weights[iters - left] * solnMax[i];
-					}
-					// After a number of iters (default 50), examine the partially computed result
-					if (iters % numItersExaminePartial == 0) {
-						decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-					}
-				}
-
-				iters++;
-				totalIters++;
-			}
-
-			// Examine this region's result after all the iters have been finished
-			decompositionProcedure.examinePartialComputation(regionValues, region, sumMin, sumMax);
-
-			// Store result
-			regionValues.put(region, sumMin, sumMax);
+		int totalIters = 0;
+		try {
+			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weight, 0, left, right,
+				numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues, mainLog);
+		} finally {
+			multManager.release();
 		}
 
 		// Examine the whole computation after it's completely finished

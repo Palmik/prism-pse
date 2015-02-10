@@ -203,7 +203,7 @@ public abstract class DecompositionProcedure
 	 * Examines wholly computed result.
 	 * 
 	 * @param regionValues proposed final result
-	 * @throws DecompositionNeededif partial result didn't meet the criteria
+	 * @throws DecompositionNeeded if partial result didn't meet the criteria
 	 * characteristic for the decomposition procedure
 	 * @throws PrismException if inner method failed
 	 */

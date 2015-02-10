@@ -448,6 +448,7 @@ public final class PSEModel extends ModelExplicit
 	 */
 	public void computeInOutTransitions()
 	{
+		System.err.printf("State cnt: %s\nTrans cnt: %s\n", numStates, numTransitions);
 		if (trsI != null)
 			return;
 
@@ -493,33 +494,28 @@ public final class PSEModel extends ModelExplicit
 		}
 	}
 
-    final public void prepareForVM()
+    final public PSEVMCreateData_CSR getCreateData_VM_CSR()
 	{
 	    final double qrec = 1.0 / getDefaultUniformisationRate();
 
-	    VectorOfDouble matMinVal = new VectorOfDouble();
-	    VectorOfInt matMinSrc = new VectorOfInt();
-	    int[] matMinTrgBeg = new int [numStates + 1];
-	    int matMinPos = 0;
+	    VectorOfDouble matIMinVal = new VectorOfDouble();
+		VectorOfDouble matIMaxVal = new VectorOfDouble();
+	    VectorOfInt matISrc = new VectorOfInt();
+	    int[] matITrgBeg = new int [numStates + 1];
+	    int matIPos = 0;
 
-	    VectorOfDouble matMaxVal = new VectorOfDouble();
-	    VectorOfInt matMaxSrc = new VectorOfInt();
-	    int[] matMaxTrgBeg = new int [numStates + 1];
-	    int matMaxPos = 0;
-
-	    VectorOfDouble matVal = new VectorOfDouble();
-	    VectorOfInt matSrc = new VectorOfInt();
-	    int[] matTrgBeg = new int [numStates + 1];
+	    VectorOfDouble matNPVal = new VectorOfDouble();
+	    VectorOfInt matNPSrc = new VectorOfInt();
+	    int[] matNPTrgBeg = new int [numStates + 1];
 	    int matPos = 0;
 
-	    double[] matMinDiagVal = new double[numStates];
-	    double[] matMaxDiagVal = new double[numStates];
+	    double[] matNPMinDiagVal = new double[numStates];
+	    double[] matNPMaxDiagVal = new double[numStates];
 	    for (int i = 0; i < numStates; ++i)
 	    {
-		    matMinDiagVal[i] = 1;
-		    matMaxDiagVal[i] = 1;
+		    matNPMinDiagVal[i] = 1;
+		    matNPMaxDiagVal[i] = 1;
 	    }
-
 
 	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
 	    VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
@@ -531,9 +527,8 @@ public final class PSEModel extends ModelExplicit
 
 	    for (int state = 0; state < numStates; ++state)
 	    {
-		    matMinTrgBeg[state] = matMinPos;
-		    matMaxTrgBeg[state] = matMaxPos;
-		    matTrgBeg[state] = matPos;
+		    matITrgBeg[state] = matIPos;
+		    matNPTrgBeg[state] = matPos;
 		    matIOTrgBeg[state] = matIOPos;
 
 		    List<Integer> stTrsI = trsI.get(state);
@@ -579,66 +574,192 @@ public final class PSEModel extends ModelExplicit
 		    {
 			    final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
 			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
-			    if (valMin != 0)
+			    if (valMin != 0 || valMax != 0)
 			    {
-				    matMinVal.pushBack(valMin);
-				    matMinSrc.pushBack(trStSrc[t]);
-				    ++matMinPos;
-			    }
-			    if (valMax != 0)
-			    {
-				    matMaxVal.pushBack(valMax);
-				    matMaxSrc.pushBack(trStSrc[t]);
-				    ++matMaxPos;
+				    matIMinVal.pushBack(valMin);
+				    matIMaxVal.pushBack(valMax);
+				    matISrc.pushBack(trStSrc[t]);
+				    ++matIPos;
 			    }
 		    }
 		    for (Integer t : stTrsO)
 		    {
-			    matMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
-			    matMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
+			    matNPMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
+			    matNPMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
 		    }
 
 		    for (Integer t : stTrsNP)
 		    {
 			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
-			    matMinDiagVal[trStSrc[t]] -= val;
-			    matMaxDiagVal[trStSrc[t]] -= val;
+			    matNPMinDiagVal[trStSrc[t]] -= val;
+			    matNPMaxDiagVal[trStSrc[t]] -= val;
 			    if (val != 0)
 			    {
-				    matVal.pushBack(val);
-				    matSrc.pushBack(trStSrc[t]);
+				    matNPVal.pushBack(val);
+				    matNPSrc.pushBack(trStSrc[t]);
 				    ++matPos;
 			    }
 		    }
 	    }
-	    matMinTrgBeg[numStates] = matMinPos;
-	    matMaxTrgBeg[numStates] = matMaxPos;
-	    matTrgBeg[numStates] = matPos;
+	    matITrgBeg[numStates] = matIPos;
+	    matNPTrgBeg[numStates] = matPos;
 	    matIOTrgBeg[numStates] = matIOPos;
 
-	    modelVM = new PSEModelForVM
-        ( numStates, numTransitions
-        , matIOLowerVal0.data()
-        , matIOLowerVal1.data()
-        , matIOUpperVal0.data()
-        , matIOUpperVal1.data()
-        , matIOSrc.data()
-        , matIOTrgBeg
+		return new PSEVMCreateData_CSR
+			( numStates
+			, matIOLowerVal0.data()
+			, matIOLowerVal1.data()
+			, matIOUpperVal0.data()
+			, matIOUpperVal1.data()
+			, matIOSrc.data()
+			, matIOTrgBeg
 
-        , matMinVal.data()
-        , matMinSrc.data()
-        , matMinTrgBeg
+			, matIMinVal.data()
+			, matIMaxVal.data()
+			, matISrc.data()
+			, matITrgBeg
 
-        , matMaxVal.data()
-        , matMaxSrc.data()
-        , matMaxTrgBeg
+			, matNPMinDiagVal
+			, matNPMaxDiagVal
+			, matNPVal.data()
+			, matNPSrc.data()
+			, matNPTrgBeg
+			);
+	}
 
-        , matMinDiagVal
-        , matMaxDiagVal
-        , matVal.data()
-        , matSrc.data()
-        , matTrgBeg
-        );
+	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset)
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+
+		VectorOfDouble matNPVal = new VectorOfDouble();
+		VectorOfInt matNPCol = new VectorOfInt();
+		int matNPRowCnt = subset.cardinality();
+		int[] matNPRow = new int [matNPRowCnt];
+		int[] matNPRowBeg = new int [matNPRowCnt + 1];
+		int matNPPos = 0;
+
+		int rowCntAll = 0;
+		int matIORowCnt = 0;
+		int matIOValCnt = 0;
+		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matIOExplicit =
+				new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
+		for (int i = 0; i < numStates; ++i) matIOExplicit.add(null);
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
+		{
+			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
+			matIOExplicit.set(state, matRow);
+			matNPRow[rowCntAll] = state;
+			matNPRowBeg[rowCntAll] = matNPPos;
+
+			List<Integer> stTrsO = trsO.get(state);
+			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
+			List<Integer> stTrsNP = trsNPBySrc.get(state);
+
+			for (int t : stTrsO)
+			{
+				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+				final int col = trStTrg[t];
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+				}
+			}
+
+			for (Pair<Integer, Integer> p : stTrsIO)
+			{
+				final int t0 = p.first;
+				final int t1 = p.second;
+				final int v0 = trStSrc[t0];
+				final int v1 = trStTrg[t0]; // == trStSrc[t1] == state
+				final int v2 = trStTrg[t1];
+
+				double valLower = 0;
+				double valUpper = 0;
+				if (!subset.get(v0))
+				{
+					valLower = trRateLower[t0] * trRatePopul[t0] * qrec;
+					valUpper = trRateUpper[t0] * trRatePopul[t0] * qrec;
+				}
+				else
+				{
+					valLower = trRateLower[t1] * trRatePopul[t1] * qrec;
+					valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
+				}
+
+				final int col = v2;
+				if (!(valLower == 0 && valUpper == 0))
+				{
+					Pair<Double, Double> prev = matRow.get(col);
+					double prevLowerVal = 0;
+					if (prev != null) prevLowerVal = prev.first;
+					double prevUpperVal = 0;
+					if (prev != null) prevUpperVal = prev.second;
+					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+				}
+			}
+			if (!matRow.isEmpty())
+			{
+				++matIORowCnt;
+				matIOValCnt += matRow.size();
+			}
+
+			int ps = matNPVal.size();
+			for (int t : stTrsNP)
+			{
+				int v0 = trStSrc[t]; // == state
+				int v1 = trStTrg[t];
+				final double val = trRateLower[t] * trRatePopul[t] * qrec;
+
+				if (val != 0)
+				{
+					matNPVal.pushBack(val);
+					matNPCol.pushBack(v1);
+					++matNPPos;
+				}
+			}
+			++rowCntAll;
+		}
+		matNPRowBeg[rowCntAll] = matNPPos;
+
+		double[] matIOLowerVal = new double[matIOValCnt];
+		double[] matIOUpperVal = new double[matIOValCnt];
+		int[] matIOCol = new int[matIOValCnt];
+		int[] matIORow = new int[matIORowCnt];
+		int[] matIORowBeg = new int[matIORowCnt + 1];
+		int matPos = 0;
+
+		matIORowCnt = 0;
+		for (int row = 0; row < numStates; ++row)
+		{
+			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matIOExplicit.get(row);
+			if (matExplicitRow == null || matExplicitRow.isEmpty())
+			{
+				continue;
+			}
+
+			matIORow[matIORowCnt] = row;
+			matIORowBeg[matIORowCnt] = matPos;
+
+			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
+			{
+				matIOCol[matPos] = e.getKey();
+				matIOLowerVal[matPos] = e.getValue().first;
+				matIOUpperVal[matPos] = e.getValue().second;
+				++matPos;
+			}
+			++matIORowCnt;
+		}
+		matIORowBeg[matIORowCnt] = matPos;
+
+		return new PSEMVCreateData_CSR(numStates,
+				matIOLowerVal, matIOUpperVal, matIOCol, matIORow, matIORowBeg, matIORowCnt,
+				matNPVal.data(), matNPCol.data(), matNPRow, matNPRowBeg, matNPRowCnt);
 	}
 
 	/**
@@ -831,10 +952,10 @@ public final class PSEModel extends ModelExplicit
 	 * probability matrix (uniformised with rate {@code q}) and the vector's min/max
 	 * components ({@code vectMin} and {@code vectMax}, respectively) passed in.
 	 * <p>
-	 * NB: Semantics of {@code mvMult} is <i>not</i> analogical to that of {@code vmMult},
+	 * NB: Semantics of {@code mult} is <i>not</i> analogical to that of {@code vmMult},
 	 * the difference is crucial:  {@code result[k]_i} in {@code vmMult} is simply
 	 * the probability of being in state {@code k} after {@code i} iterations starting
-	 * from the initial state.  On the other hand, {@code mvMult}'s {@code result[k]_i}
+	 * from the initial state.  On the other hand, {@code mult}'s {@code result[k]_i}
 	 * denotes the probability that an absorbing state (i.e., a state not in {@code subset})
 	 * is reached after {@code i} iterations starting from {@code k}.
 	 *
