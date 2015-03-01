@@ -3467,11 +3467,12 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		PSEModelBuilder builder = new PSEModelBuilder(this, explorer);
 		builder.build();
 		PSEModel model = builder.getModel();
-		// Allow builder to be garbage-collected
-		builder = null;
 
 		PSEModelChecker mc = new PSEModelChecker(this);
 		mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+		mc.setExplorer(explorer, builder.getStateArray());
+		// Allow builder to be garbage-collected
+		builder = null;
 
 		// Determine the decomposition procedure
 		pse.DecompositionProcedure decompositionProcedure;

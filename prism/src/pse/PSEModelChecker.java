@@ -29,9 +29,11 @@ package pse;
 
 import java.io.File;
 import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import parser.State;
 import parser.Values;
 import parser.ast.*;
 import parser.ast.ExpressionFilter.FilterOperator;
@@ -70,6 +72,9 @@ public final class PSEModelChecker extends PrismComponent
 	 *  of those expressions that PSE isn't concerned with */
 	private StateModelChecker stateChecker;
 
+	private PSEModelExplorer modelExplorer;
+	private State[] stateArray;
+
 	/**
 	 * Constructor.
 	 */
@@ -97,6 +102,12 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		stateChecker.setModulesFileAndPropertiesFile(modulesFile, propertiesFile);
+	}
+
+	public void setExplorer(PSEModelExplorer modelExplorer, State[] stateArray)
+	{
+		this.modelExplorer = modelExplorer;
+		this.stateArray = stateArray;
 	}
 
 	public ModulesFile getModulesFile()
@@ -815,11 +826,42 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Build rewards
 		mainLog.println("Building reward structure...");
-		ConstructRewards constructRewards = new ConstructRewards(mainLog);
-		MCRewards rewards = constructRewards.buildMCRewardStructure(model, rewStruct, constantValues);
+
+		double[] stateRewards = new double[model.getNumStates()];
+		for (int si = 0; si < stateArray.length; ++si) {
+			State state = stateArray[si];
+			int numTransitions = 0;
+			modelExplorer.queryState(state);
+			numTransitions = modelExplorer.getNumTransitions();
+
+			double sumReward = 0.0;
+			int numStateItems = rewStruct.getNumItems();
+			for (int i = 0; i < numStateItems; i++) {
+				Expression guard = rewStruct.getStates(i);
+				if (guard.evaluateBoolean(constantValues, state)) {
+					double reward = rewStruct.getReward(i).evaluateDouble(constantValues, state);
+					String action = rewStruct.getSynch(i);
+					if (action != null) {
+						for (int j = 0; j < numTransitions; j++) {
+							String tAction = modelExplorer.getTransitionAction(j);
+							if (tAction == null) {
+								tAction = "";
+							}
+							if (tAction.equals(action)) {
+								sumReward += reward * modelExplorer.getTransitionProbability(j).evaluateDouble(constantValues);
+							}
+						}
+					} else {
+						sumReward += reward;
+					}
+				}
+			}
+			stateRewards[si] = sumReward;
+		}
+
 
 		// Compute rewards
-		BoxRegionValues regionValues = checkRewardFormula(model, rewards, expr.getExpression(), decompositionProcedure);
+		BoxRegionValues regionValues = checkRewardFormula(model, stateRewards, expr.getExpression(), decompositionProcedure);
 
 		// For =? properties, just return values
 		if (rb == null) {
@@ -839,7 +881,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute rewards for the contents of an R operator.
 	 */
-	protected BoxRegionValues checkRewardFormula(PSEModel model, MCRewards modelRewards, Expression expr, DecompositionProcedure decompositionProcedure)
+	protected BoxRegionValues checkRewardFormula(PSEModel model, double[] stateRewards, Expression expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		assert expr instanceof ExpressionTemporal : "Unrecognized operator in R operator";
@@ -847,7 +889,7 @@ public final class PSEModelChecker extends PrismComponent
 		ExpressionTemporal exprTemp = (ExpressionTemporal) expr;
 		switch (exprTemp.getOperator()) {
 		case ExpressionTemporal.R_C:
-			return checkRewardCumulative(model, modelRewards, exprTemp, decompositionProcedure);
+			return checkRewardCumulative(model, stateRewards, exprTemp, decompositionProcedure);
 		default:
 			throw new PrismException("PSE does not yet handle the " + exprTemp.getOperatorSymbol() + " reward operator");
 		}
@@ -856,7 +898,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 * Compute rewards for a cumulative reward operator.
 	 */
-	protected BoxRegionValues checkRewardCumulative(PSEModel model, MCRewards modelRewards, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
+	protected BoxRegionValues checkRewardCumulative(PSEModel model, double[] stateRewards, ExpressionTemporal expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
 		// Check that there is an upper time bound
@@ -876,7 +918,7 @@ public final class PSEModelChecker extends PrismComponent
 		while (true) {
 			try {
 				return computeCumulativeRewards(
-						model, modelRewards, time, onesMultProbs,
+						model, stateRewards, time, onesMultProbs,
 						decompositionProcedure, oldRegionValues);
 			} catch (DecompositionProcedure.DecompositionNeeded e) {
 				e.printRegionsToDecompose(mainLog);
@@ -891,7 +933,7 @@ public final class PSEModelChecker extends PrismComponent
 	/**
 	 */
 	public BoxRegionValues computeCumulativeRewards(PSEModel model,
-			final MCRewards mcRewards, double t, BoxRegionValues multProbs,
+			final double[] stateRewards, double t, BoxRegionValues multProbs,
 			DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
@@ -969,10 +1011,8 @@ public final class PSEModelChecker extends PrismComponent
 			@Override
 			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
 			{
-				for (int i = 0; i < solnMin.length; i++) {
-					solnMin[i] = mcRewards.getStateReward(i);
-					solnMax[i] = mcRewards.getStateReward(i);
-				}
+				System.arraycopy(stateRewards, 0, solnMin, 0, solnMin.length);
+				System.arraycopy(stateRewards, 0, solnMax, 0, solnMax.length);
 			}
 		};
 

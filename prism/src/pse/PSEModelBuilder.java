@@ -47,6 +47,13 @@ public final class PSEModelBuilder extends PrismComponent
 {
 	private PSEModel model;
 	private PSEModelExplorer explorer;
+	private State[] stateArray;
+
+
+	public State[] getStateArray()
+	{
+		return stateArray;
+	}
 
 	/**
 	 * Constructor.
@@ -141,7 +148,7 @@ public final class PSEModelBuilder extends PrismComponent
 		PSEModel model;
 
 		if (modulesFile.getInitialStates() != null) {
-			throw new PrismException("Explicit model construction does not support multiple initial states");
+			throw new PrismException("Explicit model construction does not support multiple initial stateArray");
 		}
 
 		modelType = modulesFile.getModelType();
@@ -149,7 +156,7 @@ public final class PSEModelBuilder extends PrismComponent
 			throw new PrismException("Unsupported model type: " + modelType);
 		}
 
-		mainLog.print("\nComputing reachable states...");
+		mainLog.print("\nComputing reachable stateArray...");
 		mainLog.flush();
 		long timer = System.currentTimeMillis();
 
@@ -181,6 +188,11 @@ public final class PSEModelBuilder extends PrismComponent
 			}
 			model.setSumLeaving(sumOut);
 			model.finishState();
+		}
+
+		this.stateArray = new State[states.size()];
+		for (State s : statesList) {
+			stateArray[permut[states.get(s)]] = s;
 		}
 
 		mainLog.println();

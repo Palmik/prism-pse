@@ -171,7 +171,7 @@ public abstract class DecompositionProcedure
 	 * characteristic for the decomposition procedure
 	 * @throws PrismException if inner method failed
 	 */
-	public void examinePartialComputation(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
+	final public void examinePartialComputation(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
 			throws DecompositionNeeded, PrismException
 	{
 		try {
@@ -180,6 +180,19 @@ public abstract class DecompositionProcedure
 			e.setExaminedRegionValues(regionValues);
 			throw e;
 		}
+	}
+
+	final public DecompositionNeeded examinePartialComputationNoThrow(BoxRegionValues regionValues, BoxRegion region, double probsMin[], double probsMax[])
+			throws PrismException
+	{
+		DecompositionNeeded decompositionNeeded = null;
+		try {
+			verifySingleRegion(region, probsMin, probsMax);
+		} catch (DecompositionNeeded e) {
+			e.setExaminedRegionValues(regionValues);
+			decompositionNeeded = e;
+		}
+		return decompositionNeeded;
 	}
 
 	/**
@@ -207,7 +220,7 @@ public abstract class DecompositionProcedure
 	 * characteristic for the decomposition procedure
 	 * @throws PrismException if inner method failed
 	 */
-	public void examineWholeComputation(BoxRegionValues regionValues)
+	final public void examineWholeComputation(BoxRegionValues regionValues)
 			throws DecompositionNeeded, PrismException
 	{
 		try {
@@ -216,6 +229,19 @@ public abstract class DecompositionProcedure
 			e.setExaminedRegionValues(regionValues);
 			throw e;
 		}
+	}
+
+	final public DecompositionNeeded examineWholeComputationNoThrow(BoxRegionValues regionValues)
+		throws PrismException
+	{
+		DecompositionNeeded decompositionNeeded = null;
+		try {
+			verifyRegionValues(regionValues);
+		} catch (DecompositionNeeded e) {
+			e.setExaminedRegionValues(regionValues);
+			decompositionNeeded = e;
+		}
+		return decompositionNeeded;
 	}
 
 	/**
