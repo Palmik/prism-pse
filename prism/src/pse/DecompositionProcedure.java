@@ -193,6 +193,7 @@ public abstract class DecompositionProcedure
 	{
 		DecompositionNeeded decompositionNeeded = null;
 		try {
+			handleNaN(region, probsMin, probsMax);
 			verifySingleRegion(region, probsMin, probsMax);
 		} catch (DecompositionNeeded e) {
 			e.setExaminedRegionValues(regionValues);
