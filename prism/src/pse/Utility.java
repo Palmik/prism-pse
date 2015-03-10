@@ -1,5 +1,7 @@
 package pse;
 
+import prism.PrismLog;
+
 import java.util.BitSet;
 
 public class Utility
@@ -31,51 +33,50 @@ public class Utility
     public static PSEMultManager makeMVMultManager(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
     {
         String envOCL = System.getenv("OCL");
-        String envPAR = System.getenv("PAR");
         boolean useOCL = envOCL != null && envOCL.equals("1");
-        boolean usePAR = envPAR != null && envPAR.equals("1");
-        PSEMultManager multManager;
         if (useOCL) {
-            if (usePAR) {
-                throw new RuntimeException("Use PAR=0");
-            } else {
-                System.err.printf("OCL=1 PAR=0\n");
-                multManager = new PSEMVMultManager_OCL(model, modelSubset, modelSubsetComplement);
-            }
+            System.err.printf("OCL=1\n");
+            return new PSEMVMultManager_OCL(model, modelSubset, modelSubsetComplement);
         } else {
-            if (usePAR) {
-                throw new RuntimeException("Use PAR=0");
-            } else {
-                System.err.printf("OCL=0 PAR=0\n");
-                multManager = new PSEMVMultManager_CPU(model, modelSubset, modelSubsetComplement);
-            }
+            System.err.printf("OCL=0\n");
+            return new PSEMVMultManager_CPU(model, modelSubset, modelSubsetComplement);
         }
-        return multManager;
     }
 
     public static PSEMultManager makeVMMultManager(PSEModel model)
     {
         String envOCL = System.getenv("OCL");
-        String envPAR = System.getenv("PAR");
         boolean useOCL = envOCL != null && envOCL.equals("1");
-        boolean usePAR = envPAR != null && envPAR.equals("1");
-        PSEMultManager multManager;
         if (useOCL) {
-            if (usePAR) {
-                throw new RuntimeException("Use PAR=0");
-            } else {
-                System.err.printf("OCL=1 PAR=0\n");
-                multManager = new PSEVMMultManager_OCL(model);
-            }
+			System.err.printf("OCL=1\n");
+			return new PSEVMMultManager_OCL(model);
         } else {
-            if (usePAR) {
-                throw new RuntimeException("Use PAR=0");
-            } else {
-                System.err.printf("OCL=0 PAR=0\n");
-                multManager = new PSEVMMultManager_CPU(model);
-            }
+			System.err.printf("OCL=0\n");
+			return new PSEVMMultManager_CPU(model);
         }
-        return multManager;
+    }
+
+    public static PSEFoxGlynn makeFoxGlynn
+		( PSEModel model
+		, PSEMultManager multManager
+
+		, double[] weight
+		, double   weightDef
+		, int      fgL
+		, int      fgR
+
+		, PrismLog log
+        )
+    {
+        String envPAR = System.getenv("PAR");
+        boolean usePAR = envPAR != null && envPAR.equals("1");
+        if (usePAR) {
+            System.err.printf("PAR=1\n");
+            return new PSEFoxGlynnParallel(model, multManager, weight, weightDef, fgL, fgR, log);
+        } else {
+            System.err.printf("PAR=0\n");
+            return new PSEFoxGlynnSimple(model, multManager, weight, weightDef, fgL, fgR, log);
+        }
     }
 
 }

@@ -87,6 +87,11 @@ public abstract class DecompositionProcedure
 			return regionsToDecompose.keySet();
 		}
 
+		public LabelledBoxRegions getLabelledRegionsToDecompose()
+		{
+			return regionsToDecompose;
+		}
+
 		/**
 		 * Pretty-prints the list of regions to be decomposed as well as
 		 * the respective reasons why decomposition is needed.

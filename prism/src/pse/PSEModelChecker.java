@@ -29,8 +29,6 @@ package pse;
 
 import java.io.File;
 import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 import parser.State;
@@ -47,8 +45,6 @@ import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
 import explicit.Utils;
-import explicit.rewards.ConstructRewards;
-import explicit.rewards.MCRewards;
 
 /**
  * Model checker for {@link PSEModel}.
@@ -760,8 +756,7 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		PSEMultManager multManager = Utility.makeMVMultManager(model, nonAbs, false);
-		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
 			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
@@ -774,11 +769,12 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 		};
+		PSEMultManager multManager = Utility.makeMVMultManager(model, nonAbs, false);
+		PSEFoxGlynn foxGlynn = Utility.makeFoxGlynn(model, multManager, weight, 0, left, right, mainLog);
 
 		int totalIters = 0;
 		try {
-			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weight, 0, left, right,
-				numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues, mainLog);
+			totalIters = foxGlynn.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 		} finally {
 			multManager.release();
 		}
@@ -859,7 +855,6 @@ public final class PSEModelChecker extends PrismComponent
 			stateRewards[si] = sumReward;
 		}
 
-
 		// Compute rewards
 		BoxRegionValues regionValues = checkRewardFormula(model, stateRewards, expr.getExpression(), decompositionProcedure);
 
@@ -938,7 +933,7 @@ public final class PSEModelChecker extends PrismComponent
 					throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
 		BoxRegionValues regionValues = new BoxRegionValues(model);
-		int i, n, totalIters;
+		int i, n;
 		long timer;
 		// Fox-Glynn stuff
 		FoxGlynn fg;
@@ -1005,8 +1000,7 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		PSEMultManager multManager = Utility.makeMVMultManager(model, null, false);
-		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
 			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
@@ -1015,10 +1009,12 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(stateRewards, 0, solnMax, 0, solnMax.length);
 			}
 		};
+		PSEMultManager multManager = Utility.makeMVMultManager(model, null, false);
+		PSEFoxGlynn foxGlynn = Utility.makeFoxGlynn(model, multManager, weights, 1.0 / q, left, right, mainLog);
 
+		int totalIters = 0;
 		try {
-			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weights, 1.0 / q, left, right,
-				numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues, mainLog);
+			totalIters = foxGlynn.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 		} finally {
 			multManager.release();
 		}
@@ -1077,6 +1073,8 @@ public final class PSEModelChecker extends PrismComponent
 		return computeTransientProbs(model, t, initDist, decompositionProcedure, null);
 	}
 
+
+	private PSEFoxGlynn pseFoxGlynnTransient;
 	/**
 	 * Performs forwards transient probability computation.
 	 * Computes the minimised & maximised probability of being in each state
@@ -1136,8 +1134,12 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		PSEMultManager multManager = Utility.makeVMMultManager(model);
-		PSEFoxGlynn.SolSettter solSettter = new PSEFoxGlynn.SolSettter()
+		if (pseFoxGlynnTransient == null) {
+			PSEMultManager multManager = Utility.makeVMMultManager(model);
+			pseFoxGlynnTransient = Utility.makeFoxGlynn(model, multManager, weight, 0, left, right, mainLog);
+		}
+
+		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
 			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
@@ -1148,14 +1150,7 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(inMax, 0, solnMax, 0, solnMax.length);
 			}
 		};
-
-		int totalIters = 0;
-		try {
-			totalIters = PSEFoxGlynn.compute(model, multManager, solSettter, weight, 0, left, right,
-				numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues, mainLog);
-		} finally {
-			multManager.release();
-		}
+		int totalIters = pseFoxGlynnTransient.compute(solSettter, numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);

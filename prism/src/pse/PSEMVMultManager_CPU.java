@@ -19,7 +19,18 @@ final public class PSEMVMultManager_CPU implements PSEMultManager<PSEMVMult_CPU>
 	@Override
 	public PSEMVMult_CPU create(final double weight[], double weightDef, int weightOff)
 	{
-		return new PSEMVMult_CPU(model.getCreateData_MV_CSR(modelSubset), weight, weightDef, weightOff);
+		return createGroup(weight, weightDef, weightOff, 1)[0];
+	}
+
+	@Override
+	public PSEMVMult_CPU[] createGroup(double[] weight, double weightDef, int weightOff, int n)
+	{
+		PSEMVCreateData_CSR data = model.getCreateData_MV_CSR(modelSubset);
+		PSEMVMult_CPU[] group = new PSEMVMult_CPU[n];
+		for (int i = 0; i < n; ++i) {
+			group[i] = new PSEMVMult_CPU(data, weight, weightDef, weightOff);
+		}
+		return group;
 	}
 
 	@Override
