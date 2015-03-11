@@ -47,9 +47,6 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
         , BoxRegionValues out
         ) throws PrismException, DecompositionProcedure.DecompositionNeeded
     {
-        System.err.printf("!P0IN %s\n", in.size());
-        System.err.printf("!P0OUT %s\n", out.size());
-        System.err.printf("!P0OUTPREV %s\n", outPrev.size());
         final int n = model.getNumStates();
 
         int iters;
@@ -62,7 +59,6 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             // If the previous region values contain probs for this region, i.e. the region
             // has not been decomposed, then just use the previous result directly.
             if (outPrev.hasRegion(region)) {
-                System.err.printf("!PCOMPNOT %s\n", region);
                 out.put(region, outPrev.getMin(region), outPrev.getMax(region));
                 continue;
             }
@@ -71,7 +67,6 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             model.evaluateParameters(region);
             multManager.update(mult);
             log.println("Computing probabilities for parameter region " + region);
-            System.err.printf("!PCOMP %s\n", region);
 
             // Initialise solution vectors.
             solSettter.setSol(entry, solnMin, solnMax);
@@ -80,8 +75,8 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
                 double w = (fgL == 0) ? weight[0] : weightDef;
                 if (w != 0) {
                     for (int i = 0; i < n; i++) {
-                        sumMin[i] = weight[0] * solnMin[i];
-                        sumMax[i] = weight[0] * solnMax[i];
+                        sumMin[i] = w * solnMin[i];
+                        sumMax[i] = w * solnMax[i];
                     }
                     mult.setSum(sumMin, sumMax);
                 }
@@ -98,6 +93,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
                 } else {
                     itersStep = Math.min(itersCheckInterval, fgR - iters);
                 }
+
                 mult.mult(itersStep);
                 iters += itersStep;
                 itersTotal += itersStep;
@@ -106,7 +102,6 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
                 try {
                     decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
                 } catch (DecompositionProcedure.DecompositionNeeded e) {
-                    System.err.printf("!PDECOMP %s\n", region);
                     throw e;
                 }
             }
@@ -115,15 +110,11 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             try {
                 decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
             } catch (DecompositionProcedure.DecompositionNeeded e) {
-                System.err.printf("!PDECOMP %s\n", region);
                 throw e;
             }
             // Store result
-            System.err.printf("!PDECOMPNOT %s\n", region);
             out.put(region, sumMin, sumMax);
         }
-        System.err.printf("!P1OUT %s\n", out.size());
-        System.err.printf("!P1OUTPREV %s\n", outPrev.size());
         return itersTotal;
     }
 

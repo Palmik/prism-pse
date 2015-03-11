@@ -582,6 +582,7 @@ public final class PSEModel extends ModelExplicit
 				    ++matIPos;
 			    }
 		    }
+
 		    for (Integer t : stTrsO)
 		    {
 			    matNPMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;

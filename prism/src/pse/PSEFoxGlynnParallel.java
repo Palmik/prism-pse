@@ -96,7 +96,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					if (outPrev.hasRegion(region)) {
 						outLock.writeLock().lock();
 						out.put(region, outPrev.getMin(region), outPrev.getMax(region));
-						System.err.printf("!PCOMPNOT %s\n", region);
 						outLock.writeLock().unlock();
 						continue;
 					}
@@ -106,7 +105,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					model.evaluateParameters(region);
 					multManager.update(mult);
 					mainLog.println("Computing probabilities for parameter region " + region);
-					System.err.printf("!PCOMP %s\n", region);
 					modelLock.writeLock().unlock();
 
 					// Initialise solution vectors.
@@ -141,7 +139,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 						mult.getSum(sumMin, sumMax);
 						if (handleCheckRegion(decompositionProcedure, out, region, sumMin, sumMax)) {
-							System.err.printf("!PDECOMP %s\n", region);
 							wasDecomposed = true;
 							break;
 						}
@@ -149,14 +146,12 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					// Examine this region's result after all the iters have been finished
 					mult.getSum(sumMin, sumMax);
 					if (wasDecomposed || handleCheckRegion(decompositionProcedure, out, region, sumMin, sumMax)) {
-						if (!wasDecomposed) System.err.printf("!PDECOMP %s\n", region);
 						wasDecomposed = true;
 						continue;
 					}
 
 					// Store result
 					outLock.readLock().lock();
-					System.err.printf("!PDECOMPNOT %s\n", region);
 					out.put(region, sumMin, sumMax);
 					outLock.readLock().unlock();
 				}
@@ -272,9 +267,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		, BoxRegionValues out
 		) throws PrismException, DecompositionProcedure.DecompositionNeeded
 	{
-		System.err.printf("!P0IN %s\n", in.size());
-		System.err.printf("!P0OUT %s\n", out.size());
-		System.err.printf("!P0OUTPREV %s\n", outPrev.size());
 		int itersTotal = 0;
 
 		BlockingQueue<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> inQueue =
@@ -294,9 +286,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		} catch (InterruptedException err) {
 			throw new PrismException("TransientBackwardsBody_OCL_Multi -- could not join the threads");
 		}
-
-		System.err.printf("!P1OUT %s\n", out.size());
-		System.err.printf("!P1OUTPREV %s\n", outPrev.size());
 
 		LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
 		for (Worker w : multWorkerGroup) {

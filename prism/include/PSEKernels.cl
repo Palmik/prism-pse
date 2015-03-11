@@ -180,6 +180,21 @@ __kernel void PSE_VM_NP
   }
 }
 
+__kernel void PSE_VM_DIAG
+  ( const uint matIORowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict in
+  , __global real* restrict out
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matIORowCnt)
+  {
+    out[v0] = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+  }
+}
+
 __kernel void PSE_VM_IO
   ( const uint matIORowCnt
   , __global real const* restrict matLowerVal0

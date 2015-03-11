@@ -105,14 +105,19 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 	@Override
 	final public void getMult(final double[] resMin, final double[] resMax)
 	{
-		System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
-		System.arraycopy(this.resMax, 0, resMax, 0, resMax.length);
+		if (enabledMatI || enabledMatIO) {
+			System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.resMax, 0, resMax, 0, resMax.length);
+		} else {
+			System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.resMin, 0, resMax, 0, resMax.length);
+		}
 	}
 
 	@Override
 	final public void mult(int iterationCnt)
 	{
-		// This if could be jut around the sum code, but do we want the loop as tight as possible.
+		// This if could be jut around the sum code, but we want the loop as tight as possible.
 		if (enabledMatI || enabledMatIO) {
 			for (int i = 0; i < iterationCnt; ++i) {
 				mult(min, resMin, max, resMax);
@@ -170,7 +175,13 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		    if (enabledMatI || enabledMatIO) {
 			    PSE_VM_NP(stCnt, matOMaxDiagVal, matNPVal, matNPSrc, matNPTrgBeg, max, resMax);
 		    }
+		} else {
+			PSE_VM_DIAG(stCnt, matOMinDiagVal, min, resMin);
+			if (enabledMatI || enabledMatIO) {
+				PSE_VM_DIAG(stCnt, matOMaxDiagVal, max, resMax);
+			}
 		}
+
 	    if (enabledMatIO) {
 		    PSE_VM_IO(stCnt
 			    , matIOLowerVal0, matIOLowerVal1
@@ -194,6 +205,18 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		   PSE_VM_I(stCnt, matIMaxVal, matISrc, matITrgBeg, max, resMax);
 	    }
     }
+
+	private void PSE_VM_DIAG
+		( final int matRowCnt
+		, final double[] matDiaVal
+		, final double[] in
+		, final double[] out
+		)
+	{
+		for (int v0 = 0; v0 < matRowCnt; ++v0) {
+			out[v0] = in[v0] * matDiaVal[v0];
+		}
+	}
 
 	private void PSE_VM_I
 		( final int matRowCnt
