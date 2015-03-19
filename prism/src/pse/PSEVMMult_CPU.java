@@ -122,10 +122,11 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 			for (int i = 0; i < iterationCnt; ++i) {
 				mult(min, resMin, max, resMax);
 				++totalIterationCnt;
-				if (getSumWeight() != 0) {
+				final double sumWeight = getSumWeight();
+				if (sumWeight != 0.0) {
 					for (int j = 0; j < stCnt; ++j) {
-						sumMin[j] += getSumWeight() * resMin[j];
-						sumMax[j] += getSumWeight() * resMax[j];
+						sumMin[j] += sumWeight * resMin[j];
+						sumMax[j] += sumWeight * resMax[j];
 					}
 				}
 				final double[] tmp1 = resMin;
@@ -140,9 +141,10 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 			for (int i = 0; i < iterationCnt; ++i) {
 				mult(min, resMin, max, resMax);
 				++totalIterationCnt;
-				if (getSumWeight() != 0) {
+				final double sumWeight = getSumWeight();
+				if (sumWeight != 0.0) {
 					for (int j = 0; j < stCnt; ++j) {
-						sumMin[j] += getSumWeight() * resMin[j];
+						sumMin[j] += sumWeight * resMin[j];
 					}
 				}
 				final double[] tmp1 = resMin;
@@ -171,14 +173,16 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		)
     {
 	    if (enabledMatNP) {
-	        PSE_VM_NP(stCnt, matOMinDiagVal, matNPVal, matNPSrc, matNPTrgBeg, min, resMin);
-		    if (enabledMatI || enabledMatIO) {
-			    PSE_VM_NP(stCnt, matOMaxDiagVal, matNPVal, matNPSrc, matNPTrgBeg, max, resMax);
-		    }
-		} else {
-			PSE_VM_DIAG(stCnt, matOMinDiagVal, min, resMin);
 			if (enabledMatI || enabledMatIO) {
-				PSE_VM_DIAG(stCnt, matOMaxDiagVal, max, resMax);
+				PSE_VM_NP_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal, matNPVal, matNPSrc, matNPTrgBeg, min, max, resMin, resMax);
+			} else {
+				PSE_VM_NP(stCnt, matOMinDiagVal, matNPVal, matNPSrc, matNPTrgBeg, min, resMin);
+			}
+		} else {
+			if (enabledMatI || enabledMatIO) {
+				PSE_VM_DIAG_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal, min, max, resMin, resMax);
+			} else {
+				PSE_VM_DIAG(stCnt, matOMinDiagVal, min, resMin);
 			}
 		}
 
@@ -189,80 +193,125 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		        , matIOSrc
 			    , matIOTrgBeg
 			    , min
+				, max
 			    , resMin
+				, resMax
 		        );
-		    PSE_VM_IO(stCnt
-			    , matIOUpperVal0, matIOUpperVal1
-			    , matIOLowerVal0, matIOLowerVal1
-			    , matIOSrc
-			    , matIOTrgBeg
-			    , max
-			    , resMax
-		    );
 	    }
+
 	    if (enabledMatI) {
-		   PSE_VM_I(stCnt, matIMinVal, matISrc, matITrgBeg, min, resMin);
-		   PSE_VM_I(stCnt, matIMaxVal, matISrc, matITrgBeg, max, resMax);
+		   PSE_VM_I(stCnt, matIMinVal, matIMaxVal, matISrc, matITrgBeg, min, max, resMin, resMax);
 	    }
     }
 
-	private void PSE_VM_DIAG
+	final private void PSE_VM_I
 		( final int matRowCnt
-		, final double[] matDiaVal
-		, final double[] in
-		, final double[] out
-		)
-	{
-		for (int v0 = 0; v0 < matRowCnt; ++v0) {
-			out[v0] = in[v0] * matDiaVal[v0];
-		}
-	}
-
-	private void PSE_VM_I
-		( final int matRowCnt
-		, final double[] matVal
+		, final double[] matVal1
+		, final double[] matVal2
 		, final int[] matCol
 		, final int[] matRowBeg
 
-		, final double[] in
-		, final double[] out
+		, final double[] in1
+		, final double[] in2
+		, final double[] out1
+		, final double[] out2
 		)
 	{
 		for (int v0 = 0; v0 < matRowCnt; ++v0) {
 			int cb = matRowBeg[v0];
 			int ce = matRowBeg[v0 + 1];
-			double dot = out[v0];
+			double dot1 = out1[v0];
+			double dot2 = out2[v0];
 			for (int i = cb; i < ce; ++i) {
-				dot += matVal[i] * in[matCol[i]];
+				dot1 += matVal1[i] * in1[matCol[i]];
+				dot2 += matVal2[i] * in2[matCol[i]];
 			}
-			out[v0] = dot;
+			out1[v0] = dot1;
+			out2[v0] = dot2;
 		}
 	}
 
-	private void PSE_VM_NP
+	final private void PSE_VM_DIAG_BOTH
 		( final int matRowCnt
-		, final double[] matDiaVal
+		, final double[] matDiaVal1
+		, final double[] matDiaVal2
+		, final double[] in1
+		, final double[] in2
+		, final double[] out1
+		, final double[] out2
+		)
+	{
+		for (int v0 = 0; v0 < matRowCnt; ++v0) {
+			out1[v0] = in1[v0] * matDiaVal1[v0];
+			out2[v0] = in2[v0] * matDiaVal2[v0];
+		}
+	}
+
+	final private void PSE_VM_DIAG
+		( final int matRowCnt
+		, final double[] matDiaVal1
+		, final double[] in1
+		, final double[] out1
+		)
+	{
+		for (int v0 = 0; v0 < matRowCnt; ++v0) {
+			out1[v0] = in1[v0] * matDiaVal1[v0];
+		}
+	}
+
+	final private void PSE_VM_NP_BOTH
+		( final int matRowCnt
+		, final double[] matDiaVal1
+		, final double[] matDiaVal2
 		, final double[] matVal
 		, final int[] matCol
 		, final int[] matRowBeg
 
-		, final double[] in
-		, final double[] out
+		, final double[] in1
+		, final double[] in2
+		, final double[] out1
+		, final double[] out2
 		)
 	{
 		for (int v0 = 0; v0 < matRowCnt; ++v0) {
-			double dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+			double dot1 = in1[v0] * matDiaVal1[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+			double dot2 = in2[v0] * matDiaVal2[v0]; //out[v0] + in[v0] * matDiaVal[v0];
 
 			int cb = matRowBeg[v0];
 			int ce = matRowBeg[v0 + 1];
 			for (int i = cb; i < ce; ++i) {
-				dot += matVal[i] * in[matCol[i]];
+				dot1 += matVal[i] * in1[matCol[i]];
+				dot2 += matVal[i] * in2[matCol[i]];
 			}
-			out[v0] = dot;
+			out1[v0] = dot1;
+			out2[v0] = dot2;
 		}
 	}
 
-	private void PSE_VM_IO
+	final private void PSE_VM_NP
+		( final int matRowCnt
+			, final double[] matDiaVal1
+			, final double[] matVal
+			, final int[] matCol
+			, final int[] matRowBeg
+
+			, final double[] in1
+			, final double[] out1
+		)
+	{
+		for (int v0 = 0; v0 < matRowCnt; ++v0) {
+			double dot1 = in1[v0] * matDiaVal1[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+
+			int cb = matRowBeg[v0];
+			int ce = matRowBeg[v0 + 1];
+			for (int i = cb; i < ce; ++i) {
+				dot1 += matVal[i] * in1[matCol[i]];
+			}
+			out1[v0] = dot1;
+		}
+	}
+
+	final private void PSE_VM_IO
 		( final int matRowCnt
 		, final double[] matLowerVal0
 		, final double[] matLowerVal1
@@ -271,26 +320,36 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		, final int[] matCol
 		, final int[] matRowBeg
 
-		, final double[] in
-		, final double[] out
+		, final double[] in1
+		, final double[] in2
+		, final double[] out1
+		, final double[] out2
 		)
 	{
 		for (int v1 = 0; v1 < matRowCnt; ++v1) {
-			double dot = out[v1];
+			double dot1 = out1[v1];
+			double dot2 = out2[v1];
 
 			int cb = matRowBeg[v1];
 			int ce = matRowBeg[v1 + 1];
 
 			for (int i = cb; i < ce; ++i) {
 				final int v0 = matCol[i];
-				final double rlower = (matLowerVal0[i] * in[v0] - matLowerVal1[i] * in[v1]);
-				if (rlower > 0.0) {
-					dot += rlower;
+				final double diff1 = (matLowerVal0[i] * in1[v0] - matLowerVal1[i] * in1[v1]);
+				final double diff2 = (matUpperVal0[i] * in2[v0] - matUpperVal1[i] * in2[v1]);
+				if (diff1 > 0.0) {
+					dot1 += diff1;
 				} else {
-					dot += (matUpperVal0[i] * in[v0] - matUpperVal1[i] * in[v1]);
+					dot1 += (matUpperVal0[i] * in1[v0] - matUpperVal1[i] * in1[v1]);
+				}
+				if (diff2 > 0.0) {
+					dot2 += diff2;
+				} else {
+					dot2 += (matLowerVal0[i] * in2[v0] - matLowerVal1[i] * in2[v1]);
 				}
 			}
-			out[v1] = dot;
+			out1[v1] = dot1;
+			out2[v1] = dot2;
 		}
 	}
 
