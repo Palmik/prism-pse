@@ -22,6 +22,23 @@ __kernel void WeightedSumTo
     }
 }
 
+__kernel void WeightedSumToBoth
+  ( const uint n
+  , const real w
+  , __global real const* restrict vec1
+  , __global real const* restrict vec2
+  , __global real* restrict sum1
+  , __global real* restrict sum2
+  )
+{
+    uint ii = get_global_id(0);
+    if (ii < n)
+    {
+        sum1[ii] = MAD(vec1[ii], w, sum1[ii]);
+        sum2[ii] = MAD(vec2[ii], w, sum2[ii]);
+    }
+}
+
 __kernel void PSE_MV_IO_CSR_SCALAR
   ( const uint matIORowCnt
   , __global real const* restrict matIOLowerVal
@@ -127,6 +144,177 @@ __kernel void PSE_MV_NP_CSR_VECTOR
         }
 	}
 }
+
+// PSE VM
+
+__kernel void PSE_VM_I_
+  ( const uint matRowCnt
+  , __global real const* restrict matValMin
+  , __global real const* restrict matValMax
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matRowCnt)
+  {
+    const uint cb = matRowBeg[v0];
+    const uint ce = matRowBeg[v0 + 1];
+
+    real dotMin = outMin[v0];
+    real dotMax = outMax[v0];
+    for (uint i = cb; i < ce; ++i)
+    {
+      dotMin = MAD(matValMin[i], inMin[matCol[i]], dotMin);
+      dotMax = MAD(matValMax[i], inMax[matCol[i]], dotMax);
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
+
+__kernel void PSE_VM_NP_
+  ( const uint matRowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict in
+  , __global real* restrict out
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matRowCnt)
+  {
+    const uint cb = matRowBeg[v0];
+    const uint ce = matRowBeg[v0 + 1];
+
+    real dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    for (uint i = cb; i < ce; ++i)
+    {
+      dot = MAD(matVal[i], in[matCol[i]], dot);
+    }
+    out[v0] = dot;
+  }
+}
+
+__kernel void PSE_VM_NP_BOTH_
+  ( const uint matRowCnt
+  , __global real const* restrict matDiaValMin
+  , __global real const* restrict matDiaValMax
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matRowCnt)
+  {
+    const uint cb = matRowBeg[v0];
+    const uint ce = matRowBeg[v0 + 1];
+
+    real dotMin = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    real dotMax = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    for (uint i = cb; i < ce; ++i)
+    {
+      dotMin = MAD(matVal[i], inMin[matCol[i]], dotMin);
+      dotMax = MAD(matVal[i], inMax[matCol[i]], dotMax);
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
+__kernel void PSE_VM_DIAG_
+  ( const uint matRowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict in
+  , __global real* restrict out
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matRowCnt)
+  {
+    out[v0] = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+  }
+}
+
+__kernel void PSE_VM_DIAG_BOTH_
+  ( const uint matRowCnt
+  , __global real const* restrict matDiaValMin
+  , __global real const* restrict matDiaValMax
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  int v0 = get_global_id(0);
+
+  if (v0 < matRowCnt)
+  {
+    outMin[v0] = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    outMax[v0] = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+  }
+}
+
+__kernel void PSE_VM_IO_
+  ( const uint matRowCnt
+  , __global real const* restrict matLowerVal0
+  , __global real const* restrict matLowerVal1
+  , __global real const* restrict matUpperVal0
+  , __global real const* restrict matUpperVal1
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  int v1 = get_global_id(0);
+
+  if (v1 < matRowCnt)
+  {
+    real dotMin = outMin[v1];
+    real dotMax = outMax[v1];
+    for (uint i = matRowBeg[v1]; i < matRowBeg[v1 + 1]; ++i)
+    {
+      const real rlowerMin = (matLowerVal0[i] * inMin[matCol[i]] - matLowerVal1[i] * inMin[v1]);
+      const real rupperMax = (matUpperVal0[i] * inMax[matCol[i]] - matUpperVal1[i] * inMax[v1]);
+
+      if (rlowerMin > 0.0) {
+        dotMin += rlowerMin;
+      } else {
+        dotMin += (matUpperVal0[i] * inMin[matCol[i]] - matUpperVal1[i] * inMin[v1]);
+      }
+      if (rupperMax > 0.0) {
+        dotMax += rupperMax;
+      } else {
+        dotMax += (matLowerVal0[i] * inMax[matCol[i]] - matLowerVal1[i] * inMax[v1]);
+      }
+    }
+    outMin[v1] = dotMin;
+    outMax[v1] = dotMax;
+  }
+}
+
+// PSE VM OLD
 
 __kernel void PSE_VM_I
   ( const uint matIORowCnt

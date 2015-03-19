@@ -342,6 +342,7 @@ public final class PSEModel extends ModelExplicit
 	 */
 	boolean isParametrised(int trans)
 	{
+		//return true;
 		return parametrisedTransitions[trans];
 	}
 
