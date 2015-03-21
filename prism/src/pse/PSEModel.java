@@ -629,9 +629,10 @@ public final class PSEModel extends ModelExplicit
 			);
 	}
 
-	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset)
+	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset, boolean complement)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
 		VectorOfDouble matNPVal = new VectorOfDouble();
 		VectorOfInt matNPCol = new VectorOfInt();

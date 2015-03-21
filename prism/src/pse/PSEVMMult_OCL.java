@@ -274,11 +274,6 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 	@Override
 	final public void mult(int iterationCnt)
 	{
-		cl_mem minMem = this.minMem;
-		cl_mem maxMem = this.maxMem;
-		cl_mem resMinMem = this.resMinMem;
-		cl_mem resMaxMem = this.resMaxMem;
-
 		final long[] lws = new long[]{OCLProgram.localWorkSize(64)};
 		final long[] gws = new long[]{leastGreaterMultiple(stCnt, lws[0])};
 
@@ -434,8 +429,8 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 	private cl_mem matOMaxDiagVal;
 	private cl_mem matNPVal;
 
-	final private cl_mem minMem;
-	final private cl_mem maxMem;
-	final private cl_mem resMinMem;
-	final private cl_mem resMaxMem;
+	private cl_mem minMem;
+	private cl_mem maxMem;
+	private cl_mem resMinMem;
+	private cl_mem resMaxMem;
 }

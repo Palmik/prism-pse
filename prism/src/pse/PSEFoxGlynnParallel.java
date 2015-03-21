@@ -108,7 +108,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					modelLock.writeLock().unlock();
 
 					// Initialise solution vectors.
-					solSettter.setSol(entry, solnMin, solnMax);
+					solSettter.setSol(entry, 0, solnMin, solnMax);
 					// If necessary, do 0th element of summation (doesn't require any matrix powers)
 					{
 						double w = (fgL == 0) ? weight[0] : weightDef;

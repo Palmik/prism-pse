@@ -78,6 +78,7 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 	@Override
 	final public void getSum(final double[] sumMin, final double[] sumMax)
 	{
+		//System.err.printf("!REG iter %s %s\n", totalIterationCnt, getSumWeight());
 		if (enabledMatI || enabledMatIO) {
 			System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
 			System.arraycopy(this.sumMax, 0, sumMax, 0, sumMax.length);
@@ -106,11 +107,11 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 	final public void getMult(final double[] resMin, final double[] resMax)
 	{
 		if (enabledMatI || enabledMatIO) {
-			System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
-			System.arraycopy(this.resMax, 0, resMax, 0, resMax.length);
+			System.arraycopy(this.min, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.max, 0, resMax, 0, resMax.length);
 		} else {
-			System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
-			System.arraycopy(this.resMin, 0, resMax, 0, resMax.length);
+			System.arraycopy(this.min, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.min, 0, resMax, 0, resMax.length);
 		}
 	}
 

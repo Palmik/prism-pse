@@ -7,7 +7,8 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
     public PSEMVMultManager_OCL(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
     {
         this.model = model;
-        this.modelSubset = Utility.makeSubset(modelSubset, modelSubsetComplement, model.getNumStates());
+        this.modelSubset = Utility.makeBitSetCopy(modelSubset, model.getNumStates());
+        this.modelSubsetComplement = modelSubsetComplement;
 
         this.releaser = new Releaser();
     }
@@ -15,7 +16,7 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
     @Override
     final public void update(PSEMVMult_OCL mult)
     {
-        mult.update(model.getCreateData_MV_CSR(modelSubset));
+        mult.update(model.getCreateData_MV_CSR(modelSubset, modelSubsetComplement));
     }
 
     @Override
@@ -27,7 +28,7 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
     @Override
     public PSEMVMult_OCL[] createGroup(double[] weight, double weightDef, int weightOff, int n)
     {
-        PSEMVCreateData_CSR data = model.getCreateData_MV_CSR(modelSubset);
+        PSEMVCreateData_CSR data = model.getCreateData_MV_CSR(modelSubset, modelSubsetComplement);
         PSEMVMultSettings_OCL multOpts = PSEMVMultSettings_OCL.Default();
         releaser.releaseLater(multOpts);
         PSEMVMultTopology_OCL multTopo = new PSEMVMultTopology_OCL(data, multOpts.clContext);
@@ -50,6 +51,7 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
 
     final private PSEModel model;
     final private BitSet modelSubset;
+    final private boolean modelSubsetComplement;
 
     final private Releaser releaser;
 }

@@ -45,8 +45,8 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 	@Override
 	final public void getMult(final double[] resMin, final double[] resMax)
 	{
-		System.arraycopy(this.resMin, 0, resMin, 0, resMin.length);
-		System.arraycopy(this.resMax, 0, resMax, 0, resMax.length);
+		System.arraycopy(this.min, 0, resMin, 0, resMin.length);
+		System.arraycopy(this.max, 0, resMax, 0, resMax.length);
 	}
 
 	@Override

@@ -160,16 +160,15 @@ __kernel void PSE_VM_I_
   , __global real* restrict outMax
   )
 {
-  int v0 = get_global_id(0);
+  const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt)
   {
-    const uint cb = matRowBeg[v0];
     const uint ce = matRowBeg[v0 + 1];
 
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
-    for (uint i = cb; i < ce; ++i)
+    for (uint i = matRowBeg[v0]; i < ce; ++i)
     {
       dotMin = MAD(matValMin[i], inMin[matCol[i]], dotMin);
       dotMax = MAD(matValMax[i], inMax[matCol[i]], dotMax);
@@ -190,15 +189,14 @@ __kernel void PSE_VM_NP_
   , __global real* restrict out
   )
 {
-  int v0 = get_global_id(0);
+  const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt)
   {
-    const uint cb = matRowBeg[v0];
     const uint ce = matRowBeg[v0 + 1];
 
     real dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
-    for (uint i = cb; i < ce; ++i)
+    for (uint i = matRowBeg[v0]; i < ce; ++i)
     {
       dot = MAD(matVal[i], in[matCol[i]], dot);
     }
@@ -220,16 +218,15 @@ __kernel void PSE_VM_NP_BOTH_
   , __global real* restrict outMax
   )
 {
-  int v0 = get_global_id(0);
+  const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt)
   {
-    const uint cb = matRowBeg[v0];
     const uint ce = matRowBeg[v0 + 1];
 
     real dotMin = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
     real dotMax = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
-    for (uint i = cb; i < ce; ++i)
+    for (uint i = matRowBeg[v0]; i < ce; ++i)
     {
       dotMin = MAD(matVal[i], inMin[matCol[i]], dotMin);
       dotMax = MAD(matVal[i], inMax[matCol[i]], dotMax);
@@ -245,7 +242,7 @@ __kernel void PSE_VM_DIAG_
   , __global real* restrict out
   )
 {
-  int v0 = get_global_id(0);
+  const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt)
   {
@@ -263,7 +260,7 @@ __kernel void PSE_VM_DIAG_BOTH_
   , __global real* restrict outMax
   )
 {
-  int v0 = get_global_id(0);
+  const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt)
   {
@@ -287,7 +284,7 @@ __kernel void PSE_VM_IO_
   , __global real* restrict outMax
   )
 {
-  int v1 = get_global_id(0);
+  const int v1 = get_global_id(0);
 
   if (v1 < matRowCnt)
   {
@@ -295,21 +292,213 @@ __kernel void PSE_VM_IO_
     real dotMax = outMax[v1];
     for (uint i = matRowBeg[v1]; i < matRowBeg[v1 + 1]; ++i)
     {
-      const real rlowerMin = (matLowerVal0[i] * inMin[matCol[i]] - matLowerVal1[i] * inMin[v1]);
-      const real rupperMax = (matUpperVal0[i] * inMax[matCol[i]] - matUpperVal1[i] * inMax[v1]);
+      const uint v0 = matCol[i];
+      const real rlowerMin = (matLowerVal0[i] * inMin[v0] - matLowerVal1[i] * inMin[v1]);
+      const real rupperMax = (matUpperVal0[i] * inMax[v0] - matUpperVal1[i] * inMax[v1]);
 
       if (rlowerMin > 0.0) {
         dotMin += rlowerMin;
       } else {
-        dotMin += (matUpperVal0[i] * inMin[matCol[i]] - matUpperVal1[i] * inMin[v1]);
+        dotMin += (matUpperVal0[i] * inMin[v0] - matUpperVal1[i] * inMin[v1]);
       }
       if (rupperMax > 0.0) {
         dotMax += rupperMax;
       } else {
-        dotMax += (matLowerVal0[i] * inMax[matCol[i]] - matLowerVal1[i] * inMax[v1]);
+        dotMax += (matLowerVal0[i] * inMax[v0] - matLowerVal1[i] * inMax[v1]);
       }
     }
     outMin[v1] = dotMin;
     outMax[v1] = dotMax;
   }
 }
+
+// PSE VM MANY
+
+__kernel void PSE_VM_I_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matValMin
+  , __global real const* restrict matValMax
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int v0 = get_global_id(0);
+  const int v0_ = v0 % matRowCnt;
+  const int matId = v0 / matRowCnt;
+  const int matOff = matId * matRowBeg[matRowCnt];
+  const int matColOff = matId * matRowCnt;
+
+  if (v0 < matRowCnt * matCnt)
+  {
+    const uint ce = matRowBeg[v0_ + 1];
+
+    real dotMin = outMin[v0];
+    real dotMax = outMax[v0];
+    for (uint i = matRowBeg[v0_]; i < ce; ++i)
+    {
+      dotMin = MAD(matValMin[i + matOff], inMin[matCol[i] + matColOff], dotMin);
+      dotMax = MAD(matValMax[i + matOff], inMax[matCol[i] + matColOff], dotMax);
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
+
+__kernel void PSE_VM_NP_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict in
+  , __global real* restrict out
+  )
+{
+  const int v0 = get_global_id(0);
+  const int v0_ = v0 % matRowCnt;
+  const int matColOff = (v0 / matRowCnt) * matRowCnt;
+
+  if (v0 < matRowCnt * matCnt)
+  {
+    const uint ce = matRowBeg[v0_ + 1];
+
+    real dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    for (uint i = matRowBeg[v0_]; i < ce; ++i)
+    {
+      dot = MAD(matVal[i], in[matCol[i] + matColOff], dot);
+    }
+    out[v0] = dot;
+  }
+}
+
+__kernel void PSE_VM_NP_BOTH_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matDiaValMin
+  , __global real const* restrict matDiaValMax
+  , __global real const* restrict matVal
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int v0 = get_global_id(0);
+  const int v0_ = v0 % matRowCnt;
+  const int matColOff = (v0 / matRowCnt) * matRowCnt;
+
+  if (v0 < matRowCnt * matCnt)
+  {
+    const uint ce = matRowBeg[v0_ + 1];
+
+    real dotMin = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    real dotMax = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
+    for (uint i = matRowBeg[v0_]; i < ce; ++i)
+    {
+      dotMin = MAD(matVal[i], inMin[matCol[i] + matColOff], dotMin);
+      dotMax = MAD(matVal[i], inMax[matCol[i] + matColOff], dotMax);
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
+__kernel void PSE_VM_DIAG_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matDiaVal
+  , __global real const* restrict in
+  , __global real* restrict out
+  )
+{
+  const int v0 = get_global_id(0);
+  const int v0_ = v0 % matRowCnt;
+
+  if (v0 < matRowCnt * matCnt)
+  {
+    out[v0] = in[v0] * matDiaVal[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
+  }
+}
+
+__kernel void PSE_VM_DIAG_BOTH_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matDiaValMin
+  , __global real const* restrict matDiaValMax
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int v0 = get_global_id(0);
+  const int v0_ = v0 % matRowCnt;
+
+  if (v0 < matRowCnt * matCnt)
+  {
+    outMin[v0] = inMin[v0] * matDiaValMin[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
+    outMax[v0] = inMax[v0] * matDiaValMax[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
+  }
+}
+
+__kernel void PSE_VM_IO_MANY
+  ( const uint matCnt
+  , const uint matRowCnt
+  , __global real const* restrict matLowerVal0
+  , __global real const* restrict matLowerVal1
+  , __global real const* restrict matUpperVal0
+  , __global real const* restrict matUpperVal1
+  , __global uint const* restrict matCol
+  , __global uint const* restrict matRowBeg
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int v1 = get_global_id(0);
+  const int v1_ = v1 % matRowCnt;
+  const int matId = v1 / matRowCnt;
+  const int matOff = matId * matRowBeg[matRowCnt];
+  const int matColOff = matId * matRowCnt;
+
+  if (v1 < matRowCnt * matCnt)
+  {
+    const uint ce = matRowBeg[v1_ + 1];
+
+    real dotMin = outMin[v1];
+    real dotMax = outMax[v1];
+    for (uint i_ = matRowBeg[v1_]; i_ < ce; ++i_)
+    {
+      const uint i = i_ + matOff;
+      const uint v0 = matCol[i_] + matColOff;
+      const real rlowerMin = (matLowerVal0[i] * inMin[v0] - matLowerVal1[i] * inMin[v1]);
+      const real rupperMax = (matUpperVal0[i] * inMax[v0] - matUpperVal1[i] * inMax[v1]);
+
+      if (rlowerMin > 0.0) {
+        dotMin += rlowerMin;
+      } else {
+        dotMin += (matUpperVal0[i] * inMin[v0] - matUpperVal1[i] * inMin[v1]);
+      }
+      if (rupperMax > 0.0) {
+        dotMax += rupperMax;
+      } else {
+        dotMax += (matLowerVal0[i] * inMax[v0] - matLowerVal1[i] * inMax[v1]);
+      }
+    }
+    outMin[v1] = dotMin;
+    outMax[v1] = dotMax;
+  }
+}
+

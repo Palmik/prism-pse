@@ -7,10 +7,6 @@ import java.util.Map;
 
 public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlynn
 {
-    public interface SolSettter
-    {
-        public void setSol(Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, final double[] solnMin, final double[] solnMax);
-    }
 
     public PSEFoxGlynnSimple(PSEModel model, PSEMultManager<Mult> multManager
         , double[] weight, double weightDef, int fgL, int fgR
@@ -32,12 +28,11 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
 
         this.mult = multManager.create(weight, weightDef, fgL);
 
-        System.err.printf("PSEFoxGlynnSimple<%s>\n", mult.getClass());
     }
 
     @Override
     final public int compute
-        ( PSEFoxGlynnSimple.SolSettter solSettter
+        ( PSEFoxGlynn.SolSettter solSettter
         , int itersCheckInterval
 
         , DecompositionProcedure decompositionProcedure
@@ -69,7 +64,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             log.println("Computing probabilities for parameter region " + region);
 
             // Initialise solution vectors.
-            solSettter.setSol(entry, solnMin, solnMax);
+            solSettter.setSol(entry, 0, solnMin, solnMax);
             // If necessary, do 0th element of summation (doesn't require any matrix powers)
             {
                 double w = (fgL == 0) ? weight[0] : weightDef;

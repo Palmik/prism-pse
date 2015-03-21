@@ -759,13 +759,13 @@ public final class PSEModelChecker extends PrismComponent
 		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[] solnMin, double[] solnMax)
 			{
 				final double[] inMin = entry.getValue().getMin().getDoubleArray();
 				final double[] inMax = entry.getValue().getMax().getDoubleArray();
 				for (int i = 0; i < solnMin.length; i++) {
-					solnMin[i] = targetMin.get(i) ? inMin[i] : 0.0;
-					solnMax[i] = targetMax.get(i) ? inMax[i] : 0.0;
+					solnMin[i + solnOff] = targetMin.get(i) ? inMin[i] : 0.0;
+					solnMax[i + solnOff] = targetMax.get(i) ? inMax[i] : 0.0;
 				}
 			}
 		};
@@ -1003,10 +1003,10 @@ public final class PSEModelChecker extends PrismComponent
 		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[] solnMin, double[] solnMax)
 			{
-				System.arraycopy(stateRewards, 0, solnMin, 0, solnMin.length);
-				System.arraycopy(stateRewards, 0, solnMax, 0, solnMax.length);
+				System.arraycopy(stateRewards, 0, solnMin, solnOff, solnMin.length);
+				System.arraycopy(stateRewards, 0, solnMax, solnOff, solnMax.length);
 			}
 		};
 		PSEMultManager multManager = Utility.makeMVMultManager(model, null, false);
@@ -1135,19 +1135,18 @@ public final class PSEModelChecker extends PrismComponent
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
 		if (pseFoxGlynnTransient == null) {
-			PSEMultManager multManager = Utility.makeVMMultManager(model);
-			pseFoxGlynnTransient = Utility.makeFoxGlynn(model, multManager, weight, 0, left, right, mainLog);
+			pseFoxGlynnTransient = Utility.makeVMFoxGlynn(model, weight, 0, left, right, mainLog);
 		}
 
 		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, double[] solnMin, double[] solnMax)
+			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnPos, double[] solnMin, double[] solnMax)
 			{
 				final double[] inMin = entry.getValue().getMin().getDoubleArray();
 				final double[] inMax = entry.getValue().getMax().getDoubleArray();
-				System.arraycopy(inMin, 0, solnMin, 0, solnMin.length);
-				System.arraycopy(inMax, 0, solnMax, 0, solnMax.length);
+				System.arraycopy(inMin, 0, solnMin, solnPos, solnMin.length);
+				System.arraycopy(inMax, 0, solnMax, solnPos, solnMax.length);
 			}
 		};
 		int totalIters = pseFoxGlynnTransient.compute(solSettter, numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues);

@@ -2,10 +2,12 @@ package pse;
 
 import prism.PrismException;
 
+import java.util.Map;
+
 public interface PSEFoxGlynn
 {
     public int compute
-        ( PSEFoxGlynnSimple.SolSettter solSettter
+        ( PSEFoxGlynn.SolSettter solSettter
         , int itersCheckInterval
 
         , DecompositionProcedure decompositionProcedure
@@ -14,4 +16,10 @@ public interface PSEFoxGlynn
         , BoxRegionValues outPrev
         , BoxRegionValues out
         ) throws PrismException, DecompositionProcedure.DecompositionNeeded;
+
+    interface SolSettter
+    {
+        public void setSol(Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, final double[]
+            solnMin, final double[] solnMax);
+    }
 }

@@ -1,29 +1,28 @@
 package pse;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Releaser implements Releaseable
 {
     public Releaser()
     {
-        toBeReleased = new ArrayList<Releaseable>();
+        toBeReleased = new HashSet<Object>();
     }
 
     public void releaseLater(Releaseable obj)
     {
         if (obj != null) {
-            toBeReleased.add(obj);
+            toBeReleased.add((Object)obj);
         }
     }
 
     @Override
     public void release()
     {
-        for (Releaseable obj : toBeReleased) {
-            obj.release();
+        for (Object obj : toBeReleased) {
+            ((Releaseable)obj).release();
         }
     }
 
-    final private List<Releaseable> toBeReleased;
+    final private HashSet<Object> toBeReleased;
 }
