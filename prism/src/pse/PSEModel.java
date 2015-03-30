@@ -634,123 +634,70 @@ public final class PSEModel extends ModelExplicit
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
+		VectorOfDouble matPValLower = new VectorOfDouble();
+		VectorOfDouble matPValUpper = new VectorOfDouble();
+		VectorOfInt matPCol = new VectorOfInt();
+		int matPRowCntMax = subset.cardinality();
+		int[] matPRow = new int [matPRowCntMax];
+		int[] matPRowBeg = new int [matPRowCntMax + 1];
+		int matPPos = 0;
+
 		VectorOfDouble matNPVal = new VectorOfDouble();
 		VectorOfInt matNPCol = new VectorOfInt();
-		int matNPRowCnt = subset.cardinality();
-		int[] matNPRow = new int [matNPRowCnt];
-		int[] matNPRowBeg = new int [matNPRowCnt + 1];
+		int matNPRowCntMax = subset.cardinality();
+		int[] matNPRow = new int [matNPRowCntMax];
+		int[] matNPRowBeg = new int [matNPRowCntMax + 1];
 		int matNPPos = 0;
 
-		int rowCntAll = 0;
-		int matIORowCnt = 0;
-		int matIOValCnt = 0;
-		ArrayList<TreeMap<Integer, Pair<Double,Double>>> matIOExplicit =
-				new ArrayList<TreeMap<Integer, Pair<Double,Double>>>(numStates); // Array of rows.
-		for (int i = 0; i < numStates; ++i) matIOExplicit.add(null);
+		int matPRowCnt = 0;
+		int matNPRowCnt = 0;
 		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1))
 		{
-			TreeMap<Integer, Pair<Double,Double>> matRow = new TreeMap<Integer, Pair<Double,Double>>();
-			matIOExplicit.set(state, matRow);
-			matNPRow[rowCntAll] = state;
-			matNPRowBeg[rowCntAll] = matNPPos;
+			matPRow[matPRowCnt] = state;
+			matPRowBeg[matPRowCnt] = matPPos;
+			matNPRow[matNPRowCnt] = state;
+			matNPRowBeg[matNPRowCnt] = matNPPos;
 
-			List<Integer> stTrsO = trsO.get(state);
-			List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
-			List<Integer> stTrsNP = trsNPBySrc.get(state);
+			boolean matP = false;
+			boolean matNP = false;
+			for (int t = stateBegin(state); t < stateEnd(state); ++t) {
+				if (isParametrised(t)) {
+					final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+					final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+					final int col = trStTrg[t];
 
-			for (int t : stTrsO)
-			{
-				final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
-				final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
-				final int col = trStTrg[t];
-				if (!(valLower == 0 && valUpper == 0))
-				{
-					Pair<Double, Double> prev = matRow.get(col);
-					double prevLowerVal = 0;
-					if (prev != null) prevLowerVal = prev.first;
-					double prevUpperVal = 0;
-					if (prev != null) prevUpperVal = prev.second;
-					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
+					if (!(valLower == 0 && valUpper == 0)) {
+						matP = true;
+						matPValLower.pushBack(valLower);
+						matPValUpper.pushBack(valUpper);
+						matPCol.pushBack(col);
+						++matPPos;
+					}
+				} else {
+					final double val = trRateLower[t] * trRatePopul[t] * qrec;
+					final int col = trStTrg[t];
+
+					if (val != 0) {
+						matNP = true;
+						matNPVal.pushBack(val);
+						matNPCol.pushBack(col);
+						++matNPPos;
+					}
 				}
 			}
 
-			for (Pair<Integer, Integer> p : stTrsIO)
-			{
-				final int t0 = p.first;
-				final int t1 = p.second;
-				final int v0 = trStSrc[t0];
-				final int v1 = trStTrg[t0]; // == trStSrc[t1] == state
-				final int v2 = trStTrg[t1];
-
-				double valLower = trRateLower[t1] * trRatePopul[t1] * qrec;
-				double valUpper = trRateUpper[t1] * trRatePopul[t1] * qrec;
-
-				final int col = v2;
-				if (!(valLower == 0 && valUpper == 0))
-				{
-					Pair<Double, Double> prev = matRow.get(col);
-					double prevLowerVal = 0;
-					if (prev != null) prevLowerVal = prev.first;
-					double prevUpperVal = 0;
-					if (prev != null) prevUpperVal = prev.second;
-					matRow.put(col, new Pair<Double,Double>(prevLowerVal + valLower, prevUpperVal + valUpper));
-				}
+			if (matP) {
+				++matPRowCnt;
 			}
-			if (!matRow.isEmpty())
-			{
-				++matIORowCnt;
-				matIOValCnt += matRow.size();
+			if (matNP) {
+				++matNPRowCnt;
 			}
-
-			for (int t : stTrsNP)
-			{
-				int v0 = trStSrc[t]; // == state
-				int v1 = trStTrg[t];
-				final double val = trRateLower[t] * trRatePopul[t] * qrec;
-
-				if (val != 0)
-				{
-					matNPVal.pushBack(val);
-					matNPCol.pushBack(v1);
-					++matNPPos;
-				}
-			}
-			++rowCntAll;
 		}
-		matNPRowBeg[rowCntAll] = matNPPos;
-
-		double[] matIOLowerVal = new double[matIOValCnt];
-		double[] matIOUpperVal = new double[matIOValCnt];
-		int[] matIOCol = new int[matIOValCnt];
-		int[] matIORow = new int[matIORowCnt];
-		int[] matIORowBeg = new int[matIORowCnt + 1];
-		int matPos = 0;
-
-		matIORowCnt = 0;
-		for (int row = 0; row < numStates; ++row)
-		{
-			TreeMap<Integer, Pair<Double,Double>> matExplicitRow = matIOExplicit.get(row);
-			if (matExplicitRow == null || matExplicitRow.isEmpty())
-			{
-				continue;
-			}
-
-			matIORow[matIORowCnt] = row;
-			matIORowBeg[matIORowCnt] = matPos;
-
-			for (Map.Entry<Integer, Pair<Double,Double>> e : matExplicitRow.entrySet())
-			{
-				matIOCol[matPos] = e.getKey();
-				matIOLowerVal[matPos] = e.getValue().first;
-				matIOUpperVal[matPos] = e.getValue().second;
-				++matPos;
-			}
-			++matIORowCnt;
-		}
-		matIORowBeg[matIORowCnt] = matPos;
+		matPRowBeg[matPRowCnt] = matPPos;
+		matNPRowBeg[matNPRowCnt] = matNPPos;
 
 		return new PSEMVCreateData_CSR(numStates,
-				matIOLowerVal, matIOUpperVal, matIOCol, matIORow, matIORowBeg, matIORowCnt,
+				matPValLower.data(), matPValUpper.data(), matPCol.data(), matPRow, matPRowBeg, matPRowCnt,
 				matNPVal.data(), matNPCol.data(), matNPRow, matNPRowBeg, matNPRowCnt);
 	}
 
