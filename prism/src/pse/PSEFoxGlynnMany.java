@@ -129,10 +129,9 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
                 mult.getSum(matId, sumMin, sumMax);
                 if (!handleCheckRegion(decompositionProcedure, out, region[matId], sumMin, sumMax)) {
-                    out.put(region[matId], sumMin, sumMax);
+                    out.put(region[matId], sumMin.clone(), sumMax.clone());
                 }
             }
-            // Store result
         }
         if (!regionsToDecompose.isEmpty()) {
             DecompositionProcedure.DecompositionNeeded e =

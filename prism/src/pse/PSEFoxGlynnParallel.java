@@ -46,9 +46,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			this.regionsToDecompose = new LabelledBoxRegions();
 
 			this.solnMin = new double[model.getNumStates()];
-			this.sumMin = new double[model.getNumStates()];
 			this.solnMax = new double[model.getNumStates()];
-			this.sumMax = new double[model.getNumStates()];
 		}
 
 		final public void update
@@ -109,6 +107,8 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 					// Initialise solution vectors.
 					solSettter.setSol(entry, 0, solnMin, solnMax);
+					final double[] sumMin = new double[n];
+					final double[] sumMax = new double[n];
 					// If necessary, do 0th element of summation (doesn't require any matrix powers)
 					{
 						double w = (fgL == 0) ? weight[0] : weightDef;
@@ -146,7 +146,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					// Examine this region's result after all the iters have been finished
 					mult.getSum(sumMin, sumMax);
 					if (wasDecomposed || handleCheckRegion(decompositionProcedure, out, region, sumMin, sumMax)) {
-						wasDecomposed = true;
 						continue;
 					}
 
@@ -212,9 +211,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		private ReadWriteLock outLock;
 
 		final private double[] solnMin;
-		final private double[] sumMin;
 		final private double[] solnMax;
-		final private double[] sumMax;
 
 	}
 
@@ -239,7 +236,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		this.log = log;
 
 		// TODO: Base this on number of states.
-		this.multGroupSize = 2;
+		this.multGroupSize = 1;
 		this.multGroup = multManager.createGroup(weight, weightDef, fgL, multGroupSize);
 
 		ReadWriteLock modelLock = new ReentrantReadWriteLock();

@@ -22,9 +22,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
         this.log = log;
 
         this.solnMin = new double[model.getNumStates()];
-        this.sumMin = new double[model.getNumStates()];
         this.solnMax = new double[model.getNumStates()];
-        this.sumMax = new double[model.getNumStates()];
 
         this.mult = multManager.create(weight, weightDef, fgL);
 
@@ -65,6 +63,8 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
 
             // Initialise solution vectors.
             solSettter.setSol(entry, 0, solnMin, solnMax);
+            final double[] sumMin = new double[n];
+            final double[] sumMax = new double[n];
             // If necessary, do 0th element of summation (doesn't require any matrix powers)
             {
                 double w = (fgL == 0) ? weight[0] : weightDef;
@@ -123,9 +123,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
     final private PrismLog log;
 
     final private double[] solnMin;
-    final private double[] sumMin;
     final private double[] solnMax;
-    final private double[] sumMax;
 
     final private Mult mult;
 }
