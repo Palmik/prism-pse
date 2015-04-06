@@ -1,5 +1,6 @@
 package pse;
 
+import prism.Pair;
 import prism.PrismLog;
 
 import java.util.BitSet;
@@ -54,6 +55,11 @@ public class Utility
         }
     }
 
+    public static PSEMultManyManager makeMVMultManyManager(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
+    {
+        return new PSEMVMultManyManager_OCL(model, modelSubset, modelSubsetComplement);
+    }
+
     public static PSEMultManager makeVMMultManager(PSEModel model)
     {
         final int ocl = getOCL();
@@ -91,6 +97,45 @@ public class Utility
         } else {
             System.err.printf("PAR=0\n");
             return new PSEFoxGlynnSimple(model, multManager, weight, weightDef, fgL, fgR, log);
+        }
+    }
+
+    public static Pair<PSEFoxGlynn, Releaser> makeMVFoxGlynn
+        ( PSEModel model
+        , BitSet modelSubset
+        , boolean modelSubsetComplement
+
+        , double[] weight
+        , double   weightDef
+        , int      fgL
+        , int      fgR
+
+        , PrismLog log
+        )
+    {
+        Releaser releaser = new Releaser();
+        final int ocl = getOCL();
+        final int par = getPAR();
+        if (par == 1) {
+            PSEMultManager manager = makeMVMultManager(model, modelSubset, modelSubsetComplement);
+            releaser.releaseLater(manager);
+            return new Pair<PSEFoxGlynn, Releaser>(
+                new PSEFoxGlynnParallel(model, manager, weight, weightDef, fgL, fgR, log),
+                releaser);
+        } else if (par == 2) {
+            if (ocl != 1) {
+                throw new RuntimeException("In order to use PAR=2, you have to use OCL=1");
+            }
+            PSEMultManyManager manager = makeMVMultManyManager(model, modelSubset, modelSubsetComplement);
+            releaser.releaseLater(manager);
+            return new Pair<PSEFoxGlynn, Releaser>(
+                new PSEFoxGlynnMany(model, manager, weight, weightDef, fgL, fgR, log),
+                releaser);
+        } else {
+            PSEMultManager manager = makeMVMultManager(model, modelSubset, modelSubsetComplement);
+            return new Pair<PSEFoxGlynn, Releaser>(
+                new PSEFoxGlynnSimple(model, manager, weight, weightDef, fgL, fgR, log),
+                releaser);
         }
     }
 

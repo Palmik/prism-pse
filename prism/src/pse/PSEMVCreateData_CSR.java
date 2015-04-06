@@ -5,8 +5,8 @@ public final class PSEMVCreateData_CSR
     public PSEMVCreateData_CSR
         ( int stCnt
 
-        , double[] matIOLowerVal
-                    , double[] matIOUpperVal
+        , double[] matPLowerVal
+                    , double[] matPUpperVal
                     , int[] matIOCol
                     , int[] matIORow
                     , int[] matIORowBeg
@@ -20,8 +20,8 @@ public final class PSEMVCreateData_CSR
             )
     {
         this.stCnt = stCnt;
-        this.matIOLowerVal = matIOLowerVal;
-        this.matIOUpperVal = matIOUpperVal;
+        this.matPLowerVal = matPLowerVal;
+        this.matPUpperVal = matPUpperVal;
         this.matIOCol = matIOCol;
         this.matIORow = matIORow;
         this.matIORowBeg = matIORowBeg;
@@ -35,8 +35,8 @@ public final class PSEMVCreateData_CSR
 
     public final int stCnt;
 
-    public final double[] matIOLowerVal;
-    public final double[] matIOUpperVal;
+    public final double[] matPLowerVal;
+    public final double[] matPUpperVal;
     public final int[] matIOCol;
     public final int[] matIORow;
     public final int[] matIORowBeg;

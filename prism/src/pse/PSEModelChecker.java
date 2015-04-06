@@ -37,10 +37,7 @@ import parser.ast.*;
 import parser.ast.ExpressionFilter.FilterOperator;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
-import prism.PrismComponent;
-import prism.PrismException;
-import prism.Result;
-import prism.PrismSettings;
+import prism.*;
 import explicit.FoxGlynn;
 import explicit.StateModelChecker;
 import explicit.StateValues;
@@ -769,14 +766,13 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 		};
-		PSEMultManager multManager = Utility.makeMVMultManager(model, nonAbs, false);
-		PSEFoxGlynn foxGlynn = Utility.makeFoxGlynn(model, multManager, weight, 0, left, right, mainLog);
+		Pair<PSEFoxGlynn, Releaser> res = Utility.makeMVFoxGlynn(model, nonAbs, false, weight, 0, left, right, mainLog);
 
 		int totalIters = 0;
 		try {
-			totalIters = foxGlynn.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
+			totalIters = res.first.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 		} finally {
-			multManager.release();
+			res.second.release();
 		}
 
 		// Negate if necessary
@@ -925,8 +921,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 	}
 
-	/**
-	 */
+	private PSEFoxGlynn pseFoxGlynnCumulativeRewards;
 	public BoxRegionValues computeCumulativeRewards(PSEModel model,
 			final double[] stateRewards, double t, BoxRegionValues multProbs,
 			DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
@@ -1009,15 +1004,13 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(stateRewards, 0, solnMax, solnOff, solnMax.length);
 			}
 		};
-		PSEMultManager multManager = Utility.makeMVMultManager(model, null, false);
-		PSEFoxGlynn foxGlynn = Utility.makeFoxGlynn(model, multManager, weights, 1.0 / q, left, right, mainLog);
+
+		if (pseFoxGlynnCumulativeRewards == null) {
+			pseFoxGlynnCumulativeRewards = Utility.makeMVFoxGlynn(model, null, false, weights, 1.0 / q, left, right, mainLog).first;
+		}
 
 		int totalIters = 0;
-		try {
-			totalIters = foxGlynn.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
-		} finally {
-			multManager.release();
-		}
+		totalIters = pseFoxGlynnCumulativeRewards.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);

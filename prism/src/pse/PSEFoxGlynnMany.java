@@ -11,7 +11,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
     public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, double[] weight, double weightDef, int
         fgL, int fgR, PrismLog log)
     {
-        this.matCntMax = 10;
+        this.matCntMax = 2;
         this.model = model;
         this.multManager = multManager;
 
@@ -30,6 +30,8 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         this.region = new BoxRegion[matCntMax];
         this.regionDecomposed = new boolean[matCntMax];
         this.regionsToDecompose = new LabelledBoxRegions();
+
+        System.err.printf("%s<%s>\n", this.getClass().toString(), mult.getClass().toString());
     }
 
     @Override
@@ -52,6 +54,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         this.regionsToDecompose.clear();
         Iterator<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> it = in.iterator();
         while (it.hasNext()) {
+            int matCntDecomposed = 0;
             int matCnt = 0;
             while (matCnt < matCntMax && it.hasNext()) {
                 Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry = it.next();
@@ -106,18 +109,17 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                 iters += itersStep;
                 itersTotal += itersStep;
 
-                int nonDecomposed = 0;
                 for (int matId = 0; matId < matCnt; ++matId) {
                     if (regionDecomposed[matId]) {
                         continue;
                     }
-                    ++nonDecomposed;
                     mult.getSum(matId, sumMin, sumMax);
                     if (handleCheckRegion(decompositionProcedure, out, region[matId], sumMin, sumMax)) {
                         regionDecomposed[matId] = true;
+                        ++matCntDecomposed;
                     }
                 }
-                if (nonDecomposed == 0) {
+                if (matCntDecomposed == matCnt) {
                     break;
                 }
             }

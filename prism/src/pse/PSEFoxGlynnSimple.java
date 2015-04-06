@@ -26,6 +26,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
 
         this.mult = multManager.create(weight, weightDef, fgL);
 
+        System.err.printf("%s<%s>\n", this.getClass().toString(), mult.getClass().toString());
     }
 
     @Override

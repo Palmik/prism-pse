@@ -12,15 +12,18 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		, int weightOff
 		)
 	{
+		this.stCnt = data.stCnt;
 		this.totalIterationCnt = 0;
 
-		this.stCnt = data.stCnt;
-		this.matIOLowerVal = data.matIOLowerVal;
-		this.matIOUpperVal = data.matIOUpperVal;
-		this.matIOCol = data.matIOCol;
-		this.matIORow = data.matIORow;
-		this.matIORowBeg = data.matIORowBeg;
-		this.matIORowCnt = data.matIORowCnt;
+		this.enabledMatP = data.matIORowCnt > 0 && data.matIORowBeg[data.matIORowCnt] > 0;
+		this.enabledMatNP = data.matNPRowCnt > 0 && data.matNPRowBeg[data.matNPRowCnt] > 0;
+
+		this.matPLowerVal = data.matPLowerVal;
+		this.matPUpperVal = data.matPUpperVal;
+		this.matPCol = data.matIOCol;
+		this.matPRow = data.matIORow;
+		this.matPRowBeg = data.matIORowBeg;
+		this.matPRowCnt = data.matIORowCnt;
 
 		this.matNPVal = data.matNPVal;
 		this.matNPCol = data.matNPCol;
@@ -28,119 +31,217 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		this.matNPRowBeg = data.matNPRowBeg;
 		this.matNPRowCnt = data.matNPRowCnt;
 
-		this.enabledMatIO = data.matIORowCnt > 0 && data.matIORowBeg[data.matIORowCnt] > 0;
-		this.enabledMatNP = data.matNPRowCnt > 0 && data.matNPRowBeg[data.matNPRowCnt] > 0;
-
 		this.weight = weight;
 		this.weightDef = weightDef;
 		this.weightOff = weightOff;
 		this.sumMin = new double[stCnt];
-		this.sumMax = new double[stCnt];
 		this.min = new double[stCnt];
-		this.max = new double[stCnt];
 		this.resMin = new double[stCnt];
-		this.resMax = new double[stCnt];
-	}
 
-	@Override
-	final public void getMult(final double[] resMin, final double[] resMax)
-	{
-		System.arraycopy(this.min, 0, resMin, 0, resMin.length);
-		System.arraycopy(this.max, 0, resMax, 0, resMax.length);
-	}
-
-	@Override
-	final public void setMult(final double[] min, final double[] max)
-	{
-		System.arraycopy(min, 0, this.min, 0, min.length);
-		System.arraycopy(max, 0, this.max, 0, max.length);
-	}
-
-	@Override
-	final public void mult(int iterationCnt)
-	{
-		for (int i = 0; i < iterationCnt; ++i) {
-			System.arraycopy(min, 0, resMin, 0, resMin.length);
-			System.arraycopy(max, 0, resMax, 0, resMax.length);
-
-			if (enabledMatIO) {
-				for (int ii = 0; ii < matIORowCnt; ++ii) {
-					final int v0 = matIORow[ii];
-					final int tb = matIORowBeg[ii];
-					final int te = matIORowBeg[ii + 1];
-					for (int jj = tb; jj < te; ++jj) {
-						final int v1 = matIOCol[jj];
-						final double diffMin = min[v1] - min[v0];
-						final double diffMax = max[v1] - max[v0];
-						if (diffMin > 0) {
-							resMin[v0] += matIOLowerVal[jj] * diffMin;
-						} else {
-							resMin[v0] += matIOUpperVal[jj] * diffMin;
-						}
-						if (diffMax > 0) {
-							resMax[v0] += matIOUpperVal[jj] * diffMax;
-						} else {
-							resMax[v0] += matIOLowerVal[jj] * diffMax;
-						}
-					}
-				}
-			}
-
-			if (enabledMatNP) {
-				for (int ii = 0; ii < matNPRowCnt; ++ii) {
-					final int v0 = matNPRow[ii];
-					final int tb = matNPRowBeg[ii];
-					final int te = matNPRowBeg[ii + 1];
-					for (int jj = tb; jj < te; ++jj) {
-						final int v1 = matNPCol[jj];
-						final double rate = matNPVal[jj];
-						resMin[v0] += rate * (min[v1] - min[v0]);
-						resMax[v0] += rate * (max[v1] - max[v0]);
-					}
-				}
-			}
-
-			++totalIterationCnt;
-
-			final double sumWeight = getSumWeight();
-			if (sumWeight != 0) {
-				for (int j = 0; j < stCnt; ++j) {
-					sumMin[j] += sumWeight * resMin[j];
-					sumMax[j] += sumWeight * resMax[j];
-				}
-			}
-
-			final double[] tmp1 = resMin;
-			final double[] tmp2 = resMax;
-			resMin = min;
-			resMax = max;
-			min = tmp1;
-			max = tmp2;
+		if (enabledMatP) {
+			this.max = new double[stCnt];
+			this.resMax = new double[stCnt];
+			this.sumMax = new double[stCnt];
 		}
-	}
-
-	@Override
-	final public void mult
-		( double min[], double resMin[]
-		, double max[], double resMax[]
-		, int iterationCnt
-		)
-	{
-		setMult(min, max); mult(iterationCnt); getMult(resMin, resMax);
 	}
 
 	@Override
 	final public void getSum(final double[] sumMin, final double[] sumMax)
 	{
-		System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
-		System.arraycopy(this.sumMax, 0, sumMax, 0, sumMax.length);
+		if (enabledMatP) {
+			System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
+			System.arraycopy(this.sumMax, 0, sumMax, 0, sumMax.length);
+		} else {
+			System.arraycopy(this.sumMin, 0, sumMin, 0, sumMin.length);
+			System.arraycopy(this.sumMin, 0, sumMax, 0, sumMax.length);
+		}
 	}
 
 	@Override
 	final public void setSum(final double[] sumMin, final double[] sumMax)
 	{
 		System.arraycopy(sumMin, 0, this.sumMin, 0, sumMin.length);
-		System.arraycopy(sumMax, 0, this.sumMax, 0, sumMax.length);
+		if (enabledMatP) {
+			System.arraycopy(sumMax, 0, this.sumMax, 0, sumMax.length);
+		}
+	}
+
+	@Override
+	final public void getMult(final double[] resMin, final double[] resMax)
+	{
+		if (enabledMatP) {
+			System.arraycopy(this.min, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.max, 0, resMax, 0, resMax.length);
+		} else {
+			System.arraycopy(this.min, 0, resMin, 0, resMin.length);
+			System.arraycopy(this.min, 0, resMax, 0, resMax.length);
+		}
+	}
+
+	@Override
+	final public void setMult(final double[] min, final double[] max)
+	{
+		System.arraycopy(min, 0, this.min, 0, min.length);
+		if (enabledMatP) {
+			System.arraycopy(max, 0, this.max, 0, max.length);
+		}
+	}
+
+	@Override
+	final public void mult(int iterationCnt)
+	{
+		if (enabledMatP) {
+			for (int i = 0; i < iterationCnt; ++i) {
+				System.arraycopy(min, 0, resMin, 0, resMin.length);
+				System.arraycopy(max, 0, resMax, 0, resMax.length);
+
+				if (enabledMatNP) {
+					PSE_MV_NP_BOTH(matNPRowCnt, matNPVal,
+						matNPCol, matNPRow, matNPRowBeg,
+						min, max, resMin, resMax);
+				}
+				if (enabledMatP) {
+					PSE_MV_P_BOTH(matPRowCnt, matPLowerVal, matPUpperVal,
+						matPCol, matPRow, matPRowBeg,
+						min, max, resMin, resMax);
+				}
+				++totalIterationCnt;
+				weightedSumToBoth(stCnt, getSumWeight(), resMin, resMax, sumMin, sumMax);
+
+				swapSolMem();
+			}
+		} else {
+			for (int i = 0; i < iterationCnt; ++i) {
+				System.arraycopy(min, 0, resMin, 0, resMin.length);
+
+				if (enabledMatNP) {
+					PSE_MV_NP(matNPRowCnt, matNPVal,
+						matNPCol, matNPRow, matNPRowBeg,
+						min, resMin);
+				}
+				++totalIterationCnt;
+				weightedSumTo(stCnt, getSumWeight(), resMin, sumMin);
+
+				swapSolMem();
+			}
+		}
+	}
+
+	final private void swapSolMem()
+	{
+		final double[] tmp1 = resMin;
+		resMin = min;
+		min = tmp1;
+		final double[] tmp2 = resMax;
+		resMax = max;
+		max = tmp2;
+	}
+
+	final private void weightedSumToBoth(
+		final int n, final double w,
+		final double[] inMin, final double[] inMax,
+		final double[] sumMin, final double[] sumMax)
+	{
+		if (w != 0) {
+			for (int j = 0; j < n; ++j) {
+				sumMin[j] += w * inMin[j];
+				sumMax[j] += w * inMax[j];
+			}
+		}
+	}
+
+	final private void weightedSumTo(final int n, final double w, final double[] in, final double[] sum)
+	{
+		if (w != 0) {
+			for (int j = 0; j < n; ++j) {
+				sum[j] += w * in[j];
+			}
+		}
+	}
+
+	final private void PSE_MV_NP
+		( int matNPRowCnt
+		, final double[] matNPVal
+		, final int[] matNPCol
+		, final int[] matNPRow
+		, final int[] matNPRowBeg
+
+		, final double[] in
+		, final double[] out
+		)
+	{
+		for (int ii = 0; ii < matNPRowCnt; ++ii) {
+			final int v0 = matNPRow[ii];
+			final int tb = matNPRowBeg[ii];
+			final int te = matNPRowBeg[ii + 1];
+			for (int jj = tb; jj < te; ++jj) {
+				final int v1 = matNPCol[jj];
+				final double rate = matNPVal[jj];
+				out[v0] += rate * (in[v1] - in[v0]);
+			}
+		}
+	}
+
+	final private void PSE_MV_NP_BOTH
+		( int matNPRowCnt
+		, final double[] matNPVal
+		, final int[] matNPCol
+		, final int[] matNPRow
+		, final int[] matNPRowBeg
+
+		, final double[] inMin
+		, final double[] inMax
+		, final double[] outMin
+		, final double[] outMax
+		)
+	{
+		for (int ii = 0; ii < matNPRowCnt; ++ii) {
+			final int v0 = matNPRow[ii];
+			final int tb = matNPRowBeg[ii];
+			final int te = matNPRowBeg[ii + 1];
+			for (int jj = tb; jj < te; ++jj) {
+				final int v1 = matNPCol[jj];
+				final double rate = matNPVal[jj];
+				outMin[v0] += rate * (inMin[v1] - inMin[v0]);
+				outMax[v0] += rate * (inMax[v1] - inMax[v0]);
+			}
+		}
+	}
+
+	final private void PSE_MV_P_BOTH
+		( int matPRowCnt
+		, final double[] matPLowerVal
+		, final double[] matPUpperVal
+		, final int[] matPCol
+		, final int[] matPRow
+		, final int[] matPRowBeg
+
+		, final double[] inMin
+		, final double[] inMax
+		, final double[] outMin
+		, final double[] outMax
+		)
+	{
+		for (int ii = 0; ii < matPRowCnt; ++ii) {
+			final int v0 = matPRow[ii];
+			final int tb = matPRowBeg[ii];
+			final int te = matPRowBeg[ii + 1];
+			for (int jj = tb; jj < te; ++jj) {
+				final int v1 = matPCol[jj];
+				final double diffMin = inMin[v1] - inMin[v0];
+				final double diffMax = inMax[v1] - inMax[v0];
+				if (diffMin > 0) {
+					outMin[v0] += matPLowerVal[jj] * diffMin;
+				} else {
+					outMin[v0] += matPUpperVal[jj] * diffMin;
+				}
+				if (diffMax > 0) {
+					outMax[v0] += matPUpperVal[jj] * diffMax;
+				} else {
+					outMax[v0] += matPLowerVal[jj] * diffMax;
+				}
+			}
+		}
 	}
 
 	public void update(PSEMVCreateData_CSR data)
@@ -148,8 +249,8 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		this.totalIterationCnt = 0;
 		Arrays.fill(sumMin, 0);
 		Arrays.fill(sumMax, 0);
-		this.matIOLowerVal = data.matIOLowerVal;
-		this.matIOUpperVal = data.matIOUpperVal;
+		this.matPLowerVal = data.matPLowerVal;
+		this.matPUpperVal = data.matPUpperVal;
 		this.matNPVal = data.matNPVal;
 	}
 
@@ -160,8 +261,7 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 
 	final private double getSumWeight()
 	{
-		if (totalIterationCnt >= weightOff)
-		{
+		if (totalIterationCnt >= weightOff) {
 			return weight[totalIterationCnt - weightOff];
 		}
 		return weightDef;
@@ -169,13 +269,13 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 
 	private int stCnt;
 
-	private double[] matIOLowerVal;
-	private double[] matIOUpperVal;
-	final private int[] matIOCol;
-	final private int[] matIORow;
-	final private int[] matIORowBeg;
-    final private int matIORowCnt;
-	final private boolean enabledMatIO;
+	private double[] matPLowerVal;
+	private double[] matPUpperVal;
+	final private int[] matPCol;
+	final private int[] matPRow;
+	final private int[] matPRowBeg;
+    final private int matPRowCnt;
+	final private boolean enabledMatP;
 
 	private double[] matNPVal;
 	final private int[] matNPCol;
@@ -189,7 +289,7 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 	final private double weightDef;
 	final private int weightOff;
 	final private double[] sumMin;
-	final private double[] sumMax;
+	private double[] sumMax;
 	private double[] min;
 	private double[] max;
 	private double[] resMin;

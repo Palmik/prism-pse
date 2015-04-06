@@ -10,15 +10,15 @@ final public class PSEMVMultTopology_OCL implements Releaseable
 		this.stCnt = data.stCnt;
 		this.matIOColHost = data.matIOCol;
 		this.matIORowHost = data.matIORow;
-		this.matIORowBegHost = data.matIORowBeg;
-		this.matIORowCnt = data.matIORowCnt;
+		this.matPRowBegHost = data.matIORowBeg;
+		this.matPRowCnt = data.matIORowCnt;
 
 		this.matNPColHost = data.matNPCol;
 		this.matNPRowHost = data.matNPRow;
 		this.matNPRowBegHost = data.matNPRowBeg;
 		this.matNPRowCnt = data.matNPRowCnt;
 
-		this.enabledMatIO = matIORowCnt > 0 && matIORowBegHost[matIORowCnt] > 0;
+		this.enabledMatIO = matPRowCnt > 0 && matPRowBegHost[matPRowCnt] > 0;
 		this.enabledMatNP = matNPRowCnt > 0 && matNPRowBegHost[matNPRowCnt] > 0;
 
 		if (enabledMatIO) {
@@ -26,12 +26,12 @@ final public class PSEMVMultTopology_OCL implements Releaseable
 			final Pointer matIORow_ = Pointer.to(data.matIORow);
 			final Pointer matIORowBeg_ = Pointer.to(data.matIORowBeg);
 
-			this.matIOCol = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matIORowBegHost[matIORowCnt], matIOCol_, null);
-			this.matIORow = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * matIORowCnt, matIORow_, null);
-			this.matIORowBeg = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-				Sizeof.cl_uint * (matIORowCnt + 1), matIORowBeg_, null);
+			this.matPCol = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_uint * matPRowBegHost[matPRowCnt], matIOCol_, null);
+			this.matPRow = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_uint * matPRowCnt, matIORow_, null);
+			this.matPRowBeg = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+				Sizeof.cl_uint * (matPRowCnt + 1), matIORowBeg_, null);
 		}
 
 		if (enabledMatNP) {
@@ -56,9 +56,9 @@ final public class PSEMVMultTopology_OCL implements Releaseable
 			clReleaseMemObject(matNPCol);
 		}
 		if (enabledMatIO) {
-			clReleaseMemObject(matIORowBeg);
-			clReleaseMemObject(matIORow);
-			clReleaseMemObject(matIOCol);
+			clReleaseMemObject(matPRowBeg);
+			clReleaseMemObject(matPRow);
+			clReleaseMemObject(matPCol);
 		}
 	}
 
@@ -66,16 +66,16 @@ final public class PSEMVMultTopology_OCL implements Releaseable
 
 	final public int[] matIOColHost;
 	final public int[] matIORowHost;
-	final public int[] matIORowBegHost;
+	final public int[] matPRowBegHost;
 
 	final public int[] matNPColHost;
 	final public int[] matNPRowHost;
 	final public int[] matNPRowBegHost;
 
-	final public int matIORowCnt;
-	public cl_mem matIOCol;
-	public cl_mem matIORow;
-	public cl_mem matIORowBeg;
+	final public int matPRowCnt;
+	public cl_mem matPCol;
+	public cl_mem matPRow;
+	public cl_mem matPRowBeg;
 	final public boolean enabledMatIO;
 
 	final public int matNPRowCnt;

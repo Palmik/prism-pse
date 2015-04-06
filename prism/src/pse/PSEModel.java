@@ -93,6 +93,7 @@ public final class PSEModel extends ModelExplicit
 	 */
 	PSEModel()
 	{
+		System.err.printf("%s\n", PSEModel.class.getClassLoader().getResource("resources/PSEKernels.cl"));
 		numStates = 0;
 		numTransitions = 0;
 		initialStates = new LinkedList<Integer>();
@@ -603,6 +604,7 @@ public final class PSEModel extends ModelExplicit
 			    }
 		    }
 	    }
+
 	    matITrgBeg[numStates] = matIPos;
 	    matNPTrgBeg[numStates] = matPos;
 	    matIOTrgBeg[numStates] = matIOPos;
