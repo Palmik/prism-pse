@@ -11,7 +11,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
     public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, double[] weight, double weightDef, int
         fgL, int fgR, PrismLog log)
     {
-        this.matCntMax = 2;
+        this.matCntMax = 4;
         this.model = model;
         this.multManager = multManager;
 

@@ -236,7 +236,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		this.log = log;
 
 		// TODO: Base this on number of states.
-		this.multGroupSize = 3;
+		this.multGroupSize = 4;
 		this.multGroup = multManager.createGroup(weight, weightDef, fgL, multGroupSize);
 
 		ReadWriteLock modelLock = new ReentrantReadWriteLock();
