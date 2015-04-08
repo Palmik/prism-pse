@@ -16,8 +16,7 @@ __kernel void WeightedSumTo
   )
 {
     int ii = get_global_id(0);
-    if (ii < n)
-    {
+    if (ii < n) {
         sum[ii] = MAD(vec[ii], w, sum[ii]);
     }
 }
@@ -32,8 +31,7 @@ __kernel void WeightedSumToBoth
   )
 {
     int ii = get_global_id(0);
-    if (ii < n)
-    {
+    if (ii < n) {
         sum1[ii] = MAD(vec1[ii], w, sum1[ii]);
         sum2[ii] = MAD(vec2[ii], w, sum2[ii]);
     }
@@ -53,13 +51,11 @@ __kernel void PSE_MV_NP_CSR
   )
 {
     const int ii = get_global_id(0);
-    if (ii < matNPRowCnt)
-    {
+    if (ii < matNPRowCnt) {
         const int v0 = matNPRow[ii];
         const int te = matNPRowBeg[ii + 1];
         real dot = out[v0];
-        for (int jj = matNPRowBeg[ii]; jj < te; ++jj)
-        {
+        for (int jj = matNPRowBeg[ii]; jj < te; ++jj) {
             dot = MAD(matVal[jj], in[matNPCol[jj]] - in[v0], dot);
         }
         out[v0] = dot;
@@ -80,14 +76,12 @@ __kernel void PSE_MV_NP_CSR_BOTH
   )
 {
     const int ii = get_global_id(0);
-    if (ii < matNPRowCnt)
-    {
+    if (ii < matNPRowCnt) {
         const int v0 = matNPRow[ii];
         const int te = matNPRowBeg[ii + 1];
         real dotMin = outMin[v0];
         real dotMax = outMax[v0];
-        for (int jj = matNPRowBeg[ii]; jj < te; ++jj)
-        {
+        for (int jj = matNPRowBeg[ii]; jj < te; ++jj) {
             const int v1 = matNPCol[jj];
             const real rate = matVal[jj];
             dotMin = MAD(rate, inMin[v1] - inMin[v0], dotMin);
@@ -113,8 +107,7 @@ __kernel void PSE_MV_P_CSR_BOTH
   )
 {
     const int ii = get_global_id(0);
-    if (ii < matPRowCnt)
-    {
+    if (ii < matPRowCnt) {
         const int v0 = matPRow[ii];
         const int te = matPRowBeg[ii + 1];
         real dotMin = outMin[v0];
@@ -158,13 +151,11 @@ __kernel void PSE_MV_NP_CSR_MANY
     const int ii = get_global_id(0);
     const int ii_ = ii % matNPRowCnt;
     const int matColOff = (ii / matNPRowCnt) * matNPColCnt;
-    if (ii < matNPRowCnt * matCnt)
-    {
+    if (ii < matNPRowCnt * matCnt) {
         const int v0 = matNPRow[ii_] + matColOff;
         const int te = matNPRowBeg[ii_ + 1];
         real dot = out[v0];
-        for (int jj = matNPRowBeg[ii_]; jj < te; ++jj)
-        {
+        for (int jj = matNPRowBeg[ii_]; jj < te; ++jj) {
             dot = MAD(matVal[jj], in[matNPCol[jj] + matColOff] - in[v0], dot);
         }
         out[v0] = dot;
@@ -189,14 +180,12 @@ __kernel void PSE_MV_NP_CSR_BOTH_MANY
     const int ii = get_global_id(0);
     const int ii_ = ii % matNPRowCnt;
     const int matColOff = (ii / matNPRowCnt) * matNPColCnt;
-    if (ii < matNPRowCnt * matCnt)
-    {
+    if (ii < matNPRowCnt * matCnt) {
         const int v0 = matNPRow[ii_] + matColOff;
         const int te = matNPRowBeg[ii_ + 1];
         real dotMin = outMin[v0];
         real dotMax = outMax[v0];
-        for (int jj = matNPRowBeg[ii]; jj < te; ++jj)
-        {
+        for (int jj = matNPRowBeg[ii_]; jj < te; ++jj) {
             const int v1 = matNPCol[jj] + matColOff;
             const real rate = matVal[jj];
             dotMin = MAD(rate, inMin[v1] - inMin[v0], dotMin);
@@ -227,8 +216,7 @@ __kernel void PSE_MV_P_CSR_BOTH_MANY
     const int ii_ = ii % matPRowCnt;
     const int matOff = (ii / matPRowCnt) * matPRowBeg[matPRowCnt];
     const int matColOff = (ii / matPRowCnt) * matPColCnt;
-    if (ii < matPRowCnt * matCnt)
-    {
+    if (ii < matPRowCnt * matCnt) {
         const int v0 = matPRow[ii_] + matColOff;
         const int te = matPRowBeg[ii_ + 1];
         real dotMin = outMin[v0];
@@ -272,14 +260,12 @@ __kernel void PSE_VM_I_CSR_BOTH
 {
   const int v0 = get_global_id(0);
 
-  if (v0 < matRowCnt)
-  {
+  if (v0 < matRowCnt) {
     const int ce = matRowBeg[v0 + 1];
 
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
-    for (int i = matRowBeg[v0]; i < ce; ++i)
-    {
+    for (int i = matRowBeg[v0]; i < ce; ++i) {
       dotMin = MAD(matValMin[i], inMin[matCol[i]], dotMin);
       dotMax = MAD(matValMax[i], inMax[matCol[i]], dotMax);
     }
@@ -301,13 +287,11 @@ __kernel void PSE_VM_NP_CSR
 {
   const int v0 = get_global_id(0);
 
-  if (v0 < matRowCnt)
-  {
+  if (v0 < matRowCnt) {
     const int ce = matRowBeg[v0 + 1];
 
     real dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
-    for (int i = matRowBeg[v0]; i < ce; ++i)
-    {
+    for (int i = matRowBeg[v0]; i < ce; ++i) {
       dot = MAD(matVal[i], in[matCol[i]], dot);
     }
     out[v0] = dot;
@@ -330,14 +314,12 @@ __kernel void PSE_VM_NP_CSR_BOTH
 {
   const int v0 = get_global_id(0);
 
-  if (v0 < matRowCnt)
-  {
+  if (v0 < matRowCnt) {
     const int ce = matRowBeg[v0 + 1];
 
     real dotMin = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
     real dotMax = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
-    for (int i = matRowBeg[v0]; i < ce; ++i)
-    {
+    for (int i = matRowBeg[v0]; i < ce; ++i) {
       dotMin = MAD(matVal[i], inMin[matCol[i]], dotMin);
       dotMax = MAD(matVal[i], inMax[matCol[i]], dotMax);
     }
@@ -354,8 +336,7 @@ __kernel void PSE_VM_DIAG
 {
   const int v0 = get_global_id(0);
 
-  if (v0 < matRowCnt)
-  {
+  if (v0 < matRowCnt) {
     out[v0] = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
   }
 }
@@ -372,8 +353,7 @@ __kernel void PSE_VM_DIAG_BOTH
 {
   const int v0 = get_global_id(0);
 
-  if (v0 < matRowCnt)
-  {
+  if (v0 < matRowCnt) {
     outMin[v0] = inMin[v0] * matDiaValMin[v0]; //out[v0] + in[v0] * matDiaVal[v0];
     outMax[v0] = inMax[v0] * matDiaValMax[v0]; //out[v0] + in[v0] * matDiaVal[v0];
   }
@@ -396,12 +376,10 @@ __kernel void PSE_VM_IO_CSR_BOTH
 {
   const int v1 = get_global_id(0);
 
-  if (v1 < matRowCnt)
-  {
+  if (v1 < matRowCnt) {
     real dotMin = outMin[v1];
     real dotMax = outMax[v1];
-    for (int i = matRowBeg[v1]; i < matRowBeg[v1 + 1]; ++i)
-    {
+    for (int i = matRowBeg[v1]; i < matRowBeg[v1 + 1]; ++i) {
       const int v0 = matCol[i];
       const real rlowerMin = (matLowerVal0[i] * inMin[v0] - matLowerVal1[i] * inMin[v1]);
       const real rupperMax = (matUpperVal0[i] * inMax[v0] - matUpperVal1[i] * inMax[v1]);
@@ -444,14 +422,12 @@ __kernel void PSE_VM_I_CSR_BOTH_MANY
   const int matOff = matId * matRowBeg[matRowCnt];
   const int matColOff = matId * matRowCnt;
 
-  if (v0 < matRowCnt * matCnt)
-  {
+  if (v0 < matRowCnt * matCnt) {
     const int ce = matRowBeg[v0_ + 1];
 
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
-    for (int i = matRowBeg[v0_]; i < ce; ++i)
-    {
+    for (int i = matRowBeg[v0_]; i < ce; ++i) {
       dotMin = MAD(matValMin[i + matOff], inMin[matCol[i] + matColOff], dotMin);
       dotMax = MAD(matValMax[i + matOff], inMax[matCol[i] + matColOff], dotMax);
     }
@@ -519,6 +495,7 @@ __kernel void PSE_VM_NP_CSR_BOTH_MANY
     outMax[v0] = dotMax;
   }
 }
+
 __kernel void PSE_VM_DIAG_MANY
   ( const int matCnt
   , const int matRowCnt
@@ -530,8 +507,7 @@ __kernel void PSE_VM_DIAG_MANY
   const int v0 = get_global_id(0);
   const int v0_ = v0 % matRowCnt;
 
-  if (v0 < matRowCnt * matCnt)
-  {
+  if (v0 < matRowCnt * matCnt) {
     out[v0] = in[v0] * matDiaVal[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
   }
 }
@@ -550,8 +526,7 @@ __kernel void PSE_VM_DIAG_BOTH_MANY
   const int v0 = get_global_id(0);
   const int v0_ = v0 % matRowCnt;
 
-  if (v0 < matRowCnt * matCnt)
-  {
+  if (v0 < matRowCnt * matCnt) {
     outMin[v0] = inMin[v0] * matDiaValMin[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
     outMax[v0] = inMax[v0] * matDiaValMax[v0_]; //out[v0] + in[v0] * matDiaVal[v0];
   }
@@ -579,14 +554,12 @@ __kernel void PSE_VM_IO_CSR_BOTH_MANY
   const int matOff = matId * matRowBeg[matRowCnt];
   const int matColOff = matId * matRowCnt;
 
-  if (v1 < matRowCnt * matCnt)
-  {
+  if (v1 < matRowCnt * matCnt) {
     const int ce = matRowBeg[v1_ + 1];
 
     real dotMin = outMin[v1];
     real dotMax = outMax[v1];
-    for (int i_ = matRowBeg[v1_]; i_ < ce; ++i_)
-    {
+    for (int i_ = matRowBeg[v1_]; i_ < ce; ++i_) {
       const int i = i_ + matOff;
       const int v0 = matCol[i_] + matColOff;
       const real rlowerMin = (matLowerVal0[i] * inMin[v0] - matLowerVal1[i] * inMin[v1]);
