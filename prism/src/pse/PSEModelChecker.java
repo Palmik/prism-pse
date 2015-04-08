@@ -778,7 +778,11 @@ public final class PSEModelChecker extends PrismComponent
 		// Negate if necessary
 		if (negate) {
 			// Subtract all min/max values from 1 and swap
-			for (BoxRegionValues.StateValuesPair pair: regionValues.values()) {
+			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry: regionValues) {
+				if (previousResult.hasRegion(entry.getKey())) {
+					continue;
+				}
+				BoxRegionValues.StateValuesPair pair = entry.getValue();
 				pair.getMin().timesConstant(-1.0);
 				pair.getMin().plusConstant(1.0);
 				pair.getMax().timesConstant(-1.0);
