@@ -6,8 +6,7 @@ import static org.jocl.CL.*;
 
 public final class PSEMVMultMany_OCL implements PSEMultMany, Releaseable
 {
-	public PSEMVMultMany_OCL(PSEMVMultSettings_OCL opts, PSEMVMultTopology_OCL topo, int matCnt,
-		final double[] weight, final double weightDef, final int weightOff)
+	public PSEMVMultMany_OCL(PSEMVMultSettings_OCL opts, PSEMVMultTopology_OCL topo, int matCnt)
 	{
 		this.matCnt = matCnt;
 		this.stCnt = topo.stCnt;
@@ -21,9 +20,6 @@ public final class PSEMVMultMany_OCL implements PSEMultMany, Releaseable
 		this.enabledMatP = topo.matPRowCnt > 0 && topo.matPRowBegHost[topo.matPRowCnt] > 0;
 		this.enabledMatNP = topo.matNPRowCnt > 0 && topo.matNPRowBegHost[topo.matNPRowCnt] > 0;
 
-		this.weight = weight;
-		this.weightDef = weightDef;
-		this.weightOff = weightOff;
 		this.totalIterationCnt = 0;
 
 		clProgram = OCLProgram.createProgram(OCLProgram.SOURCE, clContext());
@@ -90,8 +86,14 @@ public final class PSEMVMultMany_OCL implements PSEMultMany, Releaseable
 		}
 	}
 
-	/* Updates the matrix values (assumes that values that were zero are zero as well). Resets sums to zero.
-	 */
+	@Override
+	final public void setWeight(double[] weight, double weightDef, int weightOff)
+	{
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
+	}
+
 	final public void update(int matId, PSEMVCreateData_CSR data)
 	{
 		assert(matId < matCnt);
@@ -320,9 +322,9 @@ public final class PSEMVMultMany_OCL implements PSEMultMany, Releaseable
 	private int totalIterationCnt;
 	private cl_mem sumMin;
 	private cl_mem sumMax;
-	final private double[] weight;
-	final private double   weightDef;
-	final private int      weightOff;
+	private double[] weight;
+	private double   weightDef;
+	private int      weightOff;
 
 	private cl_mem matPLowerVal;
 	private cl_mem matPUpperVal;

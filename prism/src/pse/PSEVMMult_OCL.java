@@ -6,8 +6,7 @@ import static org.jocl.CL.*;
 
 public class PSEVMMult_OCL implements PSEMult, Releaseable
 {
-	public PSEVMMult_OCL(PSEVMMultSettings_OCL opts, PSEVMMultTopology_OCL topo, PSEVMCreateData_CSR data, final
-	double[] weight, final double weightDef, final int weightOff)
+	public PSEVMMult_OCL(PSEVMMultSettings_OCL opts, PSEVMMultTopology_OCL topo, PSEVMCreateData_CSR data)
 	{
 		this.stCnt = topo.stCnt;
 		this.opts = opts;
@@ -21,9 +20,6 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 		this.enabledMatIO = topo.enabledMatIO;
 		this.enabledMatI = topo.enabledMatI;
 
-		this.weight = weight;
-		this.weightDef = weightDef;
-		this.weightOff = weightOff;
 		this.totalIterationCnt = 0;
 
 		clProgram = OCLProgram.createProgram(OCLProgram.SOURCE, clContext());
@@ -127,6 +123,14 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 				resMaxMem = clCreateBuffer(clContext(), CL_MEM_READ_WRITE, len, null, null);
 			}
 		}
+	}
+
+	@Override
+	final public void setWeight(double[] weight, double weightDef, int weightOff)
+	{
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
 	}
 
 	public void update(PSEVMCreateData_CSR data)
@@ -399,9 +403,9 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 	private int totalIterationCnt;
 	private cl_mem sumMin;
 	private cl_mem sumMax;
-	final private double[] weight;
-	final private double   weightDef;
-	final private int      weightOff;
+	private double[] weight;
+	private double   weightDef;
+	private int      weightOff;
 
 	private cl_mem matIOLowerVal0;
 	private cl_mem matIOLowerVal1;

@@ -17,11 +17,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			( PSEModel model
 			, PSEMultManager<Mult> multManager
 			, Mult mult
-
-			, double[] weight
-			, double   weightDef
-			, int      fgL
-			, int      fgR
+			, int iterStep
 
 			, PrismLog mainLog
 
@@ -32,11 +28,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			this.model = model;
 			this.multManager = multManager;
 			this.mult = mult;
-
-			this.weight = weight;
-			this.weightDef = weightDef;
-			this.fgL = fgL;
-			this.fgR = fgR;
+			this.iterStep = iterStep;
 
 			this.mainLog = mainLog;
 
@@ -50,8 +42,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		}
 
 		final public void update
-			( PSEFoxGlynnSimple.SolSettter solSettter
-			, int itersCheckInterval
+			( DistributionGetter distributionGetter
+			, ParametersGetter parametersGetter
+			, double t
 
 			, DecompositionProcedure decompositionProcedure
 
@@ -60,8 +53,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			, BoxRegionValues out
 			)
 		{
-			this.solSettter = solSettter;
-			this.itersCheckInterval = itersCheckInterval;
+			this.distributionGetter = distributionGetter;
+			this.parametersGetter = parametersGetter;
+			this.t = t;
 
 			this.decompositionProcedure = decompositionProcedure;
 
@@ -102,11 +96,18 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					modelLock.writeLock().lock();
 					model.evaluateParameters(region);
 					multManager.update(mult);
+					Params params = parametersGetter.getParameters(model, t);
 					mainLog.println("Computing probabilities for parameter region " + region);
 					modelLock.writeLock().unlock();
 
+					fgL = params.fgL;
+					fgR = params.fgR;
+					weight = params.weight;
+					weightDef = params.weightDef;
+					mult.setWeight(weight, weightDef, fgL);
+
 					// Initialise solution vectors.
-					solSettter.setSol(entry, 0, solnMin, solnMax);
+					distributionGetter.getDistribution(entry, 0, solnMin, solnMax);
 					final double[] sumMin = new double[n];
 					final double[] sumMax = new double[n];
 					// If necessary, do 0th element of summation (doesn't require any matrix powers)
@@ -128,10 +129,10 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 						// Matrix-vector multiply
 						int itersStep;
 						if (iters == 0 && weightDef == 0) {
-							itersStep = Math.max(Utility.leastGreaterMultiple(fgL, itersCheckInterval),
-								itersCheckInterval);
+							itersStep = Math.max(Utility.leastGreaterMultiple(fgL, iterStep),
+								iterStep);
 						} else {
-							itersStep = Math.min(itersCheckInterval, fgR - iters);
+							itersStep = Math.min(iterStep, fgR - iters);
 						}
 						mult.mult(itersStep);
 						iters += itersStep;
@@ -189,7 +190,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		private PSEModel model;
 		private PSEMultManager<Mult> multManager;
-		private PSEFoxGlynnSimple.SolSettter solSettter;
+		private DistributionGetter distributionGetter;
+		private ParametersGetter parametersGetter;
+		private double t;
 		private Mult mult;
 
 		private double[] weight;
@@ -197,7 +200,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		private int      fgL;
 		private int      fgR;
 
-		private int itersCheckInterval;
+		private int iterStep;
 
 		private DecompositionProcedure decompositionProcedure;
 
@@ -215,29 +218,19 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 	}
 
-	public PSEFoxGlynnParallel
-		( PSEModel model
-		, PSEMultManager<Mult> multManager
-
-		, double[] weight
-		, double   weightDef
-		, int      fgL
-		, int      fgR
-
-		, PrismLog log
-		)
+	public PSEFoxGlynnParallel(PSEModel model, PSEMultManager<Mult> multManager, int iterStep, PrismLog log)
 	{
 		// TODO: Base this on number of states.
 		this.multGroupSize = 4;
-		this.multGroup = multManager.createGroup(weight, weightDef, fgL, multGroupSize);
+		this.multGroup = multManager.createGroup(multGroupSize);
 
 		ReadWriteLock modelLock = new ReentrantReadWriteLock();
 		ReadWriteLock outLock = new ReentrantReadWriteLock();
 
 		this.multWorkerGroup = new Worker[multGroupSize];
 		for (int i = 0; i < multGroupSize; ++i) {
-			multWorkerGroup[i] = new Worker<Mult>(model, multManager, multGroup[i],
-				weight, weightDef, fgL, fgR, log, modelLock, outLock);
+			multWorkerGroup[i] = new Worker<Mult>(model, multManager, multGroup[i], iterStep,
+				log, modelLock, outLock);
 		}
 
 		System.err.printf("%s<%s>\n", this.getClass().toString(), multGroup[0].getClass());
@@ -245,9 +238,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 	@Override
 	final public int compute
-		( PSEFoxGlynnSimple.SolSettter solSettter
-
-		, int itersCheckInterval
+		( DistributionGetter distributionGetter
+		, ParametersGetter parametersGetter
+		, double t
 
 		, DecompositionProcedure decompositionProcedure
 
@@ -263,7 +256,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		Thread[] workerThread = new Thread[multGroupSize];
 		for (int i = 0; i < workerThread.length; ++i) {
-			multWorkerGroup[i].update(solSettter, itersCheckInterval, decompositionProcedure, inQueue, outPrev, out);
+			multWorkerGroup[i].update(distributionGetter, parametersGetter, t, decompositionProcedure, inQueue, outPrev, out);
 			workerThread[i] = new Thread(multWorkerGroup[i]);
 			workerThread[i].start();
 		}

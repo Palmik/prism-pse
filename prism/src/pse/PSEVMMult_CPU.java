@@ -4,8 +4,7 @@ import java.util.Arrays;
 
 public final class PSEVMMult_CPU implements PSEMult, Releaseable
 {
-    public PSEVMMult_CPU(PSEVMCreateData_CSR data,
-		double[] weight, double weightDef, int weightOff)
+    public PSEVMMult_CPU(PSEVMCreateData_CSR data)
     {
 		this.stCnt = data.stCnt;
 		this.totalIterationCnt = 0;
@@ -32,9 +31,6 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
         this.matNPSrc = data.matNPSrc;
         this.matNPTrgBeg = data.matNPTrgBeg;
 
-	    this.weight = weight;
-	    this.weightDef = weightDef;
-	    this.weightOff = weightOff;
 	    this.sumMin = new double[stCnt];
 		this.min = new double[stCnt];
 		this.resMin = new double[stCnt];
@@ -44,6 +40,14 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 			this.sumMax = new double[stCnt];
 		}
     }
+
+	@Override
+	final public void setWeight(double[] weight, double weightDef, int weightOff)
+	{
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
+	}
 
 	final public void update(PSEVMCreateData_CSR data)
 	{
@@ -329,9 +333,9 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
     final private int[] matNPTrgBeg;
 
 	private int totalIterationCnt;
-	final private double[] weight;
-	final private double weightDef;
-	final private int weightOff;
+	private double[] weight;
+	private double weightDef;
+	private int weightOff;
 	final private double[] sumMin;
 	private double[] sumMax;
 	private double[] min;

@@ -4,13 +4,7 @@ import java.util.Arrays;
 
 public final class PSEMVMult_CPU implements PSEMult, Releaseable
 {
-	public PSEMVMult_CPU
-		( PSEMVCreateData_CSR data
-
-		, double[] weight
-		, double weightDef
-		, int weightOff
-		)
+	public PSEMVMult_CPU(PSEMVCreateData_CSR data)
 	{
 		this.stCnt = data.stCnt;
 		this.totalIterationCnt = 0;
@@ -31,9 +25,6 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		this.matNPRowBeg = data.matNPRowBeg;
 		this.matNPRowCnt = data.matNPRowCnt;
 
-		this.weight = weight;
-		this.weightDef = weightDef;
-		this.weightOff = weightOff;
 		this.sumMin = new double[stCnt];
 		this.min = new double[stCnt];
 		this.resMin = new double[stCnt];
@@ -43,6 +34,14 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 			this.resMax = new double[stCnt];
 			this.sumMax = new double[stCnt];
 		}
+	}
+
+	@Override
+	final public void setWeight(double[] weight, double weightDef, int weightOff)
+	{
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
 	}
 
 	@Override
@@ -225,11 +224,15 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 	public void update(PSEMVCreateData_CSR data)
 	{
 		this.totalIterationCnt = 0;
+		if (enabledMatNP) {
+			this.matNPVal = data.matNPVal;
+		}
+		if (enabledMatP) {
+			this.matPLowerVal = data.matPLowerVal;
+			this.matPUpperVal = data.matPUpperVal;
+			Arrays.fill(sumMax, 0);
+		}
 		Arrays.fill(sumMin, 0);
-		Arrays.fill(sumMax, 0);
-		this.matPLowerVal = data.matPLowerVal;
-		this.matPUpperVal = data.matPUpperVal;
-		this.matNPVal = data.matNPVal;
 	}
 
 	@Override
@@ -263,9 +266,9 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 	final private boolean enabledMatNP;
 
 	private int totalIterationCnt;
-	final private double[] weight;
-	final private double weightDef;
-	final private int weightOff;
+	private double[] weight;
+	private double weightDef;
+	private int weightOff;
 	final private double[] sumMin;
 	private double[] sumMax;
 	private double[] min;

@@ -8,16 +8,12 @@ import java.util.Map;
 
 public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGlynn
 {
-    public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, double[] weight, double weightDef, int fgL, int fgR, PrismLog log)
+    public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, int iterStep, PrismLog log)
     {
         this.matCntMax = 4;
         this.model = model;
         this.multManager = multManager;
 
-        this.weight = weight;
-        this.weightDef = weightDef;
-        this.fgL = fgL;
-        this.fgR = fgR;
         this.log = log;
 
         this.solnMin = new double[model.getNumStates()];
@@ -25,18 +21,21 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         this.solnMax = new double[model.getNumStates()];
         this.sumMax = new double[model.getNumStates()];
 
-        this.mult = multManager.create(matCntMax, weight, weightDef, fgL);
+        this.mult = multManager.create(matCntMax);
         this.region = new BoxRegion[matCntMax];
         this.regionDecomposed = new boolean[matCntMax];
         this.regionsToDecompose = new LabelledBoxRegions();
+
+        this.iterStep = iterStep;
 
         System.err.printf("%s<%s>\n", this.getClass().toString(), mult.getClass().toString());
     }
 
     @Override
     final public int compute
-        ( PSEFoxGlynn.SolSettter solSettter
-        , int itersCheckInterval
+        ( DistributionGetter distributionGetter
+        , ParametersGetter parametersGetter
+        , double t
 
         , DecompositionProcedure decompositionProcedure
 
@@ -49,6 +48,13 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
         int iters;
         int itersTotal = 0;
+
+        PSEFoxGlynn.Params params = parametersGetter.getParameters(model, t);
+        double[] weight = params.weight;
+        double weightDef = params.weightDef;
+        int fgL = params.fgL;
+        int fgR = params.fgR;
+        mult.setWeight(weight, weightDef, fgL);
 
         this.regionsToDecompose.clear();
         Iterator<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> it = in.iterator();
@@ -73,7 +79,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 				log.println("Computing probabilities for parameter region " + region);
 
 				// Initialise solution vectors.
-				solSettter.setSol(entry, 0, solnMin, solnMax);
+				distributionGetter.getDistribution(entry, 0, solnMin, solnMax);
 				// If necessary, do 0th element of summation (doesn't require any matrix powers)
 				{
 					double w = (fgL == 0) ? weight[0] : weightDef;
@@ -99,9 +105,9 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                 // Matrix-vector multiply
                 int itersStep;
                 if (iters == 0 && weightDef == 0) {
-                    itersStep = Math.max(Utility.leastGreaterMultiple(fgL, itersCheckInterval), itersCheckInterval);
+                    itersStep = Math.max(Utility.leastGreaterMultiple(fgL, iterStep), iterStep);
                 } else {
-                    itersStep = Math.min(itersCheckInterval, fgR - iters);
+                    itersStep = Math.min(iterStep, fgR - iters);
                 }
 
                 mult.mult(matCnt, itersStep);
@@ -158,12 +164,9 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
     final int matCntMax;
     final private PSEModel model;
     final private PSEMultManyManager<Mult> multManager;
-    final private double[] weight;
-    final private double weightDef;
-    final private int fgL;
-    final private int fgR;
 
     final private PrismLog log;
+    final private int iterStep;
 
     final private double[] solnMin;
     final private double[] sumMin;

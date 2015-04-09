@@ -85,20 +85,19 @@ public final class PSEModel extends ModelExplicit
 	private Map<Integer, List<Integer>> trsNPBySrc;
 	private Map<Integer, List<Integer>> trsNPByTrg;
 
-	private PSEModelForVM modelVM;
-	private PSEModelForMV modelMV;
+	private PSEMultOptions multOptions;
 
 	/**
 	 * Constructs a new parametric model.
 	 */
 	PSEModel()
 	{
-		System.err.printf("%s\n", PSEModel.class.getClassLoader().getResource("resources/PSEKernels.cl"));
 		numStates = 0;
 		numTransitions = 0;
 		initialStates = new LinkedList<Integer>();
 		deadlocks = new TreeSet<Integer>();
 		predecessorsViaReaction = new HashSet<Integer>();
+		multOptions = PSEMultUtility.getOptions();
 	}
 
 	// Accessors (for Model)
@@ -399,7 +398,13 @@ public final class PSEModel extends ModelExplicit
 	 */
 	double getMaxExitRate()
 	{
-		return getMaxExitRate(null);
+		double max = Double.NEGATIVE_INFINITY;
+		for (int state = 0; state < numStates; ++state) {
+			if (exitRates[state] > max) {
+				max = exitRates[state];
+			}
+		}
+		return max;
 	}
 
 	/**
@@ -719,11 +724,7 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #mvMult(double[], double[], double[], double[])
 	 */
-	public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
-			throws PrismException
-	{
-		modelVM.vmMult(vectMin, resultMin, vectMax, resultMax);
-	}
+	//public void vmMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 
 	/**
 	 * Does a matrix-vector multiplication for this parametrised CTMC's transition
@@ -743,11 +744,7 @@ public final class PSEModel extends ModelExplicit
 	 * @param resultMax vector to store maximised result in
 	 * @see #vmMult(double[], double[], double[], double[])
 	 */
-	public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
-			throws PrismException
-	{
-		modelMV.mvMult(vectMin, resultMin, vectMax, resultMax);
-	}
+	//public void mvMult(double vectMin[], double resultMin[], double vectMax[], double resultMax[])
 
 	/**
 	 * Updates the transition rates and other parametrised data
@@ -765,8 +762,11 @@ public final class PSEModel extends ModelExplicit
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
 			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
-		modelVM = null; // This marks the model as dirty (i.e. it needs to be rebuilt)
-		modelMV = null;
+		if (multOptions.getAdaptiveFoxGlynn()) {
+			for (int state = 0; state < numStates; state++) {
+				exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
+			}
+		}
 	}
 
 	/**
@@ -774,8 +774,10 @@ public final class PSEModel extends ModelExplicit
 	public void setParameterSpace(BoxRegion region) throws PrismException
 	{
 		completeSpace = region;
-		for (int state = 0; state < numStates; state++) {
-			exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
+		if (!multOptions.getAdaptiveFoxGlynn()) {
+			for (int state = 0; state < numStates; state++) {
+				exitRates[state] = exitRatesExpr[state].evaluateDouble(region.getUpperBounds());
+			}
 		}
 		evaluateParameters(region);
 	}

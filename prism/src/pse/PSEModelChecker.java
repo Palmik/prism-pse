@@ -753,10 +753,11 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
+		PSEFoxGlynn.DistributionGetter distributionGetter = new PSEFoxGlynn.DistributionGetter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[] solnMin, double[] solnMax)
+			public void getDistribution(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[]
+				solnMin, double[] solnMax)
 			{
 				final double[] inMin = entry.getValue().getMin().getDoubleArray();
 				final double[] inMax = entry.getValue().getMax().getDoubleArray();
@@ -770,7 +771,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		int totalIters = 0;
 		try {
-			totalIters = res.first.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
+			totalIters = res.first.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 		} finally {
 			res.second.release();
 		}
@@ -999,10 +1000,11 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
+		PSEFoxGlynn.DistributionGetter distributionGetter = new PSEFoxGlynn.DistributionGetter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[] solnMin, double[] solnMax)
+			public void getDistribution(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnOff, double[]
+				solnMin, double[] solnMax)
 			{
 				System.arraycopy(stateRewards, 0, solnMin, solnOff, solnMin.length);
 				System.arraycopy(stateRewards, 0, solnMax, solnOff, solnMax.length);
@@ -1014,7 +1016,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		int totalIters = 0;
-		totalIters = pseFoxGlynnCumulativeRewards.compute(solSettter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
+		totalIters = pseFoxGlynnCumulativeRewards.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);
@@ -1135,10 +1137,11 @@ public final class PSEModelChecker extends PrismComponent
 			pseFoxGlynnTransient = Utility.makeVMFoxGlynn(model, weight, 0, left, right, mainLog);
 		}
 
-		PSEFoxGlynnSimple.SolSettter solSettter = new PSEFoxGlynnSimple.SolSettter()
+		PSEFoxGlynn.DistributionGetter distributionGetter = new PSEFoxGlynn.DistributionGetter()
 		{
 			@Override
-			public void setSol(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnPos, double[] solnMin, double[] solnMax)
+			public void getDistribution(Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry, int solnPos, double[]
+				solnMin, double[] solnMax)
 			{
 				final double[] inMin = entry.getValue().getMin().getDoubleArray();
 				final double[] inMax = entry.getValue().getMax().getDoubleArray();
@@ -1146,7 +1149,7 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(inMax, 0, solnMax, solnPos, solnMax.length);
 			}
 		};
-		int totalIters = pseFoxGlynnTransient.compute(solSettter, numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues);
+		int totalIters = pseFoxGlynnTransient.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);

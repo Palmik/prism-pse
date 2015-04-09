@@ -1,10 +1,57 @@
 package pse;
 
+import java.util.BitSet;
+
 final public class PSEMultUtility
 {
+	public final static PSEFoxGlynn getFoxGlynnVM(PSEModel model)
+	{
+		return null;
+	}
+
+	public final static PSEFoxGlynn getFoxGlynnMV(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
+	{
+		return null;
+	}
+
+	private final static PSEMultManager getMultManagerVM(PSEMultOptions options, PSEModel model)
+	{
+		if (options.getOcl()) {
+			return new PSEVMMultManager_OCL(model);
+		} else {
+			return new PSEVMMultManager_CPU(model);
+		}
+	}
+
+	private final static PSEMultManager getMultManagerMV(PSEMultOptions options, PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
+	{
+		if (options.getOcl()) {
+			return new PSEMVMultManager_OCL(model, modelSubset, modelSubsetComplement);
+		} else {
+			return new PSEMVMultManager_CPU(model, modelSubset, modelSubsetComplement);
+		}
+	}
+
+	private final static PSEMultManyManager getMultManyManagerVM(PSEMultOptions options, PSEModel model)
+	{
+		if (options.getOcl()) {
+			return new PSEVMMultManyManager_OCL(model);
+		}
+		return null;
+	}
+
+	private final static PSEMultManyManager getMultManyManagerMV(PSEMultOptions options, PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
+	{
+		if (options.getOcl()) {
+			return new PSEMVMultManyManager_OCL(model, modelSubset, modelSubsetComplement);
+		}
+		return null;
+	}
+
+
 	public static PSEMultOptions getOptions()
 	{
-		return new PSEMultOptions(getOptOcl(), getOptPara(), getOptMany());
+		return new PSEMultOptions(getOptOcl(), getOptPara(), getOptMany(), getOptAdaptiveFoxGlynn());
 	}
 
 	public static void weightedSumToBoth(
@@ -53,4 +100,9 @@ final public class PSEMultUtility
 		return Integer.parseUnsignedInt(envMANY);
 	}
 
+	private static boolean getOptAdaptiveFoxGlynn()
+	{
+		String envOCL = System.getenv("PSE_ADAPTIVE_FOX_GLYNN");
+		return (envOCL != null && envOCL.equals("1"));
+	}
 }

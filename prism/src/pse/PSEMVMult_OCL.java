@@ -6,12 +6,7 @@ import static org.jocl.CL.*;
 
 public final class PSEMVMult_OCL implements PSEMult, Releaseable
 {
-	public PSEMVMult_OCL
-		( PSEMVMultSettings_OCL opts, PSEMVMultTopology_OCL topo, PSEMVCreateData_CSR data
-		, final double[] weight
-		, final double weightDef
-		, final int weightOff
-		)
+	public PSEMVMult_OCL(PSEMVMultSettings_OCL opts, PSEMVMultTopology_OCL topo, PSEMVCreateData_CSR data)
 	{
 		this.stCnt = topo.stCnt;
 		this.topo = topo;
@@ -24,9 +19,6 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 		this.enabledMatP = topo.matPRowCnt > 0 && topo.matPRowBegHost[topo.matPRowCnt] > 0;
 		this.enabledMatNP = topo.matNPRowCnt > 0 && topo.matNPRowBegHost[topo.matNPRowCnt] > 0;
 
-		this.weight = weight;
-		this.weightDef = weightDef;
-		this.weightOff = weightOff;
 		this.totalIterationCnt = 0;
 
 		clProgram = OCLProgram.createProgram(OCLProgram.SOURCE, clContext());
@@ -90,6 +82,14 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 		}
 	}
 
+	@Override
+	final public void setWeight(double[] weight, double weightDef, int weightOff)
+	{
+		this.weight = weight;
+		this.weightDef = weightDef;
+		this.weightOff = weightOff;
+	}
+
 	/* Updates the matrix values (assumes that values that were zero are zero as well). Resets sums to zero.
 	 */
 	final public void update(PSEMVCreateData_CSR data)
@@ -129,17 +129,17 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 			clReleaseKernel(clKernelMatP);
 			clReleaseMemObject(matPLowerVal);
 			clReleaseMemObject(matPUpperVal);
+			clReleaseMemObject(sumMax);
 			clReleaseMemObject(maxMem);
 			clReleaseMemObject(resMaxMem);
-			clReleaseMemObject(sumMax);
 		}
 		if (enabledMatNP) {
 			clReleaseKernel(clKernelMatNP);
 			clReleaseMemObject(matNPVal);
 		}
+		clReleaseMemObject(sumMin);
 		clReleaseMemObject(minMem);
 		clReleaseMemObject(resMinMem);
-		clReleaseMemObject(sumMin);
 		clReleaseKernel(clKernelSum);
 		clReleaseCommandQueue(clCommandQueue);
 		clReleaseProgram(clProgram);
@@ -300,9 +300,9 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 	private int totalIterationCnt;
 	private cl_mem sumMin;
 	private cl_mem sumMax;
-	final private double[] weight;
-	final private double   weightDef;
-	final private int      weightOff;
+	private double[] weight;
+	private double   weightDef;
+	private int      weightOff;
 
 	private cl_mem matPLowerVal;
 	private cl_mem matPUpperVal;

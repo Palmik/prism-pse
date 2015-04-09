@@ -21,7 +21,7 @@ public class PSEMVMultManyManager_OCL implements PSEMultManyManager<PSEMVMultMan
 	}
 
 	@Override
-	final public PSEMVMultMany_OCL create(int matCnt, final double weight[], double weightDef, int weightOff)
+	final public PSEMVMultMany_OCL create(int matCnt)
 	{
 		PSEMVCreateData_CSR data = model.getCreateData_MV_CSR(modelSubset, modelSubsetComplement);
 		PSEMVMultSettings_OCL multOpts = PSEMVMultSettings_OCL.Default();
@@ -29,7 +29,7 @@ public class PSEMVMultManyManager_OCL implements PSEMultManyManager<PSEMVMultMan
 		PSEMVMultTopology_OCL multTopo = new PSEMVMultTopology_OCL(data, multOpts.clContext);
 		releaser.releaseLater(multTopo);
 
-		PSEMVMultMany_OCL mult = new PSEMVMultMany_OCL(multOpts, multTopo, matCnt, weight, weightDef, weightOff);
+		PSEMVMultMany_OCL mult = new PSEMVMultMany_OCL(multOpts, multTopo, matCnt);
 		releaser.releaseLater(mult);
 		return mult;
 	}
