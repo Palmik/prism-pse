@@ -1,5 +1,4 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-#pragma OPENCL EXTENSION cl_amd_printf : enable
 
 #define WARP_SIZE 32
 
