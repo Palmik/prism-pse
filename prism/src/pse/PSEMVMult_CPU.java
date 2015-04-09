@@ -247,11 +247,17 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 	public void update(PSEMVCreateData_CSR data)
 	{
 		this.totalIterationCnt = 0;
+		if (enabledMatP) {
+			this.matPLowerVal = data.matPLowerVal;
+			this.matPUpperVal = data.matPUpperVal;
+		}
+		if (enabledMatNP) {
+			this.matNPVal = data.matNPVal;
+		}
 		Arrays.fill(sumMin, 0);
-		Arrays.fill(sumMax, 0);
-		this.matPLowerVal = data.matPLowerVal;
-		this.matPUpperVal = data.matPUpperVal;
-		this.matNPVal = data.matNPVal;
+		if (enabledMatP) {
+			Arrays.fill(sumMax, 0);
+		}
 	}
 
 	@Override
