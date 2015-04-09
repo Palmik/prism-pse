@@ -8,8 +8,7 @@ import java.util.Map;
 
 public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGlynn
 {
-    public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, double[] weight, double weightDef, int
-        fgL, int fgR, PrismLog log)
+    public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, double[] weight, double weightDef, int fgL, int fgR, PrismLog log)
     {
         this.matCntMax = 4;
         this.model = model;

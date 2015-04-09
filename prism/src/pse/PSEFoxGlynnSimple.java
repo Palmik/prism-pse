@@ -95,19 +95,11 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
                 itersTotal += itersStep;
 
                 mult.getSum(sumMin, sumMax);
-                try {
-                    decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
-                } catch (DecompositionProcedure.DecompositionNeeded e) {
-                    throw e;
-                }
+                decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
             }
             // Examine this region's result after all the iters have been finished
             mult.getSum(sumMin, sumMax);
-            try {
-                decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
-            } catch (DecompositionProcedure.DecompositionNeeded e) {
-                throw e;
-            }
+            decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
             // Store result
             out.put(region, sumMin, sumMax);
         }

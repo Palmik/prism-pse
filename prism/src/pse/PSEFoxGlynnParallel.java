@@ -227,14 +227,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		, PrismLog log
 		)
 	{
-		this.model = model;
-		this.multManager = multManager;
-		this.weight = weight;
-		this.weightDef = weightDef;
-		this.fgL = fgL;
-		this.fgR = fgR;
-		this.log = log;
-
 		// TODO: Base this on number of states.
 		this.multGroupSize = 4;
 		this.multGroup = multManager.createGroup(weight, weightDef, fgL, multGroupSize);
@@ -303,15 +295,6 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		return itersTotal;
 	}
-
-	final private PSEModel model;
-	final private PSEMultManager<Mult> multManager;
-	final private double[] weight;
-	final private double weightDef;
-	final private int fgL;
-	final private int fgR;
-
-	final private PrismLog log;
 
 	final private int multGroupSize;
 	final private Mult[] multGroup;

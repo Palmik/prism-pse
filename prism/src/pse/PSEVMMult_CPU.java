@@ -129,17 +129,47 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		// This if could be jut around the sum code, but we want the loop as tight as possible.
 		if (enabledMatI || enabledMatIO) {
 			for (int i = 0; i < iterationCnt; ++i) {
-				mult(min, resMin, max, resMax);
+				if (enabledMatNP) {
+					PSE_VM_NP_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal, matNPVal,
+						matNPSrc, matNPTrgBeg,
+						min, max, resMin, resMax);
+				} else {
+					PSE_VM_DIAG_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal,
+						min, max, resMin, resMax);
+				}
+
+				if (enabledMatIO) {
+					PSE_VM_IO_BOTH(stCnt,
+						matIOLowerVal0, matIOLowerVal1,
+						matIOUpperVal0, matIOUpperVal1,
+						matIOSrc, matIOTrgBeg,
+						min, max, resMin, resMax);
+				}
+
+				if (enabledMatI) {
+					PSE_VM_I_BOTH(stCnt, matIMinVal, matIMaxVal,
+						matISrc, matITrgBeg,
+						min, max, resMin, resMax);
+				}
+
 				++totalIterationCnt;
-				weightedSumToBoth(stCnt, getSumWeight(), resMin, resMax, sumMin, sumMax);
+				PSEMultUtility.weightedSumToBoth(stCnt, getSumWeight(), resMin, resMax, sumMin, sumMax);
 
 				swapSolMem();
 			}
 		} else {
 			for (int i = 0; i < iterationCnt; ++i) {
-				multJustNP(min, resMin);
+				if (enabledMatNP) {
+					PSE_VM_NP(stCnt, matOMinDiagVal, matNPVal,
+						matNPSrc, matNPTrgBeg,
+						min, resMin);
+				} else {
+					PSE_VM_DIAG(stCnt, matOMinDiagVal,
+						min, resMin);
+				}
+
 				++totalIterationCnt;
-				weightedSumTo(stCnt, getSumWeight(), resMin, sumMin);
+				PSEMultUtility.weightedSumTo(stCnt, getSumWeight(), resMin, sumMin);
 
 				swapSolMem();
 			}
@@ -155,69 +185,6 @@ public final class PSEVMMult_CPU implements PSEMult, Releaseable
 		resMax = max;
 		max = tmp2;
 	}
-
-	final static private void weightedSumToBoth(
-		final int n, final double w,
-		final double[] inMin, final double[] inMax,
-		final double[] sumMin, final double[] sumMax)
-	{
-		if (w != 0) {
-			for (int j = 0; j < n; ++j) {
-				sumMin[j] += w * inMin[j];
-				sumMax[j] += w * inMax[j];
-			}
-		}
-	}
-
-	final static private void weightedSumTo(final int n, final double w, final double[] in, final double[] sum)
-	{
-		if (w != 0) {
-			for (int j = 0; j < n; ++j) {
-				sum[j] += w * in[j];
-			}
-		}
-	}
-
-	final private void mult
-		( final double min[], final double resMin[]
-		, final double max[], final double resMax[]
-		)
-    {
-	    if (enabledMatNP) {
-			PSE_VM_NP_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal, matNPVal,
-				matNPSrc, matNPTrgBeg,
-				min, max, resMin, resMax);
-		} else {
-			PSE_VM_DIAG_BOTH(stCnt, matOMinDiagVal, matOMaxDiagVal,
-				min, max, resMin, resMax);
-		}
-
-	    if (enabledMatIO) {
-		    PSE_VM_IO_BOTH(stCnt,
-				matIOLowerVal0, matIOLowerVal1,
-				matIOUpperVal0, matIOUpperVal1,
-				matIOSrc, matIOTrgBeg,
-				min, max, resMin, resMax);
-	    }
-
-	    if (enabledMatI) {
-		   PSE_VM_I_BOTH(stCnt, matIMinVal, matIMaxVal,
-			   matISrc, matITrgBeg,
-			   min, max, resMin, resMax);
-	    }
-    }
-
-	final private void multJustNP(final double min[], final double resMin[])
-    {
-	    if (enabledMatNP) {
-			PSE_VM_NP(stCnt, matOMinDiagVal, matNPVal,
-				matNPSrc, matNPTrgBeg,
-				min, resMin);
-		} else {
-			PSE_VM_DIAG(stCnt, matOMinDiagVal,
-				min, resMin);
-		}
-    }
 
 	final static private void PSE_VM_DIAG_BOTH(final int matRowCnt,
 		final double[] matDiaVal1, final double[] matDiaVal2,

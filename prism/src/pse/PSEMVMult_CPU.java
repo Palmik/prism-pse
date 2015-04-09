@@ -94,7 +94,6 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 			for (int i = 0; i < iterationCnt; ++i) {
 				System.arraycopy(min, 0, resMin, 0, resMin.length);
 				System.arraycopy(max, 0, resMax, 0, resMax.length);
-
 				if (enabledMatNP) {
 					PSE_MV_NP_BOTH(matNPRowCnt, matNPVal,
 						matNPCol, matNPRow, matNPRowBeg,
@@ -105,22 +104,23 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 						matPCol, matPRow, matPRowBeg,
 						min, max, resMin, resMax);
 				}
+
 				++totalIterationCnt;
-				weightedSumToBoth(stCnt, getSumWeight(), resMin, resMax, sumMin, sumMax);
+				PSEMultUtility.weightedSumToBoth(stCnt, getSumWeight(), resMin, resMax, sumMin, sumMax);
 
 				swapSolMem();
 			}
 		} else {
 			for (int i = 0; i < iterationCnt; ++i) {
 				System.arraycopy(min, 0, resMin, 0, resMin.length);
-
 				if (enabledMatNP) {
 					PSE_MV_NP(matNPRowCnt, matNPVal,
 						matNPCol, matNPRow, matNPRowBeg,
 						min, resMin);
 				}
+
 				++totalIterationCnt;
-				weightedSumTo(stCnt, getSumWeight(), resMin, sumMin);
+				PSEMultUtility.weightedSumTo(stCnt, getSumWeight(), resMin, sumMin);
 
 				swapSolMem();
 			}
@@ -135,28 +135,6 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		final double[] tmp2 = resMax;
 		resMax = max;
 		max = tmp2;
-	}
-
-	final private void weightedSumToBoth(
-		final int n, final double w,
-		final double[] inMin, final double[] inMax,
-		final double[] sumMin, final double[] sumMax)
-	{
-		if (w != 0) {
-			for (int j = 0; j < n; ++j) {
-				sumMin[j] += w * inMin[j];
-				sumMax[j] += w * inMax[j];
-			}
-		}
-	}
-
-	final private void weightedSumTo(final int n, final double w, final double[] in, final double[] sum)
-	{
-		if (w != 0) {
-			for (int j = 0; j < n; ++j) {
-				sum[j] += w * in[j];
-			}
-		}
 	}
 
 	final private void PSE_MV_NP
