@@ -133,6 +133,7 @@ public class Utility
                 releaser);
         } else {
             PSEMultManager manager = makeMVMultManager(model, modelSubset, modelSubsetComplement);
+            releaser.releaseLater(manager);
             return new Pair<PSEFoxGlynn, Releaser>(
                 new PSEFoxGlynnSimple(model, manager, weight, weightDef, fgL, fgR, log),
                 releaser);
