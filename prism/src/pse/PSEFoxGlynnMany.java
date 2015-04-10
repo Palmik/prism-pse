@@ -50,6 +50,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
         int iters;
         int itersTotal = 0;
+        int itersTotalEffective = 0;
 
         this.regionsToDecompose.clear();
         Iterator<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> it = in.iterator();
@@ -107,12 +108,13 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
                 mult.mult(matCnt, itersStep);
                 iters += itersStep;
-                itersTotal += itersStep;
+                itersTotal += itersStep * matCntMax;
 
                 for (int matId = 0; matId < matCnt; ++matId) {
                     if (regionDecomposed[matId]) {
                         continue;
                     }
+                    itersTotalEffective += itersStep;
                     mult.getSum(matId, sumMin, sumMax);
                     if (handleCheckRegion(decompositionProcedure, out, region[matId], sumMin, sumMax)) {
                         regionDecomposed[matId] = true;
@@ -141,7 +143,8 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
             e.setExaminedRegionValues(out);
             throw e;
         }
-        return itersTotal;
+        log.print(String.format("PSEFoxGlynnMany: iters_total_effective=%s; iters_total=%s; ratio=%s\n", itersTotalEffective, itersTotal, (double)itersTotalEffective/(double)itersTotal));
+        return itersTotalEffective;
     }
 
     final private boolean handleCheckRegion(DecompositionProcedure decompositionProcedure, BoxRegionValues out, BoxRegion region, double[] sumMin, double[] sumMax)
