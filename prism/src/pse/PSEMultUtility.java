@@ -111,7 +111,7 @@ final public class PSEMultUtility
 		if (envPARA == null) {
 			return 0;
 		}
-		return Integer.parseUnsignedInt(envPARA);
+		return Integer.parseInt(envPARA);
 	}
 
 	private static int getOptMany()
@@ -120,7 +120,7 @@ final public class PSEMultUtility
 		if (envMANY == null) {
 			return 0;
 		}
-		return Integer.parseUnsignedInt(envMANY);
+		return Integer.parseInt(envMANY);
 	}
 
 	private static boolean getOptAdaptiveFoxGlynn()
