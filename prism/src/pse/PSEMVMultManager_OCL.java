@@ -20,13 +20,13 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
     }
 
     @Override
-    final public PSEMVMult_OCL create(final double weight[], double weightDef, int weightOff)
+    final public PSEMVMult_OCL create()
     {
-        return createGroup(weight, weightDef, weightOff, 1)[0];
+        return createGroup(1)[0];
     }
 
     @Override
-    public PSEMVMult_OCL[] createGroup(double[] weight, double weightDef, int weightOff, int n)
+    public PSEMVMult_OCL[] createGroup(int n)
     {
         PSEMVCreateData_CSR data = model.getCreateData_MV_CSR(modelSubset, modelSubsetComplement);
         PSEMVMultSettings_OCL multOpts = PSEMVMultSettings_OCL.Default();
@@ -36,7 +36,7 @@ final public class PSEMVMultManager_OCL implements PSEMultManager<PSEMVMult_OCL>
 
         PSEMVMult_OCL[] group = new PSEMVMult_OCL[n];
         for (int i = 0; i < n; ++i) {
-            group[i] = new PSEMVMult_OCL(multOpts, multTopo, data, weight, weightDef, weightOff);
+            group[i] = new PSEMVMult_OCL(multOpts, multTopo, data);
             releaser.releaseLater(group[i]);
         }
 

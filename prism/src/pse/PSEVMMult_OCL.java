@@ -31,6 +31,7 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 				this.matOMaxDiagVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY, len, null, null);
 			}
 		}
+		matNPInitialized = false;
 		if (enabledMatNP) {
 			final int len = Sizeof.cl_double * topo.matNPTrgBegHost[stCnt];
 			this.matNPVal = clCreateBuffer(clContext(), CL_MEM_READ_ONLY, len, null, null);
@@ -146,10 +147,11 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 				clEnqueueWriteBuffer(clCommandQueue(), matOMaxDiagVal, false, 0, len, matOMaxDiagVal_, 0, null, null);
 			}
 		}
-		if (enabledMatNP) {
+		if (enabledMatNP && !matNPInitialized) {
 			final int len = Sizeof.cl_double * topo.matNPTrgBegHost[stCnt];
 			final Pointer matNPVal_ = Pointer.to(data.matNPVal);
 			clEnqueueWriteBuffer(clCommandQueue(), matNPVal, false, 0, len, matNPVal_, 0, null, null);
+			matNPInitialized = true;
 		}
 
 		if (enabledMatIO) {
@@ -418,6 +420,7 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 	private cl_mem matOMinDiagVal;
 	private cl_mem matOMaxDiagVal;
 	private cl_mem matNPVal;
+	private boolean matNPInitialized;
 
 	private cl_mem minMem;
 	private cl_mem maxMem;

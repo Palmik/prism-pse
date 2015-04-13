@@ -1,17 +1,40 @@
 package pse;
 
+import prism.Pair;
+import prism.PrismLog;
+
 import java.util.BitSet;
 
 final public class PSEMultUtility
 {
-	public final static PSEFoxGlynn getFoxGlynnVM(PSEModel model)
+	public final static Pair<PSEFoxGlynn, Releaseable> getFoxGlynnVM(PSEMultOptions options,
+		PSEModel model, int iterStep, PrismLog prismLog)
 	{
-		return null;
+		if (options.getMany() > 0) {
+			PSEMultManyManager manager = getMultManyManagerVM(options, model);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnMany(options, model, manager, iterStep, prismLog), manager);
+		} else if (options.getPara() > 0) {
+			PSEMultManager manager = getMultManagerVM(options, model);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnParallel(options, model, manager, iterStep, prismLog), manager);
+		} else {
+			PSEMultManager manager = getMultManagerVM(options, model);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnSimple(options, model, manager, iterStep, prismLog), manager);
+		}
 	}
 
-	public final static PSEFoxGlynn getFoxGlynnMV(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
+	public final static Pair<PSEFoxGlynn, Releaseable> getFoxGlynnMV(PSEMultOptions options,
+		PSEModel model, BitSet modelSubset, boolean modelSubsetComplement, int iterStep, PrismLog prismLog)
 	{
-		return null;
+		if (options.getMany() > 0) {
+			PSEMultManyManager manager = getMultManyManagerMV(options, model, modelSubset, modelSubsetComplement);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnMany(options, model, manager, iterStep, prismLog), manager);
+		} else if (options.getPara() > 0) {
+			PSEMultManager manager = getMultManagerMV(options, model, modelSubset, modelSubsetComplement);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnParallel(options, model, manager, iterStep, prismLog), manager);
+		} else {
+			PSEMultManager manager = getMultManagerMV(options, model, modelSubset, modelSubsetComplement);
+			return new Pair<PSEFoxGlynn, Releaseable>(new PSEFoxGlynnSimple(options, model, manager, iterStep, prismLog), manager);
+		}
 	}
 
 	private final static PSEMultManager getMultManagerVM(PSEMultOptions options, PSEModel model)

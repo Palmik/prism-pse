@@ -230,9 +230,11 @@ public final class PSEMVMult_CPU implements PSEMult, Releaseable
 		if (enabledMatP) {
 			this.matPLowerVal = data.matPLowerVal;
 			this.matPUpperVal = data.matPUpperVal;
-			Arrays.fill(sumMax, 0);
 		}
 		Arrays.fill(sumMin, 0);
+		if (enabledMatP) {
+			Arrays.fill(sumMax, 0);
+		}
 	}
 
 	@Override

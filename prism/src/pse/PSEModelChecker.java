@@ -767,11 +767,12 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 		};
-		Pair<PSEFoxGlynn, Releaser> res = Utility.makeMVFoxGlynn(model, nonAbs, false, weight, 0, left, right, mainLog);
+		Pair<PSEFoxGlynn, Releaseable> res = PSEMultUtility.getFoxGlynnMV(PSEMultUtility.getOptions(), model, nonAbs, false,
+			numItersExaminePartial, mainLog);
 
 		int totalIters = 0;
 		try {
-			totalIters = res.first.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
+			totalIters = res.first.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, multProbs, previousResult, regionValues);
 		} finally {
 			res.second.release();
 		}
@@ -1012,11 +1013,13 @@ public final class PSEModelChecker extends PrismComponent
 		};
 
 		if (pseFoxGlynnCumulativeRewards == null) {
-			pseFoxGlynnCumulativeRewards = Utility.makeMVFoxGlynn(model, null, false, weights, 1.0 / q, left, right, mainLog).first;
+			pseFoxGlynnCumulativeRewards =
+				PSEMultUtility.getFoxGlynnMV(PSEMultUtility.getOptions(),
+					model, null, false, numItersExaminePartial, mainLog).first;
 		}
 
-		int totalIters = 0;
-		totalIters = pseFoxGlynnCumulativeRewards.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, multProbs, previousResult, regionValues);
+		int totalIters = pseFoxGlynnCumulativeRewards.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
+			t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);
@@ -1134,7 +1137,7 @@ public final class PSEModelChecker extends PrismComponent
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
 		if (pseFoxGlynnTransient == null) {
-			pseFoxGlynnTransient = Utility.makeVMFoxGlynn(model, weight, 0, left, right, mainLog);
+			pseFoxGlynnTransient = PSEMultUtility.getFoxGlynnVM(PSEMultUtility.getOptions(), model, numItersExaminePartial, mainLog).first;
 		}
 
 		PSEFoxGlynn.DistributionGetter distributionGetter = new PSEFoxGlynn.DistributionGetter()
@@ -1149,7 +1152,8 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(inMax, 0, solnMax, solnPos, solnMax.length);
 			}
 		};
-		int totalIters = pseFoxGlynnTransient.compute(distributionGetter, numItersExaminePartial, decompositionProcedure, initDist, previousResult, regionValues);
+		int totalIters = pseFoxGlynnTransient.compute(distributionGetter,
+			new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, initDist, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);

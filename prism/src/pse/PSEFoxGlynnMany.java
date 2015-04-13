@@ -8,9 +8,15 @@ import java.util.Map;
 
 public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGlynn
 {
-    public PSEFoxGlynnMany(PSEModel model, PSEMultManyManager<Mult> multManager, int iterStep, PrismLog log)
+    public PSEFoxGlynnMany(PSEMultOptions multOptions, PSEModel model, PSEMultManyManager<Mult> multManager, int iterStep, PrismLog log)
     {
-        this.matCntMax = 4;
+        this.multOptions = multOptions;
+        this.matCntMax = multOptions.getMany();
+        if (matCntMax < 0) {
+            // TODO: Do something clever here
+            matCntMax = 4;
+        }
+
         this.model = model;
         this.multManager = multManager;
 
@@ -164,8 +170,9 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         return false;
     }
 
-    final int matCntMax;
+    int matCntMax;
     final private PSEModel model;
+    final private PSEMultOptions multOptions;
     final private PSEMultManyManager<Mult> multManager;
 
     final private PrismLog log;

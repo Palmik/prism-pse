@@ -9,10 +9,6 @@ final public class PSEMultOptions
 		this.many = many;
 		this.adatptiveFoxGlynn = adatptiveFoxGlynn;
 
-		if (adatptiveFoxGlynn) {
-			throw new RuntimeException("PSE_FOX_GLYNN_ADAPTIVE is not implemented yet.");
-		}
-
 		if (many > 0 && !ocl) {
 			throw new RuntimeException(
 				"PSE_OCL has to be enabled (PSE_OCL=1) if you want to use PSE_MANY");

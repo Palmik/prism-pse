@@ -129,18 +129,20 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 			clReleaseKernel(clKernelMatP);
 			clReleaseMemObject(matPLowerVal);
 			clReleaseMemObject(matPUpperVal);
-			clReleaseMemObject(sumMax);
-			clReleaseMemObject(maxMem);
-			clReleaseMemObject(resMaxMem);
 		}
 		if (enabledMatNP) {
 			clReleaseKernel(clKernelMatNP);
 			clReleaseMemObject(matNPVal);
 		}
+		clReleaseKernel(clKernelSum);
 		clReleaseMemObject(sumMin);
 		clReleaseMemObject(minMem);
 		clReleaseMemObject(resMinMem);
-		clReleaseKernel(clKernelSum);
+		if (enabledMatP) {
+			clReleaseMemObject(sumMax);
+			clReleaseMemObject(maxMem);
+			clReleaseMemObject(resMaxMem);
+		}
 		clReleaseCommandQueue(clCommandQueue);
 		clReleaseProgram(clProgram);
 	}

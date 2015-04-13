@@ -15,6 +15,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 	{
 		public Worker
 			( PSEModel model
+			, PSEMultOptions multOptions
 			, PSEMultManager<Mult> multManager
 			, Mult mult
 			, int iterStep
@@ -26,6 +27,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			)
 		{
 			this.model = model;
+			this.multOptions = multOptions;
 			this.multManager = multManager;
 			this.mult = mult;
 			this.iterStep = iterStep;
@@ -51,7 +53,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			, BlockingQueue<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> in
 			, BoxRegionValues outPrev
 			, BoxRegionValues out
-			)
+			) throws PrismException
 		{
 			this.distributionGetter = distributionGetter;
 			this.parametersGetter = parametersGetter;
@@ -64,6 +66,15 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			this.out = out;
 
 			this.regionsToDecompose.clear();
+
+			if (!multOptions.getAdaptiveFoxGlynn()) {
+				PSEFoxGlynn.Params params = parametersGetter.getParameters(model, t);
+				weight = params.weight;
+				weightDef = params.weightDef;
+				fgL = params.fgL;
+				fgR = params.fgR;
+				mult.setWeight(weight, weightDef, fgL);
+			}
 		}
 
 		@Override
@@ -93,18 +104,23 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					}
 
 					// Configure parameter space
+					Params params = null;
 					modelLock.writeLock().lock();
 					model.evaluateParameters(region);
 					multManager.update(mult);
-					Params params = parametersGetter.getParameters(model, t);
+					if (multOptions.getAdaptiveFoxGlynn()) {
+						params = parametersGetter.getParameters(model, t);
+					}
 					mainLog.println("Computing probabilities for parameter region " + region);
 					modelLock.writeLock().unlock();
 
-					fgL = params.fgL;
-					fgR = params.fgR;
-					weight = params.weight;
-					weightDef = params.weightDef;
-					mult.setWeight(weight, weightDef, fgL);
+					if (multOptions.getAdaptiveFoxGlynn()) {
+						weight = params.weight;
+						weightDef = params.weightDef;
+						fgL = params.fgL;
+						fgR = params.fgR;
+						mult.setWeight(weight, weightDef, fgL);
+					}
 
 					// Initialise solution vectors.
 					distributionGetter.getDistribution(entry, 0, solnMin, solnMax);
@@ -188,8 +204,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		private LabelledBoxRegions regionsToDecompose;
 		private PrismException prismException;
 
-		private PSEModel model;
-		private PSEMultManager<Mult> multManager;
+		final private PSEModel model;
+		final private PSEMultOptions multOptions;
+		final private PSEMultManager<Mult> multManager;
 		private DistributionGetter distributionGetter;
 		private ParametersGetter parametersGetter;
 		private double t;
@@ -218,10 +235,15 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 	}
 
-	public PSEFoxGlynnParallel(PSEModel model, PSEMultManager<Mult> multManager, int iterStep, PrismLog log)
+	public PSEFoxGlynnParallel(PSEMultOptions multOptions, PSEModel model, PSEMultManager<Mult> multManager, int iterStep, PrismLog log)
 	{
-		// TODO: Base this on number of states.
-		this.multGroupSize = 4;
+		this.multOptions = multOptions;
+		this.multGroupSize = multOptions.getPara();
+		if (multGroupSize < 0) {
+			// TODO: Do something clever here
+			multGroupSize = 4;
+		}
+		this.model = model;
 		this.multGroup = multManager.createGroup(multGroupSize);
 
 		ReadWriteLock modelLock = new ReentrantReadWriteLock();
@@ -229,7 +251,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		this.multWorkerGroup = new Worker[multGroupSize];
 		for (int i = 0; i < multGroupSize; ++i) {
-			multWorkerGroup[i] = new Worker<Mult>(model, multManager, multGroup[i], iterStep,
+			multWorkerGroup[i] = new Worker<Mult>(model, multOptions, multManager, multGroup[i], iterStep,
 				log, modelLock, outLock);
 		}
 
@@ -289,7 +311,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		return itersTotal;
 	}
 
-	final private int multGroupSize;
+	final private PSEModel model;
+	final private PSEMultOptions multOptions;
+	private int multGroupSize;
 	final private Mult[] multGroup;
 	final private Worker[] multWorkerGroup;
 }
