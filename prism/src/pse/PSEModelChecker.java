@@ -67,6 +67,7 @@ public final class PSEModelChecker extends PrismComponent
 
 	private PSEModelExplorer modelExplorer;
 	private State[] stateArray;
+	final private PSEFoxGlynnManager foxGlynnManager;
 
 	/**
 	 * Constructor.
@@ -75,6 +76,7 @@ public final class PSEModelChecker extends PrismComponent
 	{
 		super(parent);
 		this.stateChecker = new StateModelChecker(this);
+		this.foxGlynnManager = new PSEFoxGlynnManager();
 	}
 
 	// Setters/getters
@@ -682,7 +684,6 @@ public final class PSEModelChecker extends PrismComponent
 	 * @throws PrismException
 	 * @throws DecompositionProcedure.DecompositionNeeded thrown by decomposition
 	 * procedure if it found the results to be too inaccurate
-	 * @see PSEModel#mvMult
 	 */
 	public BoxRegionValues computeTransientBackwardsProbs(PSEModel model,
 			final BitSet targetMin, final BitSet nonAbsMin, final BitSet targetMax, final BitSet nonAbsMax,
@@ -767,15 +768,10 @@ public final class PSEModelChecker extends PrismComponent
 				}
 			}
 		};
-		Pair<PSEFoxGlynn, Releaseable> res = PSEMultUtility.getFoxGlynnMV(PSEMultUtility.getOptions(), model, nonAbs, false,
-			numItersExaminePartial, mainLog);
 
-		int totalIters = 0;
-		try {
-			totalIters = res.first.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, multProbs, previousResult, regionValues);
-		} finally {
-			res.second.release();
-		}
+		PSEFoxGlynn foxGlynn = foxGlynnManager.getFoxGlynnMV(model, nonAbs, false, numItersExaminePartial, mainLog);
+
+		int totalIters = foxGlynn.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Negate if necessary
 		if (negate) {
@@ -1012,13 +1008,9 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		};
 
-		if (pseFoxGlynnCumulativeRewards == null) {
-			pseFoxGlynnCumulativeRewards =
-				PSEMultUtility.getFoxGlynnMV(PSEMultUtility.getOptions(),
-					model, null, false, numItersExaminePartial, mainLog).first;
-		}
+		PSEFoxGlynn foxGlynn = foxGlynnManager.getFoxGlynnMV(model, null, false, numItersExaminePartial, mainLog);
 
-		int totalIters = pseFoxGlynnCumulativeRewards.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
+		int totalIters = foxGlynn.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
 			t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
@@ -1076,7 +1068,6 @@ public final class PSEModelChecker extends PrismComponent
 	}
 
 
-	private PSEFoxGlynn pseFoxGlynnTransient;
 	/**
 	 * Performs forwards transient probability computation.
 	 * Computes the minimised & maximised probability of being in each state
@@ -1092,7 +1083,6 @@ public final class PSEModelChecker extends PrismComponent
 	 * of results
 	 * @return minimised & maximised probabilities per state and region
 	 * @throws PrismException
-	 * @see PSEModel#vmMult
 	 */
 	public BoxRegionValues computeTransientProbs(PSEModel model, double t, BoxRegionValues initDist, DecompositionProcedure decompositionProcedure, BoxRegionValues previousResult)
 			throws PrismException, DecompositionProcedure.DecompositionNeeded
@@ -1136,9 +1126,7 @@ public final class PSEModelChecker extends PrismComponent
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
-		if (pseFoxGlynnTransient == null) {
-			pseFoxGlynnTransient = PSEMultUtility.getFoxGlynnVM(PSEMultUtility.getOptions(), model, numItersExaminePartial, mainLog).first;
-		}
+		PSEFoxGlynn foxGlynn = foxGlynnManager.getFoxGlynnVM(model, numItersExaminePartial, mainLog);
 
 		PSEFoxGlynn.DistributionGetter distributionGetter = new PSEFoxGlynn.DistributionGetter()
 		{
@@ -1152,7 +1140,7 @@ public final class PSEModelChecker extends PrismComponent
 				System.arraycopy(inMax, 0, solnMax, solnPos, solnMax.length);
 			}
 		};
-		int totalIters = pseFoxGlynnTransient.compute(distributionGetter,
+		int totalIters = foxGlynn.compute(distributionGetter,
 			new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, initDist, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
