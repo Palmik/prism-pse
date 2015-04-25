@@ -119,7 +119,6 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 				clEnqueueWriteBuffer(clCommandQueue(), sumMax, false, 0, len, zeroes_, 0, null, null);
 			}
 		}
-		clFinish(clCommandQueue());
 	}
 
 	@Override
@@ -237,7 +236,6 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 					clSetKernelArg(clKernelSum, 3, Sizeof.cl_mem, Pointer.to(resMaxMem));
 					clEnqueueNDRangeKernel(clCommandQueue(), clKernelSum, 1, null, gwsSum, lws, 0, null, null);
 				}
-
 				swapSolMem();
 			}
 		} else {
@@ -259,7 +257,6 @@ public final class PSEMVMult_OCL implements PSEMult, Releaseable
 					clSetKernelArg(clKernelSum, 2, Sizeof.cl_mem, Pointer.to(resMinMem));
 					clEnqueueNDRangeKernel(clCommandQueue(), clKernelSum, 1, null, gwsSum, lws, 0, null, null);
 				}
-
 				swapSolMem();
 			}
 		}

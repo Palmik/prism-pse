@@ -26,6 +26,7 @@
 
 package pse;
 
+import java.util.*;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
@@ -34,6 +35,8 @@ import parser.ast.ExpressionReward;
 import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
+
+import javax.swing.*;
 
 /**
  * Decomposition procedure solving the threshold synthesis problem.
@@ -65,9 +68,14 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	 *  of the complete parameter space */
 	private double undecidedVsComplete;
 
+	private int minDecompositions;
+
 	public ThresholdSynthesis(double volumeTolerance) throws PrismException
 	{
 		this.volumeTolerance = volumeTolerance;
+		PSEMultOptions options = PSEMultUtility.getOptions();
+		// TODO: Take this as an arg in the constructor.
+		this.minDecompositions = Math.max(1, Math.max(options.getMany(), options.getPara()));
 	}
 
 	@Override
@@ -136,12 +144,38 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 			}
 		}
 
-		// Evaluate whether a decomposition is needed
 		undecidedVsComplete = undecidedVolume / completeSpaceVolume;
 		if (undecidedVolume / completeSpaceVolume > volumeTolerance) {
-			throw new DecompositionNeeded("The volume of undecided regions is too large,\n" +
-					undecidedVolume + " / " + completeSpaceVolume + " > " + volumeTolerance,
+			if (minDecompositions > 1) {
+				List<BoxRegion> undecidedRegionsSort = new ArrayList<BoxRegion>(undecidedRegions.keySet());
+				Collections.sort(undecidedRegionsSort, new Comparator<BoxRegion>()
+				{
+					@Override
+					public int compare(BoxRegion t0, BoxRegion t1)
+					{
+						return Double.compare(t1.volume(), t0.volume());
+					}
+				});
+				LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
+				Iterator<BoxRegion> it = undecidedRegionsSort.iterator();
+				int decomposed = 0;
+				int i = 1;
+				while (it.hasNext() && decomposed < minDecompositions) {
+					BoxRegion reg = it.next();
+					decomposed += 1 << reg.getLowerBounds().getNumValues();
+					regionsToDecompose.add(reg, String.format("#%s largest undecided region", i++));
+				}
+				throw new DecompositionNeeded(
+					String.format("The volume of undecided regions is too large,\n%s / %s > %s\n",
+						undecidedVolume, completeSpaceVolume, volumeTolerance),
+					regionsToDecompose);
+			} else {
+				// Evaluate whether a decomposition is needed
+				throw new DecompositionNeeded(
+					String.format("The volume of undecided regions is too large,\n%s / %s > %s\n",
+						undecidedVolume, completeSpaceVolume, volumeTolerance),
 					regionToDecompose, "largest undecided region");
+			}
 		}
 	}
 
