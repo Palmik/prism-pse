@@ -76,14 +76,17 @@ public final class PSEModel extends ModelExplicit
 	/** set of hash codes for deciding whether state has predecessors via reaction */
 	private Set<Integer> predecessorsViaReaction;
 	/** map from state to transitions coming into the state (and not outgoing) */
-	private Map<Integer, List<Integer>> trsI;
+	private int[] trsI;
+	private int[] trsIBeg;
 	/** map from state to transitions both incoming in and outgoing from the state */
-	private Map<Integer, List<Pair<Integer, Integer>>> trsIO;
+	private int[] trsIO;
+	private int[] trsIOBeg;
 	/** map from state to transitions going out from the state (and not incoming) */
-	private Map<Integer, List<Integer>> trsO;
+	private int[] trsO;
+	private int[] trsOBeg;
 	/** map from state to transitions that are nopt parametrised */
-	private Map<Integer, List<Integer>> trsNPBySrc;
-	private Map<Integer, List<Integer>> trsNPByTrg;
+	private int[] trsNP;
+	private int[] trsNPBeg;
 
 	private PSEMultOptions multOptions;
 
@@ -460,45 +463,82 @@ public final class PSEModel extends ModelExplicit
 			return;
 
 		// Initialise the transition sets
-		trsI = new HashMap<Integer, List<Integer>>(numStates);
-		trsO = new HashMap<Integer, List<Integer>>(numStates);
-		trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
-		trsNPBySrc = new HashMap<Integer, List<Integer>>(numStates);
-		trsNPByTrg = new HashMap<Integer, List<Integer>>(numStates);
+		Map<Integer, List<Integer>> trsI = new HashMap<Integer, List<Integer>>(numStates);
+		Map<Integer, List<Integer>> trsO = new HashMap<Integer, List<Integer>>(numStates);
+		Map<Integer, List<Pair<Integer,Integer>>> trsIO = new HashMap<Integer, List<Pair<Integer, Integer>>>(numStates);
+		Map<Integer, List<Integer>> trsNP = new HashMap<Integer, List<Integer>>(numStates);
 		for (int state = 0; state < numStates; state++) {
 			trsI.put(state, new LinkedList<Integer>());
 			trsO.put(state, new LinkedList<Integer>());
 			trsIO.put(state, new LinkedList<Pair<Integer, Integer>>());
-			trsNPBySrc.put(state, new LinkedList<Integer>());
-			trsNPByTrg.put(state, new LinkedList<Integer>());
+			trsNP.put(state, new LinkedList<Integer>());
 		}
 
 		// Populate the sets with transition indices
+		int trsICnt = 0;
+		int trsOCnt = 0;
+		int trsIOCnt = 0;
+		int trsNPCnt = 0;
 		for (int pred = 0; pred < numStates; pred++) {
 			for (int predTrans = stateBegin(pred); predTrans < stateEnd(pred); predTrans++) {
 				boolean inout = false;
 				int predReaction = getReaction(predTrans);
 				int state = toState(predTrans);
 				if (!isParametrised(predTrans)) {
-					trsNPBySrc.get(pred).add(predTrans);
-					trsNPByTrg.get(state).add(predTrans);
+					trsNP.get(state).add(predTrans);
+					trsNPCnt += 1;
 					continue;
 				}
 				for (int trans = stateBegin(state); trans < stateEnd(state); trans++) {
 					if (getReaction(trans) == predReaction) {
 						inout = true;
 						trsIO.get(state).add(new Pair<Integer, Integer>(predTrans, trans));
+						trsIOCnt += 2;
 						break;
 					}
 				}
 				if (!inout) {
 					trsI.get(state).add(predTrans);
+					trsICnt += 1;
 				}
 				if (!predecessorsViaReaction.contains(pred ^ predReaction)) {
 					trsO.get(pred).add(predTrans);
+					trsOCnt += 1;
 				}
 			}
 		}
+
+		this.trsI = new int[trsICnt]; this.trsIBeg = new int[getNumStates() + 1];
+		this.trsO = new int[trsOCnt]; this.trsOBeg = new int[getNumStates() + 1];
+		this.trsIO = new int[trsIOCnt]; this.trsIOBeg = new int[getNumStates() + 1];
+		this.trsNP = new int[trsNPCnt]; this.trsNPBeg = new int[getNumStates() + 1];
+		trsICnt = 0;
+		trsOCnt = 0;
+		trsIOCnt = 0;
+		trsNPCnt = 0;
+		for (int s = 0; s < getNumStates(); ++s) {
+			trsIBeg[s] = trsICnt;
+			trsOBeg[s] = trsOCnt;
+			trsIOBeg[s] = trsIOCnt;
+			trsNPBeg[s] = trsNPCnt;
+			for (Integer t : trsI.get(s)) {
+				this.trsI[trsICnt++] = t;
+			}
+			for (Integer t : trsO.get(s)) {
+				this.trsO[trsOCnt++] = t;
+			}
+			for (Pair<Integer,Integer> t : trsIO.get(s)) {
+				this.trsIO[trsIOCnt++] = t.first;
+				this.trsIO[trsIOCnt++] = t.second;
+			}
+			for (Integer t : trsNP.get(s)) {
+				this.trsNP[trsNPCnt++] = t;
+			}
+		}
+		trsIBeg[getNumStates()] = trsICnt;
+		trsOBeg[getNumStates()] = trsOCnt;
+		trsIOBeg[getNumStates()] = trsIOCnt;
+		trsNPBeg[getNumStates()] = trsNPCnt;
 	}
 
     final public PSEVMCreateData_CSR getCreateData_VM_CSR()
@@ -538,15 +578,10 @@ public final class PSEModel extends ModelExplicit
 		    matNPTrgBeg[state] = matPos;
 		    matIOTrgBeg[state] = matIOPos;
 
-		    List<Integer> stTrsI = trsI.get(state);
-		    List<Integer> stTrsO = trsO.get(state);
-		    List<Pair<Integer, Integer>> stTrsIO = trsIO.get(state);
-		    List<Integer> stTrsNP = trsNPByTrg.get(state);
-
-		    for (Pair<Integer, Integer> p : stTrsIO)
+		    for (int i = trsIOBeg[state]; i < trsIOBeg[state + 1]; i += 2)
 		    {
-			    final int t0 = p.first;
-			    final int t1 = p.second;
+			    final int t0 = trsIO[i];
+			    final int t1 = trsIO[i + 1];
 			    final int v0 = trStSrc[t0];
 			    final int v1 = trStTrg[t0]; // == trStSrc[t1]
 
@@ -577,8 +612,9 @@ public final class PSEModel extends ModelExplicit
 			    }
 		    }
 
-		    for (Integer t : stTrsI)
+		    for (int i = trsIBeg[state]; i < trsIBeg[state + 1]; ++i)
 		    {
+				final int t = trsI[i];
 			    final double valMin = trRateLower[t] * trRatePopul[t] * qrec;
 			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
 			    if (valMin != 0 || valMax != 0)
@@ -590,14 +626,16 @@ public final class PSEModel extends ModelExplicit
 			    }
 		    }
 
-		    for (Integer t : stTrsO)
+		    for (int i = trsOBeg[state]; i < trsOBeg[state + 1]; ++i)
 		    {
+				final int t = trsO[i];
 			    matNPMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
 			    matNPMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
 		    }
 
-		    for (Integer t : stTrsNP)
+			for (int i = trsNPBeg[state]; i < trsNPBeg[state + 1]; ++i)
 		    {
+				final int t = trsNP[i];
 			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
 			    matNPMinDiagVal[trStSrc[t]] -= val;
 			    matNPMaxDiagVal[trStSrc[t]] -= val;
