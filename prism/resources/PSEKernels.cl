@@ -314,7 +314,7 @@ __kernel void PSE_VM_NP_CSR_BOTH
     real dotMax = in[v0 * 2 + 1] * matDiaVal[v0 * 2 + 1]; //out[v0] + in[v0] * matDiaVal[v0];
     for (int i = matRowBeg[v0]; i < ce; ++i) {
       MADTO(matVal[i], in[matCol[i] * 2], dotMin);
-      MADTO(matVal[i], in[matCol[i] * 2 + 1)], dotMax);
+      MADTO(matVal[i], in[matCol[i] * 2 + 1], dotMax);
     }
     out[v0 * 2] = dotMin;
     out[v0 * 2 + 1] = dotMax;
