@@ -7,6 +7,26 @@ import java.util.BitSet;
 
 final public class PSEMultUtility
 {
+	public static void zipArray(double[] a, double[] b, double[] z)
+	{
+		assert a.length == b.length;
+		assert z.length == a.length * 2;
+		for (int i = 0; i < a.length; ++i) {
+			z[i * 2] = a[i];
+			z[i * 2 + 1] = b[i];
+		}
+	}
+
+	public static void unzipArray(double[] z, double[] a, double[] b)
+	{
+		assert a.length == b.length;
+		assert z.length == a.length * 2;
+		for (int i = 0; i < a.length; ++i) {
+			a[i] = z[i * 2];
+			b[i] = z[i * 2 + 1];
+		}
+	}
+
 	public static PSEMultOptions getOptions()
 	{
 		return new PSEMultOptions(getOptOcl(), getOptPara(), getOptMany(), getOptAdaptiveFoxGlynn());

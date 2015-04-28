@@ -9,9 +9,10 @@ final public class PSEVMMultTopology_OCL implements Releaseable
     {
         this.stCnt = data.stCnt;
 
-        this.enabledMatNP = data.matNPTrgBeg[stCnt] > 0;
-        this.enabledMatIO = data.matIOTrgBeg[stCnt] > 0;
-        this.enabledMatI = data.matITrgBeg[stCnt] > 0;
+        this.enabledMatNP = data.enabledMatNP;
+        this.enabledMatIO = data.enabledMatIO;
+        this.enabledMatI = data.enabledMatI;
+        this.enabledMatO = data.enabledMatO;
 
         this.matIOSrcHost = data.matIOSrc;
         this.matIOTrgBegHost = data.matIOTrgBeg;
@@ -98,4 +99,5 @@ final public class PSEVMMultTopology_OCL implements Releaseable
     final public boolean enabledMatNP;
     final public boolean enabledMatIO;
     final public boolean enabledMatI;
+    final public boolean enabledMatO;
 }

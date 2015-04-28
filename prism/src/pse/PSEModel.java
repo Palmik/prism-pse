@@ -545,8 +545,7 @@ public final class PSEModel extends ModelExplicit
 	{
 	    final double qrec = 1.0 / getDefaultUniformisationRate();
 
-	    VectorOfDouble matIMinVal = new VectorOfDouble();
-		VectorOfDouble matIMaxVal = new VectorOfDouble();
+	    VectorOfDouble matIValZip = new VectorOfDouble(); // min, max
 	    VectorOfInt matISrc = new VectorOfInt();
 	    int[] matITrgBeg = new int [numStates + 1];
 	    int matIPos = 0;
@@ -556,22 +555,15 @@ public final class PSEModel extends ModelExplicit
 	    int[] matNPTrgBeg = new int [numStates + 1];
 	    int matPos = 0;
 
-	    double[] matNPMinDiagVal = new double[numStates];
-	    double[] matNPMaxDiagVal = new double[numStates];
-	    for (int i = 0; i < numStates; ++i)
-	    {
-		    matNPMinDiagVal[i] = 1;
-		    matNPMaxDiagVal[i] = 1;
-	    }
+	    double[] matNPDiagValZip = new double[numStates * 2]; // min, max
+		Arrays.fill(matNPDiagValZip, 1);
 
-	    VectorOfDouble matIOLowerVal0 = new VectorOfDouble();
-	    VectorOfDouble matIOLowerVal1 = new VectorOfDouble();
-	    VectorOfDouble matIOUpperVal0 = new VectorOfDouble();
-	    VectorOfDouble matIOUpperVal1 = new VectorOfDouble();
+	    VectorOfDouble matIOValZip = new VectorOfDouble(); // lower0, lower1, upper0, upper1
 	    VectorOfInt matIOSrc = new VectorOfInt();
 	    int[] matIOTrgBeg = new int [numStates + 1];
 	    int matIOPos = 0;
 
+		boolean enabledMatO = false;
 	    for (int state = 0; state < numStates; ++state)
 	    {
 		    matITrgBeg[state] = matIPos;
@@ -602,10 +594,10 @@ public final class PSEModel extends ModelExplicit
 			    // if (valLower0 != 0) should be enough -- see above
 			    if (!(valLower0 == 0 && valLower1 == 0 && valUpper0 == 0 && valUpper1 == 0))
 			    {
-				    matIOLowerVal0.pushBack(valLower0);
-				    matIOLowerVal1.pushBack(valLower1);
-				    matIOUpperVal0.pushBack(valUpper0);
-				    matIOUpperVal1.pushBack(valUpper1);
+				    matIOValZip.pushBack(valLower0);
+				    matIOValZip.pushBack(valLower1);
+				    matIOValZip.pushBack(valUpper0);
+				    matIOValZip.pushBack(valUpper1);
 
 				    matIOSrc.pushBack(v0);
 				    ++matIOPos;
@@ -619,8 +611,8 @@ public final class PSEModel extends ModelExplicit
 			    final double valMax = trRateUpper[t] * trRatePopul[t] * qrec;
 			    if (valMin != 0 || valMax != 0)
 			    {
-				    matIMinVal.pushBack(valMin);
-				    matIMaxVal.pushBack(valMax);
+				    matIValZip.pushBack(valMin);
+				    matIValZip.pushBack(valMax);
 				    matISrc.pushBack(trStSrc[t]);
 				    ++matIPos;
 			    }
@@ -628,17 +620,18 @@ public final class PSEModel extends ModelExplicit
 
 		    for (int i = trsOBeg[state]; i < trsOBeg[state + 1]; ++i)
 		    {
+				enabledMatO = true;
 				final int t = trsO[i];
-			    matNPMinDiagVal[trStSrc[t]] -= trRateUpper[t] * trRatePopul[t] * qrec;
-			    matNPMaxDiagVal[trStSrc[t]] -= trRateLower[t] * trRatePopul[t] * qrec;
+			    matNPDiagValZip[trStSrc[t] * 2] -= trRateUpper[t] * trRatePopul[t] * qrec;
+			    matNPDiagValZip[trStSrc[t] * 2 + 1] -= trRateLower[t] * trRatePopul[t] * qrec;
 		    }
 
 			for (int i = trsNPBeg[state]; i < trsNPBeg[state + 1]; ++i)
 		    {
 				final int t = trsNP[i];
 			    final double val = trRateLower[t] * trRatePopul[t] * qrec;
-			    matNPMinDiagVal[trStSrc[t]] -= val;
-			    matNPMaxDiagVal[trStSrc[t]] -= val;
+			    matNPDiagValZip[trStSrc[t] * 2] -= val;
+			    matNPDiagValZip[trStSrc[t] * 2 + 1] -= val;
 			    if (val != 0)
 			    {
 				    matNPVal.pushBack(val);
@@ -654,23 +647,20 @@ public final class PSEModel extends ModelExplicit
 
 		return new PSEVMCreateData_CSR
 			( numStates
-			, matIOLowerVal0.data()
-			, matIOLowerVal1.data()
-			, matIOUpperVal0.data()
-			, matIOUpperVal1.data()
+			, matIOValZip.data()
 			, matIOSrc.data()
 			, matIOTrgBeg
 
-			, matIMinVal.data()
-			, matIMaxVal.data()
+			, matIValZip.data()
 			, matISrc.data()
 			, matITrgBeg
 
-			, matNPMinDiagVal
-			, matNPMaxDiagVal
+			, matNPDiagValZip
 			, matNPVal.data()
 			, matNPSrc.data()
 			, matNPTrgBeg
+
+			, enabledMatO
 			);
 	}
 
