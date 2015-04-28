@@ -7,6 +7,8 @@
 #define MADTO(A, B, C) (C = (A) * (B) + C)
 
 typedef double real;
+typedef double2 real2;
+typedef double4 real4;
 
 __kernel void WeightedSumTo
   ( const int n
@@ -247,12 +249,12 @@ __kernel void PSE_MV_P_CSR_BOTH_MANY
 
 __kernel void PSE_VM_I_CSR_BOTH
   ( const int matRowCnt
-  , __global real const* restrict matVal
+  , __global real2 const* restrict matVal
   , __global int const* restrict matCol
   , __global int const* restrict matRowBeg
 
-  , __global real const* restrict in
-  , __global real* restrict out
+  , __global real2 const* restrict in
+  , __global real2* restrict out
   )
 {
   const int v0 = get_global_id(0);
@@ -260,14 +262,11 @@ __kernel void PSE_VM_I_CSR_BOTH
   if (v0 < matRowCnt) {
     const int ce = matRowBeg[v0 + 1];
 
-    real dotMin = out[v0 * 2];
-    real dotMax = out[v0 * 2 + 1];
+    real2 dot = out[v0];
     for (int i = matRowBeg[v0]; i < ce; ++i) {
-      MADTO(matVal[i * 2], in[matCol[i] * 2], dotMin);
-      MADTO(matVal[i * 2 + 1], in[matCol[i] * 2 + 1], dotMax);
+      MADTO(matVal[i], in[matCol[i]], dot);
     }
-    out[v0 * 2] = dotMin;
-    out[v0 * 2 + 1] = dotMax;
+    out[v0] = dot;
   }
 }
 
@@ -296,13 +295,13 @@ __kernel void PSE_VM_NP_CSR
 
 __kernel void PSE_VM_NP_CSR_BOTH
   ( const int matRowCnt
-  , __global real const* restrict matDiaVal
+  , __global real2 const* restrict matDiaVal
   , __global real const* restrict matVal
   , __global int const* restrict matCol
   , __global int const* restrict matRowBeg
 
-  , __global real const* restrict in
-  , __global real* restrict out
+  , __global real2 const* restrict in
+  , __global real2* restrict out
   )
 {
   const int v0 = get_global_id(0);
@@ -310,14 +309,11 @@ __kernel void PSE_VM_NP_CSR_BOTH
   if (v0 < matRowCnt) {
     const int ce = matRowBeg[v0 + 1];
 
-    real dotMin = in[v0 * 2] * matDiaVal[v0 * 2]; //out[v0] + in[v0] * matDiaVal[v0];
-    real dotMax = in[v0 * 2 + 1] * matDiaVal[v0 * 2 + 1]; //out[v0] + in[v0] * matDiaVal[v0];
+    real2 dot = in[v0] * matDiaVal[v0]; //out[v0] + in[v0] * matDiaVal[v0];
     for (int i = matRowBeg[v0]; i < ce; ++i) {
-      MADTO(matVal[i], in[matCol[i] * 2], dotMin);
-      MADTO(matVal[i], in[matCol[i] * 2 + 1], dotMax);
+      MADTO(matVal[i], in[matCol[i]], dot);
     }
-    out[v0 * 2] = dotMin;
-    out[v0 * 2 + 1] = dotMax;
+    out[v0] = dot;
   }
 }
 __kernel void PSE_VM_DIAG
@@ -336,52 +332,51 @@ __kernel void PSE_VM_DIAG
 
 __kernel void PSE_VM_DIAG_BOTH
   ( const int matRowCnt
-  , __global real const* restrict matDiaVal
-  , __global real const* restrict in
-  , __global real* restrict out
+  , __global real2 const* restrict matDiaVal
+  , __global real2 const* restrict in
+  , __global real2* restrict out
   )
 {
   const int v0 = get_global_id(0);
 
   if (v0 < matRowCnt) {
-    out[v0 * 2] = in[v0 * 2] * matDiaVal[v0 * 2]; //out[v0] + in[v0] * matDiaVal[v0];
-    out[v0 * 2 + 1] = in[v0 * 2 + 1] * matDiaVal[v0 * 2 + 1]; //out[v0] + in[v0] * matDiaVal[v0];
+    out[v0] = in[v0] * matDiaVal[v0];
   }
 }
 
 __kernel void PSE_VM_IO_CSR_BOTH
   ( const int matRowCnt
-  , __global real const* restrict matVal
+  , __global real4 const* restrict matVal
   , __global int const* restrict matCol
   , __global int const* restrict matRowBeg
 
-  , __global real const* restrict in
-  , __global real* restrict out
+  , __global real2 const* restrict in
+  , __global real2* restrict out
   )
 {
   const int v1 = get_global_id(0);
 
   if (v1 < matRowCnt) {
-    real dotMin = out[v1 * 2];
-    real dotMax = out[v1 * 2 + 1];
+    real2 dot = out[v1];
     for (int i = matRowBeg[v1]; i < matRowBeg[v1 + 1]; ++i) {
       const int v0 = matCol[i];
-      const real rlowerMin = (matVal[i * 4] * in[v0 * 2] - matVal[i * 4 + 1] * in[v1 * 2]);
-      const real rupperMax = (matVal[i * 4 + 2] * in[v0 * 2 + 1] - matVal[i * 4 + 3] * in[v1 * 2 + 1]);
+      const real2 d1 = matVal[i].x * in[v0] - matVal[i].y * in[v1];
+      const real2 d2 = matVal[i].z * in[v0] - matVal[i].w * in[v1];
+      //const real rlowerMin = //(matVal[i * 4] * in[v0 * 2] - matVal[i * 4 + 1] * in[v1 * 2]);
+      //const real rupperMax = //(matVal[i * 4 + 2] * in[v0 * 2 + 1] - matVal[i * 4 + 3] * in[v1 * 2 + 1]);
 
-      if (rlowerMin > 0.0) {
-        dotMin += rlowerMin;
+      if (d1.x > 0) { //if (rlowerMin > 0.0) {
+        dot.x += d1.x; //dotMin += rlowerMin;
       } else {
-        dotMin += (matVal[i * 4 + 2] * in[v0 * 2] - matVal[i * 4 + 3] * in[v1 * 2]);
+        dot.x += d2.x; //dotMin += (matVal[i * 4 + 2] * in[v0 * 2] - matVal[i * 4 + 3] * in[v1 * 2]);
       }
-      if (rupperMax > 0.0) {
-        dotMax += rupperMax;
+      if (d2.y > 0) { //if (rupperMax > 0.0) {
+        dot.y += d2.y; //dotMax += rupperMax;
       } else {
-        dotMax += (matVal[i * 4] * in[v0 * 2 + 1] - matVal[i * 4 + 1] * in[v1 * 2 + 1]);
+        dot.y += d1.y; //dotMax += (matVal[i * 4] * in[v0 * 2 + 1] - matVal[i * 4 + 1] * in[v1 * 2 + 1]);
       }
     }
-    out[v1 * 2] = dotMin;
-    out[v1 * 2 + 1] = dotMax;
+    out[v1] = dot;
   }
 }
 
