@@ -674,6 +674,80 @@ public final class PSEModel extends ModelExplicit
 			);
 	}
 
+	final public PSEMVCreateData_ELL getCreateData_MV_ELL(BitSet subset, boolean complement)
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
+
+		int matPColPerRow = 0;
+		int matPRowCnt = 0;
+		int matNColPerRow = 0;
+		int matNRowCnt = 0;
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
+			int matPNZ = 0;
+			int matNNZ = 0;
+			for (int t = stateBegin(state); t < stateEnd(state); ++t) {
+				if (isParametrised(t)) {
+					final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+					final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+					if (valLower != 0 || valUpper != 0) ++matPNZ;
+				} else {
+					final double val = trRateLower[t] * trRatePopul[t] * qrec;
+					if (val != 0) ++matNNZ;
+				}
+			}
+			if (matPNZ > 0) ++matPRowCnt;
+			if (matNNZ > 0) ++matNRowCnt;
+			matPColPerRow = Integer.max(matPColPerRow, matPNZ);
+			matNColPerRow = Integer.max(matNColPerRow, matNNZ);
+		}
+
+		int matPValCnt = matPRowCnt * matPColPerRow;
+		double[] matPValLower = new double[matPValCnt];
+		double[] matPValUpper = new double[matPValCnt];
+		int[] matPCol = new int[matPValCnt];
+		int[] matPRow = new int[matPRowCnt];
+
+		int matNValCnt = matNRowCnt * matNColPerRow;
+		double[] matNVal = new double[matNValCnt];
+		int[] matNCol = new int[matNValCnt];
+		int[] matNRow = new int[matPRowCnt];
+
+		int pr = 0;
+		int nr = 0;
+		for (int state = subset.nextSetBit(0); state >= 0; state = subset.nextSetBit(state + 1)) {
+			int matPNZ = 0;
+			int matNNZ = 0;
+			for (int t = stateBegin(state); t < stateEnd(state); ++t) {
+				if (isParametrised(t)) {
+					final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+					final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+					final int col = trStTrg[t];
+					if (valLower != 0 || valUpper != 0) {
+						matPValLower[matPNZ * matPRowCnt] = valLower;
+						matPValUpper[matPNZ * matPRowCnt] = valUpper;
+						matPCol[matPNZ * matPRowCnt] = col;
+						++matPNZ;
+					}
+				} else {
+					final double val = trRateLower[t] * trRatePopul[t] * qrec;
+					final int col = trStTrg[t];
+					if (val != 0) {
+						matNVal[matNNZ * matNRowCnt] = val;
+						matNCol[matNNZ * matNRowCnt] = col;
+						++matNNZ;
+					}
+				}
+			}
+			if (matPNZ > 0) matPRow[pr++] = state;
+			if (matNNZ > 0) matNRow[nr++] = state;
+		}
+
+		return new PSEMVCreateData_ELL(getNumStates(),
+			matPValLower, matPValUpper, matPCol, matPRow, matPRowCnt, matPColPerRow,
+			matNVal, matNCol, matNRow, matNRowCnt, matNColPerRow);
+	}
+
 	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset, boolean complement)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
