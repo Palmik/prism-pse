@@ -1,0 +1,4 @@
+//P=?[ F [10,10] popHp >= 15 & popRp>= 15] 
+//P=?[ G [0,10] popH >= 5] 
+//P=?[ G [0,5] popRp <= 15] 
+P=?[ F [5,5] popRp = 15 & popHp = 15] 

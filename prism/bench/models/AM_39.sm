@@ -1,0 +1,81 @@
+ctmc
+
+const int MAX_AMOUNT = 100;
+
+// Parameters for reaction r_id3
+const double k_r_id3;  // = 1.8847;
+
+// Parameters for reaction r_id4
+const double k_r_id4;  // = 82.6519;
+
+// Parameters for reaction r_id5
+const double k_r_id5;  // = 0.0394;
+
+// Species s_id0 (s0)
+const int s_id0_MIN = 0;
+const int s_id0_MAX = MAX_AMOUNT;
+module s_id0
+
+    s_id0 : [s_id0_MIN..s_id0_MAX] init 10; // Initial amount 10
+
+    // r_id4
+    [r_id4] s_id0 > 0 -> (s_id0'=s_id0-1);
+    // r_id5
+    [r_id5] s_id0 <= s_id0_MAX-2 -> (s_id0'=s_id0+2);
+
+endmodule
+
+// Species s_id1 (s1)
+const int s_id1_MIN = 0;
+const int s_id1_MAX = MAX_AMOUNT;
+module s_id1
+
+    s_id1 : [s_id1_MIN..s_id1_MAX] init 4; // Initial amount 4
+
+    // r_id3
+    [r_id3] s_id1 <= s_id1_MAX-1 -> (s_id1'=s_id1+1);
+    // r_id4
+    [r_id4] s_id1 > 0 -> (s_id1'=s_id1-1);
+
+endmodule
+
+// Species s_id2 (s2)
+const int s_id2_MIN = 0;
+const int s_id2_MAX = MAX_AMOUNT;
+module s_id2
+
+    s_id2 : [s_id2_MIN..s_id2_MAX] init 0; // Initial amount 0
+
+    // r_id3
+    [r_id3] s_id2 > 0 -> (s_id2'=s_id2-1);
+    // r_id4
+    [r_id4] s_id2 <= s_id2_MAX-2 -> (s_id2'=s_id2+2);
+    // r_id5
+    [r_id5] s_id2 > 1 -> (s_id2'=s_id2-2);
+
+endmodule
+
+// Reaction rates
+module reaction_rates
+
+    // r_id3
+    [r_id3] (s_id1*s_id2) > 0 -> (k_r_id3*s_id1*s_id2) : true;
+    // r_id4
+    [r_id4] (s_id0*s_id1) > 0 -> (k_r_id4*s_id0*s_id1) : true;
+    // r_id5
+    [r_id5] (pow(s_id2,2)) > 0 -> (k_r_id5*pow(s_id2,2)) : true;
+
+endmodule
+
+// Reward structures (one per species)
+
+// Species s_id0 (s0)
+rewards "s_id0" true : s_id0; endrewards
+// Species s_id1 (s1)
+rewards "s_id1" true : s_id1; endrewards
+// Species s_id2 (s2)
+rewards "s_id2" true : s_id2; endrewards
+
+// Reward structure for calculating expected times
+rewards "time" true : 1; endrewards
+

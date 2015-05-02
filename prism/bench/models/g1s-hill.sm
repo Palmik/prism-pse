@@ -1,0 +1,48 @@
+ctmc
+
+// constants
+const int M = 30; // maximal number of species
+
+
+// initial nuber of species
+const int InitA = 1;
+const int InitB = 1;
+
+
+const double degrB;
+const double degrA;
+
+
+
+
+module g1s
+	
+	AA : [0..M] init InitA;
+	B : [0..M] init InitB;
+
+
+  //B>0 —> k_1*B/(K_m1 + B)*J_11/(J_11+A) : A’=A+1
+  []  (B > 0) & (AA<M)  ->  1*(B/(0.5+B))*(0.5/(0.5+AA))  : (AA'=AA+1);
+
+  //true —> k_p: B’ = B +1
+  []  (B<M) -> 0.05 : (B'=B+1);
+  
+  //true —> k_2 *(a^2 + B^2)/(K_m2^2 + B^2)*J_12/(J_12+A) :  B’ = B +1
+  []  (B<M) ->  1.6*((B*B + 0.0016)/(16+B*B))*(5/(5+AA))  : (B'=B+1);
+
+
+  //A>0 —> \gamma_A : A’=A-1
+  []  (AA > 0)  -> AA*degrA  : (AA'=AA-1);
+
+  //B>0 —> \gamma_B : B’=B-1  
+  []  (B > 0)  -> B*degrB  : (B'=B-1);
+	
+    
+
+	
+endmodule
+
+rewards
+    B > 4 : 1; // B < 3, B > 7
+endrewards
+
