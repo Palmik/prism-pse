@@ -54,7 +54,7 @@ sub _run_command
   print "$command\n";
   my $avg = 0;
   for (1..$rep) {
-    my $output_file_path = _get_command_output_file_path($command, $output_dir, $rep);
+    my $output_file_path = _get_command_output_file_path($command, $output_dir, $_);
     my ($t, $out) = _run_command_once($command, $output_file_path);
     if ($_ == 1) {
       print "out: $output_file_path\n";
