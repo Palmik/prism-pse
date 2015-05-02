@@ -1,6 +1,27 @@
 { prism => '../bin/prism'
 , models =>
-  [ { path => 'models/AM_39.sm'
+  [ { path => 'models/signalling_2_v6_noreg.sm'
+    , opts =>
+      [ { parameters =>
+          [ { k1 => [0.1, 0.5], k2 => [0.01, 0.015] }
+          ]
+        , environment =>
+          [ {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>2}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>8}
+          , {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          , {PSE_OCL=>1,PSE_MANY=>2}
+          , {PSE_OCL=>1,PSE_MANY=>4}
+          , {PSE_OCL=>1,PSE_MANY=>8}
+          ]
+        , properties =>
+          [ { synth => 1, type => 'thr', csl => 'P<0.1 [ F[300,300] (popR>=10 & popR<=15) ]', acc => 0.1 }
+          ]
+        }
+      ]
+    }
+  , { path => 'models/AM_39.sm'
     , opts =>
       [ { parameters =>
           [ { k_r_id3 => [1,2], k_r_id4 => [80,90], k_r_id5 => [0.01,0.04] }

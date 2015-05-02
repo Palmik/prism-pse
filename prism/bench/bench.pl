@@ -16,6 +16,7 @@ sub main
   }
   my $rep = $ARGV[1];
   my $output_dir = $ARGV[2];
+  my $dry_run = (defined $ARGV[3]) ? ($ARGV[3] eq '--dry') : 0;
 
   for my $model (@{$def->{models}}) {
     for my $opts (@{$model->{opts}}) {
@@ -23,7 +24,7 @@ sub main
       for my $parameters (@{$opts->{parameters}}) {
         for my $env (@{$opts->{environment}}) {
           for my $property (@{$opts->{properties}}) {
-            _handle($env, $def->{prism}, $model->{path}, $parameters, $property, $rep, $output_dir);
+            _handle($env, $def->{prism}, $model->{path}, $parameters, $property, $rep, $output_dir, $dry_run);
           }
         }
       }
@@ -33,16 +34,18 @@ sub main
 
 sub _handle
 {
-  my ($env, $prism, $model, $parameters, $property, $rep, $output_dir) = @_;
+  my ($env, $prism, $model, $parameters, $property, $rep, $output_dir, $dry_run) = @_;
   my $command = undef;
 
   $env->{PRISM_JAVAMAXMEM} = '3g';
   $command = _get_pse_command_string($prism, $model, $parameters, $property, $env);
-  _run_command($command, $rep, $output_dir) if $command;
+  _run_command($command, $rep, $output_dir) if (!$dry_run && $command);
+  print "$command\n\n" if ($dry_run && $command);
 
   $env->{PRISM_JAVAMAXMEM} = '3g';
   $command = _get_reg_command_string($prism, $model, $parameters, $property, $env);
-  _run_command($command, $rep, $output_dir) if $command;
+  _run_command($command, $rep, $output_dir) if (!$dry_run && $command);
+  print "$command\n\n" if ($dry_run && $command);
 }
 
 sub _run_command
