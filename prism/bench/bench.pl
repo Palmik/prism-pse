@@ -75,7 +75,7 @@ sub _run_command_once
 {
   my ($command, $output_file_path) = @_;
 
-  my $out = `($command) >$output_file_path 2>&1 ; cat $output_file_path`;
+  my $out = `$command 2>&1 | tee $output_file_path`;
   if ($out =~ qr/Total time for model checking: ([0-9,.]*).*/) {
     return ($1, $out);
   } elsif ($out =~ qr/Time for parameter space exploration: ([0-9,.]*).*/) {
@@ -95,7 +95,7 @@ sub _get_pse_command_string
   my $env_str = _get_env_string($env);
   my $parameters_str = _get_parameters_string($parameters);
 
-  my $command = "env $env_str $prism $model ";
+  my $command = "env $env_str stdbuf -o0 -e0 $prism $model ";
   if ($property->{transient}) {
     $command .= "-pse $property->{time} $parameters_str $property->{acc}";
   } elsif ($property->{check}) {
