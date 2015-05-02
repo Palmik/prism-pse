@@ -54,9 +54,10 @@ sub _run_command
   print "$command\n";
   my $avg = 0;
   for (1..$rep) {
-    my ($t, $out) = _run_command_once($command);
+    my $output_file_path = _get_command_output_file_path($command, $output_dir, $rep);
+    my ($t, $out) = _run_command_once($command, $output_file_path);
     if ($_ == 1) {
-      _store_command_output($command, $output_dir, $out);
+      print "out: $output_file_path\n";
       _print_model_data($out);
     }
     if (defined $t) {
@@ -72,9 +73,9 @@ sub _run_command
 
 sub _run_command_once
 {
-  my ($command, $output_dir) = @_;
+  my ($command, $output_file_path) = @_;
 
-  my $out = `$command 2>&1`;
+  my $out = `$command 2>&1 | tee $output_file_path`;
   if ($out =~ qr/Total time for model checking: ([0-9,.]*).*/) {
     return ($1, $out);
   } elsif ($out =~ qr/Time for parameter space exploration: ([0-9,.]*).*/) {
@@ -84,7 +85,7 @@ sub _run_command_once
   } elsif ($out =~ qr/Time for model checking: ([0-9,.]*).*/) {
     return ($1, $out);
   } else {
-    return 0;
+    return undef;
   }
 }
 
@@ -160,20 +161,11 @@ sub _is_parametrised
   return 0;
 }
 
-sub _store_command_output
+sub _get_command_output_file_path
 {
-  my ($command, $output_dir, $out) = @_;
-  return unless defined $output_dir;
-  my $output_path = File::Spec->catfile($output_dir, _get_output_file_name($command));
-  print "$output_path\n";
-  open(my $fh, '>', $output_path) or print "could not open out file, reason: $!\n";
-  print $fh $out if $fh;
-}
-
-sub _get_output_file_name
-{
-  my ($command) = @_;
-  return Digest::SHA::sha1_hex($command) . ".out";
+  my ($command, $output_dir, $rep) = @_;
+  my $file_name = Digest::SHA::sha1_hex($command) . ".$rep.out";
+  return File::Spec->catfile($output_dir, $file_name);
 }
 
 sub _print_model_data
