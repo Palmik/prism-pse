@@ -1,6 +1,6 @@
 { prism => '../bin/prism'
 , models =>
-  [ { path => 'models/signalling_2_v6_noreg.sm'
+  [ { path => 'models/signalling_2_v6_noreg_small.sm'
     , opts =>
       [ { parameters =>
           [ { k1 => [0.1, 0.5], k2 => [0.01, 0.015] }
@@ -16,7 +16,7 @@
           , {PSE_OCL=>1,PSE_MANY=>8}
           ]
         , properties =>
-          [ { synth => 1, type => 'thr', csl => 'P<0.025 [ F[100,100] (popR>=10 & popR<=15) ]', acc => 0.1 }
+          [ { synth => 1, type => 'thr', csl => 'P<0.5 [ F[100,100] (popR>=2 & popR<=12) ]', acc => 0.1 }
           ]
         }
       ]
