@@ -75,7 +75,7 @@ sub _run_command_once
 {
   my ($command, $output_file_path) = @_;
 
-  my $out = `$command 2>&1 | tee $output_file_path`;
+  my $out = `$command |& tee $output_file_path`;
   if ($out =~ qr/Total time for model checking: ([0-9,.]*).*/) {
     return ($1, $out);
   } elsif ($out =~ qr/Time for parameter space exploration: ([0-9,.]*).*/) {
