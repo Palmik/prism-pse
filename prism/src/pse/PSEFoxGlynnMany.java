@@ -106,6 +106,13 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                 continue;
             }
 
+            System.err.printf("!XI ");
+            mult.getMult(0, sumMin, sumMax);
+            for (int i = 0; i < sumMin.length; i += sumMin.length / 5) {
+                System.err.printf("%s ", sumMin[i]);
+            }
+            System.err.printf("\n");
+
             // Start iterations
             iters = 0;
             while (iters < fgR) {
@@ -131,6 +138,12 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                         regionDecomposed[matId] = true;
                         ++matCntDecomposed;
                     }
+                    System.err.printf("!XS ");
+                    mult.getMult(matId, sumMin, sumMax);
+                    for (int i = 0; i < sumMin.length; i += sumMin.length / 5) {
+                        System.err.printf("%s ", sumMin[i]);
+                    }
+                    System.err.printf("\n");
                 }
                 if (matCntDecomposed == matCnt) {
                     break;

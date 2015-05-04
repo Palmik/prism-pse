@@ -711,7 +711,7 @@ public final class PSEModel extends ModelExplicit
 		int matNValCnt = matNRowCnt * matNColPerRow;
 		double[] matNVal = new double[matNValCnt];
 		int[] matNCol = new int[matNValCnt];
-		int[] matNRow = new int[matPRowCnt];
+		int[] matNRow = new int[matNRowCnt];
 
 		int pr = 0;
 		int nr = 0;
@@ -724,17 +724,17 @@ public final class PSEModel extends ModelExplicit
 					final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
 					final int col = trStTrg[t];
 					if (valLower != 0 || valUpper != 0) {
-						matPValLower[matPNZ * matPRowCnt] = valLower;
-						matPValUpper[matPNZ * matPRowCnt] = valUpper;
-						matPCol[matPNZ * matPRowCnt] = col;
+						matPValLower[pr + matPRowCnt * matPNZ] = valLower;
+						matPValUpper[pr + matPRowCnt * matPNZ] = valUpper;
+						matPCol[pr + matPRowCnt * matPNZ] = col;
 						++matPNZ;
 					}
 				} else {
 					final double val = trRateLower[t] * trRatePopul[t] * qrec;
 					final int col = trStTrg[t];
 					if (val != 0) {
-						matNVal[matNNZ * matNRowCnt] = val;
-						matNCol[matNNZ * matNRowCnt] = col;
+						matNVal[nr + matNRowCnt * matNNZ] = val;
+						matNCol[nr + matNRowCnt * matNNZ] = col;
 						++matNNZ;
 					}
 				}

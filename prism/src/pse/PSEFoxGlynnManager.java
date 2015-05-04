@@ -96,7 +96,12 @@ final public class PSEFoxGlynnManager implements Releaseable
 	private final static PSEMultManyManager getMultManyManagerMV(PSEMultOptions options, PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
 	{
 		if (options.getOcl()) {
-			return new PSEMVMultManyManager_OCL(model, modelSubset, modelSubsetComplement);
+			switch (options.getFmt()) {
+			case CSR:
+				return new PSEMVMultManyManager_OCL(model, modelSubset, modelSubsetComplement);
+			case ELL:
+				return new PSEMVMultManyManager_ELL_OCL(model, modelSubset, modelSubsetComplement);
+			}
 		}
 		return null;
 	}

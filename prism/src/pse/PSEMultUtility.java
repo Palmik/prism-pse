@@ -9,7 +9,7 @@ final public class PSEMultUtility
 {
 	public static PSEMultOptions getOptions()
 	{
-		return new PSEMultOptions(getOptOcl(), getOptPara(), getOptMany(), getOptAdaptiveFoxGlynn());
+		return new PSEMultOptions(getOptFmt(), getOptOcl(), getOptPara(), getOptMany(), getOptAdaptiveFoxGlynn());
 	}
 
 	public static void weightedSumToBoth(
@@ -32,6 +32,19 @@ final public class PSEMultUtility
 				sum[j] += w * in[j];
 			}
 		}
+	}
+
+	private static PSEMultFormat getOptFmt()
+	{
+		String envFmt = System.getenv("PSE_FMT");
+		if (envFmt != null) {
+			if (envFmt.equals("CSR")) {
+				return PSEMultFormat.CSR;
+			} else if (envFmt.equals("ELL")) {
+				return PSEMultFormat.ELL;
+			}
+		}
+		return PSEMultFormat.CSR;
 	}
 
 	private static boolean getOptOcl()

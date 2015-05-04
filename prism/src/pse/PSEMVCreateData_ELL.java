@@ -20,7 +20,7 @@ public final class PSEMVCreateData_ELL
         this.matNCol = matNCol;
         this.matNRow = matNRow;
         this.matNRowCnt = matNRowCnt;
-        this.matNColPerRow = matPColPerRow;
+        this.matNColPerRow = matNColPerRow;
     }
 
     public final int stCnt;

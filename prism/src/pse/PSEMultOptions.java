@@ -2,12 +2,18 @@ package pse;
 
 final public class PSEMultOptions
 {
-	public PSEMultOptions(boolean ocl, int para, int many, boolean adatptiveFoxGlynn)
+	public PSEMultOptions(PSEMultFormat fmt, boolean ocl, int para, int many, boolean adatptiveFoxGlynn)
 	{
+		this.fmt = fmt;
 		this.ocl = ocl;
 		this.para = para;
 		this.many = many;
 		this.adatptiveFoxGlynn = adatptiveFoxGlynn;
+
+		if (fmt == PSEMultFormat.ELL && (!ocl || many < 1)) {
+			throw new RuntimeException(
+				"PSE_OCL and PSE_MANY has to be enabled (PSE_OCL=1, PSE_MANY>=1) if you want to use PSE_FMT=ELL");
+		}
 
 		if (many > 0 && !ocl) {
 			throw new RuntimeException(
@@ -44,6 +50,11 @@ final public class PSEMultOptions
 			ocl, para, many, adatptiveFoxGlynn);
 	}
 
+	public PSEMultFormat getFmt()
+	{
+		return fmt;
+	}
+
 	public boolean getOcl()
 	{
 		return ocl;
@@ -64,6 +75,7 @@ final public class PSEMultOptions
 		return adatptiveFoxGlynn;
 	}
 
+	final private PSEMultFormat fmt;
 	final private boolean ocl;
 	final private int para;
 	final private int many;
