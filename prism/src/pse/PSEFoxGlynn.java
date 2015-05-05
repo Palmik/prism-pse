@@ -3,6 +3,7 @@ package pse;
 import explicit.FoxGlynn;
 import prism.PrismException;
 
+import java.util.BitSet;
 import java.util.Map;
 
 public interface PSEFoxGlynn
@@ -32,9 +33,36 @@ public interface PSEFoxGlynn
         final public double weightDef;
     }
 
+    public static interface UniformisationRateGetter
+    {
+        public double getUniformisationRate(PSEModel model);
+    }
+
+    public static final class UniformisationRateGetterWhole implements UniformisationRateGetter
+    {
+        public double getUniformisationRate(PSEModel model)
+        {
+            return model.getDefaultUniformisationRate();
+        }
+    }
+
+    public static final class UniformisationRateGetterSubset implements UniformisationRateGetter
+    {
+        public UniformisationRateGetterSubset(BitSet subset)
+        {
+            this.subset = subset;
+        }
+
+        public double getUniformisationRate(PSEModel model)
+        {
+            return model.getDefaultUniformisationRate(subset);
+        }
+
+        final private BitSet subset;
+    }
     public static interface ParametersGetter
     {
-        public Params getParameters(PSEModel model, double t) throws PrismException;
+        public Params getParameters(double q, double t) throws PrismException;
     }
 
     public static final class ParametersGetterProbs implements ParametersGetter
@@ -45,9 +73,9 @@ public interface PSEFoxGlynn
         }
 
         @Override
-        public Params getParameters(PSEModel model, double t) throws PrismException
+        public Params getParameters(double q, double t) throws PrismException
         {
-            double qt = model.getDefaultUniformisationRate() * t;
+            double qt = q * t;
             double accuracy = 1e-6 / 8.0;
             FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
 
@@ -73,10 +101,9 @@ public interface PSEFoxGlynn
         }
 
         @Override
-        public Params getParameters(PSEModel model, double t) throws PrismException
+        public Params getParameters(double q, double t) throws PrismException
         {
-            double q = model.getDefaultUniformisationRate();
-            double qt = model.getDefaultUniformisationRate() * t;
+            double qt = q * t;
             double accuracy = 1e-6 / 8.0;
             FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
 
@@ -107,6 +134,7 @@ public interface PSEFoxGlynn
 
     public int compute
         ( DistributionGetter distributionGetter
+        , UniformisationRateGetter uniformisationRateGetter
         , ParametersGetter parametersGetter
         , double t
 

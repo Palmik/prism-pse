@@ -45,6 +45,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		final public void update
 			( DistributionGetter distributionGetter
+			, UniformisationRateGetter uniformisationRateGetter
 			, ParametersGetter parametersGetter
 			, double t
 
@@ -56,6 +57,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			) throws PrismException
 		{
 			this.distributionGetter = distributionGetter;
+			this.uniformisationRateGetter = uniformisationRateGetter;
 			this.parametersGetter = parametersGetter;
 			this.t = t;
 
@@ -68,7 +70,8 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 			this.regionsToDecompose.clear();
 
 			if (!multOptions.getAdaptiveFoxGlynn()) {
-				PSEFoxGlynn.Params params = parametersGetter.getParameters(model, t);
+				final double q = uniformisationRateGetter.getUniformisationRate(model);
+				PSEFoxGlynn.Params params = parametersGetter.getParameters(q, t);
 				weight = params.weight;
 				weightDef = params.weightDef;
 				fgL = params.fgL;
@@ -109,7 +112,8 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 					model.evaluateParameters(region);
 					multManager.update(mult);
 					if (multOptions.getAdaptiveFoxGlynn()) {
-						params = parametersGetter.getParameters(model, t);
+						final double q = uniformisationRateGetter.getUniformisationRate(model);
+						params = parametersGetter.getParameters(q, t);
 					}
 					mainLog.println("Computing probabilities for parameter region " + region);
 					modelLock.writeLock().unlock();
@@ -208,6 +212,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 		final private PSEMultOptions multOptions;
 		final private PSEMultManager<Mult> multManager;
 		private DistributionGetter distributionGetter;
+		private UniformisationRateGetter uniformisationRateGetter;
 		private ParametersGetter parametersGetter;
 		private double t;
 		private Mult mult;
@@ -261,6 +266,7 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 	@Override
 	final public int compute
 		( DistributionGetter distributionGetter
+		, UniformisationRateGetter uniformisationRateGetter
 		, ParametersGetter parametersGetter
 		, double t
 
@@ -278,7 +284,9 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 
 		Thread[] workerThread = new Thread[multGroupSize];
 		for (int i = 0; i < workerThread.length; ++i) {
-			multWorkerGroup[i].update(distributionGetter, parametersGetter, t, decompositionProcedure, inQueue, outPrev, out);
+			multWorkerGroup[i].update(distributionGetter,
+				uniformisationRateGetter,
+				parametersGetter, t, decompositionProcedure, inQueue, outPrev, out);
 			workerThread[i] = new Thread(multWorkerGroup[i]);
 			workerThread[i].start();
 		}

@@ -771,7 +771,10 @@ public final class PSEModelChecker extends PrismComponent
 
 		PSEFoxGlynn foxGlynn = foxGlynnManager.getFoxGlynnMV(model, nonAbs, false, numItersExaminePartial, mainLog);
 
-		int totalIters = foxGlynn.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, multProbs, previousResult, regionValues);
+		int totalIters = foxGlynn.compute(distributionGetter,
+			new PSEFoxGlynn.UniformisationRateGetterSubset(nonAbs),
+			new PSEFoxGlynn.ParametersGetterProbs(0),
+			t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Negate if necessary
 		if (negate) {
@@ -1010,7 +1013,9 @@ public final class PSEModelChecker extends PrismComponent
 
 		PSEFoxGlynn foxGlynn = foxGlynnManager.getFoxGlynnMV(model, null, false, numItersExaminePartial, mainLog);
 
-		int totalIters = foxGlynn.compute(distributionGetter, new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
+		int totalIters = foxGlynn.compute(distributionGetter,
+			new PSEFoxGlynn.UniformisationRateGetterWhole(),
+			new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
 			t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
@@ -1141,7 +1146,9 @@ public final class PSEModelChecker extends PrismComponent
 			}
 		};
 		int totalIters = foxGlynn.compute(distributionGetter,
-			new PSEFoxGlynn.ParametersGetterProbs(0), t, decompositionProcedure, initDist, previousResult, regionValues);
+			new PSEFoxGlynn.UniformisationRateGetterWhole(),
+			new PSEFoxGlynn.ParametersGetterProbs(0),
+			t, decompositionProcedure, initDist, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
 		decompositionProcedure.examineWholeComputation(regionValues);

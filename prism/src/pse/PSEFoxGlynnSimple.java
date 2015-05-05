@@ -28,6 +28,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
     @Override
     final public int compute
         ( DistributionGetter distributionGetter
+        , UniformisationRateGetter uniformisationRateGetter
         , ParametersGetter parametersGetter
         , double t
 
@@ -48,7 +49,8 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
         int fgL = 0;
         int fgR = 0;
         if (!multOptions.getAdaptiveFoxGlynn()) {
-            PSEFoxGlynn.Params params = parametersGetter.getParameters(model, t);
+            final double q = uniformisationRateGetter.getUniformisationRate(model);
+            PSEFoxGlynn.Params params = parametersGetter.getParameters(q, t);
             weight = params.weight;
             weightDef = params.weightDef;
             fgL = params.fgL;
@@ -68,7 +70,8 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             model.evaluateParameters(region);
             multManager.update(mult);
             if (multOptions.getAdaptiveFoxGlynn()) {
-                Params params = parametersGetter.getParameters(model, t);
+				final double q = uniformisationRateGetter.getUniformisationRate(model);
+                Params params = parametersGetter.getParameters(q, t);
                 weight = params.weight;
                 weightDef = params.weightDef;
                 fgL = params.fgL;

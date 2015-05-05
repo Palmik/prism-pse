@@ -28,7 +28,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         this.sumMax = new double[model.getNumStates()];
 
         this.mult = multManager.create(matCntMax);
-        this.region = new BoxRegion[matCntMax];
+        this.entry = new Map.Entry[matCntMax];
         this.regionDecomposed = new boolean[matCntMax];
         this.regionsToDecompose = new LabelledBoxRegions();
 
@@ -40,6 +40,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
     @Override
     final public int compute
         ( DistributionGetter distributionGetter
+        , UniformisationRateGetter uniformisationRateGetter
         , ParametersGetter parametersGetter
         , double t
 
@@ -56,49 +57,30 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
         int itersTotal = 0;
         int itersTotalEffective = 0;
 
-        PSEFoxGlynn.Params params = parametersGetter.getParameters(model, t);
-        double[] weight = params.weight;
-        double weightDef = params.weightDef;
-        int fgL = params.fgL;
-        int fgR = params.fgR;
-        mult.setWeight(weight, weightDef, fgL);
-
         this.regionsToDecompose.clear();
         Iterator<Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>> it = in.iterator();
         while (it.hasNext()) {
             int matCntDecomposed = 0;
             int matCnt = 0;
+            double maxq = 0;
             while (matCnt < matCntMax && it.hasNext()) {
-                Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry = it.next();
-                BoxRegion region = entry.getKey();
+                Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> e = it.next();
+                BoxRegion region = e.getKey();
 				// If the previous region values contain probs for this region, i.e. the region
 				// has not been decomposed, then just use the previous result directly.
 				if (outPrev.hasRegion(region)) {
 					out.put(region, outPrev.getMin(region), outPrev.getMax(region));
 					continue;
 				}
-                this.region[matCnt] = region;
+                this.entry[matCnt] = e;
                 this.regionDecomposed[matCnt] = false;
 
 				// Configure parameter space
 				model.evaluateParameters(region);
-				multManager.update(matCnt, mult);
+                maxq = Math.max(maxq, uniformisationRateGetter.getUniformisationRate(model));
+                multManager.update(matCnt, mult);
 				log.println("Computing probabilities for parameter region " + region);
 
-				// Initialise solution vectors.
-				distributionGetter.getDistribution(entry, 0, solnMin, solnMax);
-				// If necessary, do 0th element of summation (doesn't require any matrix powers)
-				{
-					double w = (fgL == 0) ? weight[0] : weightDef;
-					if (w != 0) {
-						for (int i = 0; i < n; i++) {
-							sumMin[i] = w * solnMin[i];
-							sumMax[i] = w * solnMax[i];
-						}
-						mult.setSum(matCnt, sumMin, sumMax);
-					}
-				}
-				mult.setMult(matCnt, solnMin, solnMax);
                 ++matCnt;
             }
 
@@ -106,12 +88,30 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                 continue;
             }
 
-            System.err.printf("!XI ");
-            mult.getMult(0, sumMin, sumMax);
-            for (int i = 0; i < sumMin.length; i += sumMin.length / 5) {
-                System.err.printf("%s ", sumMin[i]);
+            // Conmpute FoxGlynn param from the maximum uniformisation rate.
+            PSEFoxGlynn.Params params = parametersGetter.getParameters(maxq, t);
+            double[] weight = params.weight;
+            double weightDef = params.weightDef;
+            int fgL = params.fgL;
+            int fgR = params.fgR;
+            mult.setWeight(weight, weightDef, fgL);
+
+            // Initialise solution vectors.
+            for (int matId = 0; matId < matCnt; ++matId) {
+                distributionGetter.getDistribution(entry[matId], 0, solnMin, solnMax);
+                // If necessary, do 0th element of summation (doesn't require any matrix powers)
+                {
+                    double w = (fgL == 0) ? weight[0] : weightDef;
+                    if (w != 0) {
+                        for (int i = 0; i < n; i++) {
+                            sumMin[i] = w * solnMin[i];
+                            sumMax[i] = w * solnMax[i];
+                        }
+                        mult.setSum(matId, sumMin, sumMax);
+                    }
+                }
+                mult.setMult(matId, solnMin, solnMax);
             }
-            System.err.printf("\n");
 
             // Start iterations
             iters = 0;
@@ -134,16 +134,10 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                     }
                     itersTotalEffective += itersStep;
                     mult.getSum(matId, sumMin, sumMax);
-                    if (handleCheckRegion(decompositionProcedure, out, region[matId], sumMin, sumMax)) {
+                    if (handleCheckRegion(decompositionProcedure, out, entry[matId].getKey(), sumMin, sumMax)) {
                         regionDecomposed[matId] = true;
                         ++matCntDecomposed;
                     }
-                    System.err.printf("!XS ");
-                    mult.getMult(matId, sumMin, sumMax);
-                    for (int i = 0; i < sumMin.length; i += sumMin.length / 5) {
-                        System.err.printf("%s ", sumMin[i]);
-                    }
-                    System.err.printf("\n");
                 }
                 if (matCntDecomposed == matCnt) {
                     break;
@@ -156,8 +150,8 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
                 }
 
                 mult.getSum(matId, sumMin, sumMax);
-                if (!handleCheckRegion(decompositionProcedure, out, region[matId], sumMin, sumMax)) {
-                    out.put(region[matId], sumMin.clone(), sumMax.clone());
+                if (!handleCheckRegion(decompositionProcedure, out, entry[matId].getKey(), sumMin, sumMax)) {
+                    out.put(entry[matId].getKey(), sumMin.clone(), sumMax.clone());
                 }
             }
         }
@@ -198,7 +192,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
     final private Mult mult;
 
-    private BoxRegion[] region;
+    private Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair>[] entry;
     private boolean[] regionDecomposed;
     private LabelledBoxRegions regionsToDecompose;
 }
