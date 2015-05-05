@@ -79,6 +79,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 				model.evaluateParameters(region);
                 maxq = Math.max(maxq, uniformisationRateGetter.getUniformisationRate(model));
                 multManager.update(matCnt, mult);
+				multManager.update(matCnt, mult);
 				log.println("Computing probabilities for parameter region " + region);
 
                 ++matCnt;

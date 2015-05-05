@@ -698,8 +698,8 @@ public final class PSEModel extends ModelExplicit
 			}
 			if (matPNZ > 0) ++matPRowCnt;
 			if (matNNZ > 0) ++matNRowCnt;
-			matPColPerRow = Integer.max(matPColPerRow, matPNZ);
-			matNColPerRow = Integer.max(matNColPerRow, matNNZ);
+			matPColPerRow = Math.max(matPColPerRow, matPNZ);
+			matNColPerRow = Math.max(matNColPerRow, matNNZ);
 		}
 
 		int matPValCnt = matPRowCnt * matPColPerRow;
