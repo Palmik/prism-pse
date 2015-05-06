@@ -100,7 +100,7 @@ public final class PSEMVMultMany_OCL implements PSEMultMany, Releaseable
 
 		totalIterationCnt = 0;
 
-		if (enabledMatNP && !matNPInitialized) {
+		if (enabledMatNP) {
 			final int len = Sizeof.cl_double * topo.matNPRowBegHost[topo.matNPRowCnt];
 			clEnqueueWriteBuffer(clCommandQueue(), matNPVal, false, 0, len, Pointer.to(data.matNPVal), 0, null, null);
 			matNPInitialized = true;

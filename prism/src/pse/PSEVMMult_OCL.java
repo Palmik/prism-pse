@@ -147,7 +147,7 @@ public class PSEVMMult_OCL implements PSEMult, Releaseable
 				clEnqueueWriteBuffer(clCommandQueue(), matOMaxDiagVal, false, 0, len, matOMaxDiagVal_, 0, null, null);
 			}
 		}
-		if (enabledMatNP && !matNPInitialized) {
+		if (enabledMatNP) {
 			final int len = Sizeof.cl_double * topo.matNPTrgBegHost[stCnt];
 			final Pointer matNPVal_ = Pointer.to(data.matNPVal);
 			clEnqueueWriteBuffer(clCommandQueue(), matNPVal, false, 0, len, matNPVal_, 0, null, null);

@@ -872,7 +872,6 @@ public final class PSEModel extends ModelExplicit
 		for (int trans = 0; trans < numTransitions; trans++) {
 			trRateLower[trans] = rateParams[trans].evaluateDouble(region.getLowerBounds());
 			trRateUpper[trans] = rateParams[trans].evaluateDouble(region.getUpperBounds());
-			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
 		}
 		if (multOptions.getAdaptiveFoxGlynn()) {
 			for (int state = 0; state < numStates; state++) {
@@ -892,5 +891,8 @@ public final class PSEModel extends ModelExplicit
 			}
 		}
 		evaluateParameters(region);
+		for (int trans = 0; trans < numTransitions; trans++) {
+			parametrisedTransitions[trans] = trRateLower[trans] != trRateUpper[trans];
+		}
 	}
 }

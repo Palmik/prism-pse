@@ -81,7 +81,7 @@ public final class PSEMVMultMany_ELL_OCL implements PSEMultMany, Releaseable
 
 		totalIterationCnt = 0;
 
-		if (topo.matNEnabled && !matNInitialized) {
+		if (topo.matNEnabled) {
 			final int len = Sizeof.cl_double * topo.matNRowCnt * topo.matNColPerRow;
 			clEnqueueWriteBuffer(clCommandQueue(), matNVal, false, 0, len, Pointer.to(data.matNVal), 0, null, null);
 			matNInitialized = true;
