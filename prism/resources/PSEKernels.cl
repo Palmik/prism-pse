@@ -305,7 +305,7 @@ __kernel void PSE_MV_P_ELL_MANY
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
     for (int jj = matOff + ii_; jj < te; jj += matPRowCnt) {
-      const int v1 = matPCol[jj] + matColOff;
+      const int v1 = matPCol[jj - matOff] + matColOff;
 
       const real diffMin = inMin[v1] - inMin[v0];
       const real diffMax = inMax[v1] - inMax[v0];

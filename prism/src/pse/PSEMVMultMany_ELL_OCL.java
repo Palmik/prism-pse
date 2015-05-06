@@ -45,7 +45,7 @@ public final class PSEMVMultMany_ELL_OCL implements PSEMultMany, Releaseable
 
 			clSetKernelArg(clKernelMatP, 1, Sizeof.cl_uint, Pointer.to(new int[]{topo.matPRowCnt}));
 			clSetKernelArg(clKernelMatP, 2, Sizeof.cl_uint, Pointer.to(new int[]{topo.stCnt}));
-			clSetKernelArg(clKernelMatP, 3, Sizeof.cl_uint, Pointer.to(new int[]{topo.stCnt}));
+			clSetKernelArg(clKernelMatP, 3, Sizeof.cl_uint, Pointer.to(new int[]{topo.matPColPerRow}));
 			clSetKernelArg(clKernelMatP, 4, Sizeof.cl_mem, Pointer.to(this.matPLowerVal));
 			clSetKernelArg(clKernelMatP, 5, Sizeof.cl_mem, Pointer.to(this.matPUpperVal));
 			clSetKernelArg(clKernelMatP, 6, Sizeof.cl_mem, Pointer.to(topo.matPCol));
