@@ -185,8 +185,8 @@ public final class PSEMVMultMany_ELLFW_OCL implements PSEMultMany, Releaseable
 		assert(matCnt <= this.matCnt);
 
 		final long[] lws = new long[]{OCLProgram.localWorkSize(64)};
-		final long[] gwsP = new long[]{Utility.leastGreaterMultiple(this.topo.matPRowCnt * matCnt, lws[0])};
-		final long[] gwsNP = new long[]{Utility.leastGreaterMultiple(this.topo.matNRowCnt * matCnt, lws[0])};
+		final long[] gwsP = new long[]{Utility.leastGreaterMultiple(matPRowCntPadded * matCnt, lws[0])};
+		final long[] gwsNP = new long[]{Utility.leastGreaterMultiple(matNRowCntPadded * matCnt, lws[0])};
 		final long[] gwsSum = new long[]{Utility.leastGreaterMultiple(stCnt * matCnt, lws[0])};
 
 		if (topo.matPEnabled) clSetKernelArg(clKernelMatP, 0, Sizeof.cl_uint, Pointer.to(new int[]{matCnt}));

@@ -50,11 +50,13 @@ final public class PSEMVMultTopology_ELLFW_OCL implements Releaseable
 		if (matNEnabled) {
 			clReleaseMemObject(matNCol);
 			clReleaseMemObject(matNRow);
+			clReleaseMemObject(matNSegOff);
 		}
 
 		if (matPEnabled) {
 			clReleaseMemObject(matPCol);
 			clReleaseMemObject(matPRow);
+			clReleaseMemObject(matPSegOff);
 		}
 	}
 
