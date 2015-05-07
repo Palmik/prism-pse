@@ -355,7 +355,7 @@ __kernel void PSE_MV_N_ELLFW_MANY
     const int v0 = matNRow[ri_] + matColOff;
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
-    for (int jj = matNSegOff[si]; jj < matNSegOff[si + 1]; jj += ss) {
+    for (int jj = matNSegOff[si] + ri__; jj < matNSegOff[si + 1]; jj += ss) {
       const int v1 = matNCol[jj] + matColOff;
       const real rate = matNVal[jj];
       MADTO(rate, inMin[v1] - inMin[v0], dotMin);
@@ -387,17 +387,30 @@ __kernel void PSE_MV_P_ELLFW_MANY
 {
   const int ri = get_group_id(0) * get_local_size(0) + get_local_id(0);
   const int ri_ = ri % (matPRowCnt + warpSize - matPNrem);
-  const int ri__ = get_local_id(0) % warpSize;
+  //const int ri__ = get_local_id(0) % warpSize;
+  const int ri__ = ri_ % warpSize;
   const int si = ri_ / warpSize;
   const int ss = (si + 1 < matPN) ? warpSize : matPNrem;
 
   const int matOff = (ri / matPRowCnt) * matPSegOff[matPN];
   const int matColOff = (ri / matPRowCnt) * matPColCnt;
+  /*
+  printf("!C %d %d %d, %d, %d: %d %d %d; %d %d; %d; %d %d; %d %d\n",
+    (int)get_group_id(0), (int)get_local_size(0), (int)get_local_id(0),
+    matCnt, (ri / matPRowCnt),
+    ri, ri_, ri__,
+    si, ss,
+    matPRowCnt,
+    matPN, matPNrem,
+    matOff, matColOff);*/
   if (ri_ < (matPRowCnt - (warpSize - matPNrem)) && (ri < matPRowCnt * matCnt)) {
+    //printf("!CP\n");
     const int v0 = matPRow[ri_] + matColOff;
     real dotMin = outMin[v0];
     real dotMax = outMax[v0];
-    for (int jj = matPSegOff[si] + matOff; jj < matPSegOff[si + 1] + matOff; jj += ss) {
+    //printf("RI %d\nJJ ", ri_);
+    for (int jj = matPSegOff[si] + matOff + ri__; jj < matPSegOff[si + 1] + matOff; jj += ss) {
+      //printf("%d ", jj);
       const int v1 = matPCol[jj - matOff] + matColOff;
 
       const real diffMin = inMin[v1] - inMin[v0];
@@ -413,6 +426,7 @@ __kernel void PSE_MV_P_ELLFW_MANY
         MADTO(matPLowerVal[jj], diffMax, dotMax);
       }
     }
+    //printf("\n");
     outMin[v0] = dotMin;
     outMax[v0] = dotMax;
   }

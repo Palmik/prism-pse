@@ -35,10 +35,11 @@ public final class PSEMVMultMany_ELLFW_OCL implements PSEMultMany, Releaseable
 			clSetKernelArg(clKernelMatN, 2, Sizeof.cl_uint, Pointer.to(new int[]{topo.matNN}));
 			clSetKernelArg(clKernelMatN, 3, Sizeof.cl_uint, Pointer.to(new int[]{topo.matNNrem}));
 			clSetKernelArg(clKernelMatN, 4, Sizeof.cl_uint, Pointer.to(new int[]{topo.stCnt}));
-			clSetKernelArg(clKernelMatN, 5, Sizeof.cl_uint, Pointer.to(new int[]{topo.matNRowCnt}));
+			clSetKernelArg(clKernelMatN, 5, Sizeof.cl_uint, Pointer.to(new int[]{matNRowCntPadded}));
 			clSetKernelArg(clKernelMatN, 6, Sizeof.cl_mem, Pointer.to(this.matNVal));
 			clSetKernelArg(clKernelMatN, 7, Sizeof.cl_mem, Pointer.to(topo.matNCol));
 			clSetKernelArg(clKernelMatN, 8, Sizeof.cl_mem, Pointer.to(topo.matNRow));
+			clSetKernelArg(clKernelMatN, 9, Sizeof.cl_mem, Pointer.to(topo.matNSegOff));
 		}
 
 		if (topo.matPEnabled) {
@@ -51,11 +52,12 @@ public final class PSEMVMultMany_ELLFW_OCL implements PSEMultMany, Releaseable
 			clSetKernelArg(clKernelMatP, 2, Sizeof.cl_uint, Pointer.to(new int[]{topo.matPN}));
 			clSetKernelArg(clKernelMatP, 3, Sizeof.cl_uint, Pointer.to(new int[]{topo.matPNrem}));
 			clSetKernelArg(clKernelMatP, 4, Sizeof.cl_uint, Pointer.to(new int[]{topo.stCnt}));
-			clSetKernelArg(clKernelMatP, 5, Sizeof.cl_uint, Pointer.to(new int[]{topo.matPRowCnt}));
+			clSetKernelArg(clKernelMatP, 5, Sizeof.cl_uint, Pointer.to(new int[]{matPRowCntPadded}));
 			clSetKernelArg(clKernelMatP, 6, Sizeof.cl_mem, Pointer.to(this.matPLowerVal));
 			clSetKernelArg(clKernelMatP, 7, Sizeof.cl_mem, Pointer.to(this.matPUpperVal));
 			clSetKernelArg(clKernelMatP, 8, Sizeof.cl_mem, Pointer.to(topo.matPCol));
 			clSetKernelArg(clKernelMatP, 9, Sizeof.cl_mem, Pointer.to(topo.matPRow));
+			clSetKernelArg(clKernelMatP, 10, Sizeof.cl_mem, Pointer.to(topo.matPSegOff));
 		}
 
 		{
@@ -81,7 +83,7 @@ public final class PSEMVMultMany_ELLFW_OCL implements PSEMultMany, Releaseable
 		this.weightOff = weightOff;
 	}
 
-	final public void update(int matId, PSEMVCreateData_ELL data)
+	final public void update(int matId, PSEMVCreateData_ELLFW data)
 	{
 		assert(matId < matCnt);
 
@@ -198,18 +200,18 @@ public final class PSEMVMultMany_ELLFW_OCL implements PSEMultMany, Releaseable
 			clEnqueueCopyBuffer(clCommandQueue(), maxMem, resMaxMem, 0, 0, len, 0, null, null);
 
 			if (topo.matPEnabled) {
-				clSetKernelArg(clKernelMatP, 10, Sizeof.cl_mem, Pointer.to(minMem));
-				clSetKernelArg(clKernelMatP, 11, Sizeof.cl_mem, Pointer.to(maxMem));
-				clSetKernelArg(clKernelMatP, 12, Sizeof.cl_mem, Pointer.to(resMinMem));
-				clSetKernelArg(clKernelMatP, 13, Sizeof.cl_mem, Pointer.to(resMaxMem));
+				clSetKernelArg(clKernelMatP, 11, Sizeof.cl_mem, Pointer.to(minMem));
+				clSetKernelArg(clKernelMatP, 12, Sizeof.cl_mem, Pointer.to(maxMem));
+				clSetKernelArg(clKernelMatP, 13, Sizeof.cl_mem, Pointer.to(resMinMem));
+				clSetKernelArg(clKernelMatP, 14, Sizeof.cl_mem, Pointer.to(resMaxMem));
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMatP, 1, null, gwsP, lws, 0, null, null);
 			}
 
 			if (topo.matNEnabled) {
-				clSetKernelArg(clKernelMatN, 9, Sizeof.cl_mem, Pointer.to(minMem));
-				clSetKernelArg(clKernelMatN, 10, Sizeof.cl_mem, Pointer.to(maxMem));
-				clSetKernelArg(clKernelMatN, 11, Sizeof.cl_mem, Pointer.to(resMinMem));
-				clSetKernelArg(clKernelMatN, 12, Sizeof.cl_mem, Pointer.to(resMaxMem));
+				clSetKernelArg(clKernelMatN, 10, Sizeof.cl_mem, Pointer.to(minMem));
+				clSetKernelArg(clKernelMatN, 11, Sizeof.cl_mem, Pointer.to(maxMem));
+				clSetKernelArg(clKernelMatN, 12, Sizeof.cl_mem, Pointer.to(resMinMem));
+				clSetKernelArg(clKernelMatN, 13, Sizeof.cl_mem, Pointer.to(resMaxMem));
 				clEnqueueNDRangeKernel(clCommandQueue(), clKernelMatN, 1, null, gwsNP, lws, 0, null, null);
 			}
 

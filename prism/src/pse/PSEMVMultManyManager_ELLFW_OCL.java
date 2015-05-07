@@ -2,7 +2,7 @@ package pse;
 
 import java.util.BitSet;
 
-public class PSEMVMultManyManager_ELLFW_OCL implements PSEMultManyManager<PSEMVMultMany_ELL_OCL>
+public class PSEMVMultManyManager_ELLFW_OCL implements PSEMultManyManager<PSEMVMultMany_ELLFW_OCL>
 {
 
 	public PSEMVMultManyManager_ELLFW_OCL(PSEModel model, BitSet modelSubset, boolean modelSubsetComplement)
@@ -15,21 +15,21 @@ public class PSEMVMultManyManager_ELLFW_OCL implements PSEMultManyManager<PSEMVM
 	}
 
 	@Override
-	final public void update(int matId, PSEMVMultMany_ELL_OCL mult)
+	final public void update(int matId, PSEMVMultMany_ELLFW_OCL mult)
 	{
-		mult.update(matId, model.getCreateData_MV_ELL(modelSubset, modelSubsetComplement));
+		mult.update(matId, model.getCreateData_MV_ELLFW(modelSubset, modelSubsetComplement));
 	}
 
 	@Override
-	final public PSEMVMultMany_ELL_OCL create(int matCnt)
+	final public PSEMVMultMany_ELLFW_OCL create(int matCnt)
 	{
-		PSEMVCreateData_ELL data = model.getCreateData_MV_ELL(modelSubset, modelSubsetComplement);
+		PSEMVCreateData_ELLFW data = model.getCreateData_MV_ELLFW(modelSubset, modelSubsetComplement);
 		PSEMVMultSettings_OCL multOpts = PSEMVMultSettings_OCL.Default();
 		releaser.releaseLater(multOpts);
-		PSEMVMultTopology_ELL_OCL multTopo = new PSEMVMultTopology_ELL_OCL(data, multOpts.clContext);
+		PSEMVMultTopology_ELLFW_OCL multTopo = new PSEMVMultTopology_ELLFW_OCL(data, multOpts.clContext);
 		releaser.releaseLater(multTopo);
 
-		PSEMVMultMany_ELL_OCL mult = new PSEMVMultMany_ELL_OCL(multOpts, multTopo, matCnt);
+		PSEMVMultMany_ELLFW_OCL mult = new PSEMVMultMany_ELLFW_OCL(multOpts, multTopo, matCnt);
 		releaser.releaseLater(mult);
 		return mult;
 	}

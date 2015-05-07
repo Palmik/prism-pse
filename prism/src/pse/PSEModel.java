@@ -773,7 +773,7 @@ public final class PSEModel extends ModelExplicit
 		int nSegOff = 0;
 		int rowId = 0;
 		int row = subset.nextSetBit(0);
-		for (int ii = 0; ii < rowCnt; ++ii) {
+		for (int ii = 0; ii < rowCnt;) {
 			final int stepSize = Math.min(warpSize, rowCnt - ii);
 
 			int matPNZ = 0;
@@ -783,16 +783,19 @@ public final class PSEModel extends ModelExplicit
 			for (int is = 0; is < stepSize; ++is) {
 				int pnz = 0;
 				int nnz = 0;
+				//System.err.printf("!XR ");
 				for (int t = stateBegin(r); t < stateEnd(r); ++t) {
 					if (isParametrised(t)) {
 						final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
 						final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
 						if (valLower != 0 || valUpper != 0) ++pnz;
+						//System.err.printf("%s ", valLower);
 					} else {
 						final double val = trRateLower[t] * trRatePopul[t] * qrec;
 						if (val != 0) ++nnz;
 					}
 				}
+				//System.err.printf("\n");
 				matPNZ = Math.max(matPNZ, pnz);
 				matNNZ = Math.max(matNNZ, nnz);
 				r = subset.nextSetBit(r + 1);
@@ -805,22 +808,26 @@ public final class PSEModel extends ModelExplicit
 			matNVal.pushBack(stepSize * matNNZ, 0);
 			matNCol.pushBack(stepSize * matNNZ, 0);
 			for (int is = 0; is < stepSize; ++is) {
+				int pPos = pSegOff + is;
+				int nPos = nSegOff + is;
 				for (int t = stateBegin(row); t < stateEnd(row); ++t) {
 					if (isParametrised(t)) {
 						final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
 						final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
 						final int col = trStTrg[t];
 						if (valLower != 0 || valUpper != 0) {
-							matPValLower.at(pSegOff + is + stepSize * matPNZ, valLower);
-							matPValUpper.at(pSegOff + is + stepSize * matPNZ, valLower);
-							matPCol.at(pSegOff + is + stepSize * matPNZ, col);
+							matPValLower.at(pPos, valLower);
+							matPValUpper.at(pPos, valUpper);
+							matPCol.at(pPos, col);
+							pPos += stepSize;
 						}
 					} else {
 						final double val = trRateLower[t] * trRatePopul[t] * qrec;
 						final int col = trStTrg[t];
 						if (val != 0) {
-							matNVal.at(nSegOff + is + stepSize * matNNZ, val);
-							matNCol.at(nSegOff + is + stepSize * matNNZ, col);
+							matNVal.at(nPos, val);
+							matNCol.at(nPos, col);
+							nPos += stepSize;
 						}
 					}
 				}
@@ -833,9 +840,19 @@ public final class PSEModel extends ModelExplicit
 			matNSegOff.pushBack(nSegOff);
 			pSegOff += stepSize * matPNZ;
 			nSegOff += stepSize * matNNZ;
+
+			ii += stepSize;
 		}
 		matPSegOff.pushBack(pSegOff);
 		matNSegOff.pushBack(nSegOff);
+
+		/*
+		System.err.printf("!XV ");
+		for (int i = 0; i < matPValLower.size(); ++i) {
+			System.err.printf("%s ", matPValLower.data()[i]);
+		}
+		System.err.printf("\n");
+		*/
 
 		int matPN = matPSegOff.size() - 1;
 		int matPNrem = ((matPRowCnt % warpSize) > 0) ? (matPRowCnt % warpSize) : warpSize;
