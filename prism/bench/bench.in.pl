@@ -34,6 +34,7 @@
         , environment =>
           [ {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>0}
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>2}
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           , {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
           , {PSE_OCL=>1,PSE_FMT=>'CSR',PSE_MANY=>1}
@@ -58,6 +59,7 @@
         , environment =>
           [ {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>0}
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>2}
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           , {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
           , {PSE_OCL=>1,PSE_FMT=>'CSR',PSE_MANY=>1}
@@ -80,7 +82,9 @@
           [ { degrA => [0.005, 0.5], degrB => [0.05, 0.15] }
           ]
         , environment =>
-          [ {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          [ {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>0}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1}
+          , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>2}
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           , {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
           , {PSE_OCL=>1,PSE_FMT=>'CSR',PSE_MANY=>1}
