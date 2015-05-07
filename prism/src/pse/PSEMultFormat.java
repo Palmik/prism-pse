@@ -2,5 +2,5 @@ package pse;
 
 public enum PSEMultFormat
 {
-	CSR, ELL
+	CSR, ELL, ELLFW
 }

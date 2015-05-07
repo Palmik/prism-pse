@@ -23,6 +23,17 @@ public class VectorOfInt
         data[size++] = val;
     }
 
+    public void pushBack(int n, int val)
+    {
+        for (int i = 0; i < n; ++i) {
+            pushBack(val);
+        }
+    }
+
+    public void at(int n, int val) {
+        data[n] = val;
+    }
+
     public int capacity()
     {
         return capacity;

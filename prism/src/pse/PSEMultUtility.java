@@ -42,6 +42,8 @@ final public class PSEMultUtility
 				return PSEMultFormat.CSR;
 			} else if (envFmt.equals("ELL")) {
 				return PSEMultFormat.ELL;
+			} else if (envFmt.equals("ELLFW")) {
+				return PSEMultFormat.ELLFW;
 			}
 		}
 		return PSEMultFormat.CSR;

@@ -100,6 +100,8 @@ final public class PSEFoxGlynnManager implements Releaseable
 				return new PSEMVMultManyManager_OCL(model, modelSubset, modelSubsetComplement);
 			case ELL:
 				return new PSEMVMultManyManager_ELL_OCL(model, modelSubset, modelSubsetComplement);
+			case ELLFW:
+				return new PSEMVMultManyManager_ELLFW_OCL(model, modelSubset, modelSubsetComplement);
 			}
 		}
 		return null;

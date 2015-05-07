@@ -325,6 +325,98 @@ __kernel void PSE_MV_P_ELL_MANY
   }
 }
 
+#define rowCntWithPad(RC, WS, NREM) (RC + WS - NREM)
+__kernel void PSE_MV_N_ELLFW_MANY
+  ( const int matCnt
+  , const int warpSize
+  , const int matNN
+  , const int matNNrem
+  , const int matNColCnt
+  , const int matNRowCnt // With padding (equal to warpSize - matNNrem)
+  , __global real const* restrict matNVal
+  , __global int const* restrict matNCol
+  , __global int const* restrict matNRow
+  , __global int const* restrict matNSegOff
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int ri = get_group_id(0) * get_local_size(0) + get_local_id(0);
+  const int ri_ = ri % matNRowCnt;
+  const int ri__ = get_local_id(0) % warpSize;
+  const int si = ri_ / warpSize;
+  const int ss = (si + 1 < matNN) ? warpSize : matNNrem;
+
+  const int matColOff = (ri / matNRowCnt) * matNColCnt;
+  if (ri_ < (matNRowCnt - (warpSize - matNNrem)) && (ri < matNRowCnt * matCnt)) {
+    const int v0 = matNRow[ri_] + matColOff;
+    real dotMin = outMin[v0];
+    real dotMax = outMax[v0];
+    for (int jj = matNSegOff[si]; jj < matNSegOff[si + 1]; jj += ss) {
+      const int v1 = matNCol[jj] + matColOff;
+      const real rate = matNVal[jj];
+      MADTO(rate, inMin[v1] - inMin[v0], dotMin);
+      MADTO(rate, inMax[v1] - inMax[v0], dotMax);
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
+
+__kernel void PSE_MV_P_ELLFW_MANY
+  ( const int matCnt
+  , const int warpSize
+  , const int matPN
+  , const int matPNrem
+  , const int matPColCnt
+  , const int matPRowCnt // With padding (equal to warpSize - matPNrem)
+  , __global real const* restrict matPLowerVal
+  , __global real const* restrict matPUpperVal
+  , __global int const* restrict matPCol
+  , __global int const* restrict matPRow
+  , __global int const* restrict matPSegOff
+
+  , __global real const* restrict inMin
+  , __global real const* restrict inMax
+  , __global real* restrict outMin
+  , __global real* restrict outMax
+  )
+{
+  const int ri = get_group_id(0) * get_local_size(0) + get_local_id(0);
+  const int ri_ = ri % (matPRowCnt + warpSize - matPNrem);
+  const int ri__ = get_local_id(0) % warpSize;
+  const int si = ri_ / warpSize;
+  const int ss = (si + 1 < matPN) ? warpSize : matPNrem;
+
+  const int matOff = (ri / matPRowCnt) * matPSegOff[matPN];
+  const int matColOff = (ri / matPRowCnt) * matPColCnt;
+  if (ri_ < (matPRowCnt - (warpSize - matPNrem)) && (ri < matPRowCnt * matCnt)) {
+    const int v0 = matPRow[ri_] + matColOff;
+    real dotMin = outMin[v0];
+    real dotMax = outMax[v0];
+    for (int jj = matPSegOff[si] + matOff; jj < matPSegOff[si + 1] + matOff; jj += ss) {
+      const int v1 = matPCol[jj - matOff] + matColOff;
+
+      const real diffMin = inMin[v1] - inMin[v0];
+      const real diffMax = inMax[v1] - inMax[v0];
+      if (diffMin > 0) {
+        MADTO(matPLowerVal[jj], diffMin, dotMin);
+      } else {
+        MADTO(matPUpperVal[jj], diffMin, dotMin);
+      }
+      if (diffMax > 0) {
+        MADTO(matPUpperVal[jj], diffMax, dotMax);
+      } else {
+        MADTO(matPLowerVal[jj], diffMax, dotMax);
+      }
+    }
+    outMin[v0] = dotMin;
+    outMax[v0] = dotMax;
+  }
+}
 // PSE VM
 
 __kernel void PSE_VM_I_CSR_BOTH

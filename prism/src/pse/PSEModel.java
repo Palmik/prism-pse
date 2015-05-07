@@ -748,6 +748,107 @@ public final class PSEModel extends ModelExplicit
 			matNVal, matNCol, matNRow, matNRowCnt, matNColPerRow);
 	}
 
+	final public PSEMVCreateData_ELLFW getCreateData_MV_ELLFW(BitSet subset, boolean complement)
+	{
+		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
+
+		final int warpSize = 32;
+		final int rowCnt = subset.cardinality();
+
+		int matPRowCnt = rowCnt;
+		VectorOfDouble matPValLower = new VectorOfDouble();
+		VectorOfDouble matPValUpper = new VectorOfDouble();
+		VectorOfInt matPCol = new VectorOfInt();
+		VectorOfInt matPSegOff = new VectorOfInt();
+		int[] matPRow = new int[matPRowCnt];
+
+		int matNRowCnt = rowCnt;
+		VectorOfDouble matNVal = new VectorOfDouble();
+		VectorOfInt matNCol = new VectorOfInt();
+		VectorOfInt matNSegOff = new VectorOfInt();
+		int[] matNRow = new int[matNRowCnt];
+
+		int pSegOff = 0;
+		int nSegOff = 0;
+		int rowId = 0;
+		int row = subset.nextSetBit(0);
+		for (int ii = 0; ii < rowCnt; ++ii) {
+			final int stepSize = Math.min(warpSize, rowCnt - ii);
+
+			int matPNZ = 0;
+			int matNNZ = 0;
+
+			int r = row;
+			for (int is = 0; is < stepSize; ++is) {
+				int pnz = 0;
+				int nnz = 0;
+				for (int t = stateBegin(r); t < stateEnd(r); ++t) {
+					if (isParametrised(t)) {
+						final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+						final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+						if (valLower != 0 || valUpper != 0) ++pnz;
+					} else {
+						final double val = trRateLower[t] * trRatePopul[t] * qrec;
+						if (val != 0) ++nnz;
+					}
+				}
+				matPNZ = Math.max(matPNZ, pnz);
+				matNNZ = Math.max(matNNZ, nnz);
+				r = subset.nextSetBit(r + 1);
+			}
+
+			matPValLower.pushBack(stepSize * matPNZ, 0);
+			matPValUpper.pushBack(stepSize * matPNZ, 0);
+			matPCol.pushBack(stepSize * matPNZ, 0);
+
+			matNVal.pushBack(stepSize * matNNZ, 0);
+			matNCol.pushBack(stepSize * matNNZ, 0);
+			for (int is = 0; is < stepSize; ++is) {
+				for (int t = stateBegin(row); t < stateEnd(row); ++t) {
+					if (isParametrised(t)) {
+						final double valLower = trRateLower[t] * trRatePopul[t] * qrec;
+						final double valUpper = trRateUpper[t] * trRatePopul[t] * qrec;
+						final int col = trStTrg[t];
+						if (valLower != 0 || valUpper != 0) {
+							matPValLower.at(pSegOff + is + stepSize * matPNZ, valLower);
+							matPValUpper.at(pSegOff + is + stepSize * matPNZ, valLower);
+							matPCol.at(pSegOff + is + stepSize * matPNZ, col);
+						}
+					} else {
+						final double val = trRateLower[t] * trRatePopul[t] * qrec;
+						final int col = trStTrg[t];
+						if (val != 0) {
+							matNVal.at(nSegOff + is + stepSize * matNNZ, val);
+							matNCol.at(nSegOff + is + stepSize * matNNZ, col);
+						}
+					}
+				}
+				matNRow[rowId] = row;
+				matPRow[rowId] = row;
+				row = subset.nextSetBit(row + 1);
+				++rowId;
+			}
+			matPSegOff.pushBack(pSegOff);
+			matNSegOff.pushBack(nSegOff);
+			pSegOff += stepSize * matPNZ;
+			nSegOff += stepSize * matNNZ;
+		}
+		matPSegOff.pushBack(pSegOff);
+		matNSegOff.pushBack(nSegOff);
+
+		int matPN = matPSegOff.size() - 1;
+		int matPNrem = ((matPRowCnt % warpSize) > 0) ? (matPRowCnt % warpSize) : warpSize;
+		int matNN = matNSegOff.size() - 1;
+		int matNNrem = ((matNRowCnt % warpSize) > 0) ? (matNRowCnt % warpSize) : warpSize;
+		return new PSEMVCreateData_ELLFW(getNumStates(), warpSize,
+			matPValLower.data(), matPValUpper.data(),
+			matPCol.data(), matPRow, matPSegOff.data(),
+			matPN, matPNrem, matPRowCnt, matPCol.size(),
+			matNVal.data(),
+			matNCol.data(), matNRow, matNSegOff.data(),
+			matNN, matNNrem, matNRowCnt, matNCol.size());
+	}
 	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset, boolean complement)
 	{
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
