@@ -69,9 +69,14 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	 *  between "optimising" and "non-optimising" regions */
 	protected LinkedList<Double> demarcationProbBounds;
 
+	final private int minDecompositions;
+
 	public OptimisingSynthesis(double probTolerance)
 	{
 		this.probTolerance = probTolerance;
+		// TODO: Take this as an arg in the constructor.
+		PSEMultOptions options = PSEMultUtility.getOptions();
+		this.minDecompositions = Math.max(1, Math.max(options.getMany(), options.getPara()));
 	}
 
 	@Override

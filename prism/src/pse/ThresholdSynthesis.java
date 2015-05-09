@@ -73,8 +73,8 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	public ThresholdSynthesis(double volumeTolerance) throws PrismException
 	{
 		this.volumeTolerance = volumeTolerance;
-		PSEMultOptions options = PSEMultUtility.getOptions();
 		// TODO: Take this as an arg in the constructor.
+		PSEMultOptions options = PSEMultUtility.getOptions();
 		this.minDecompositions = Math.max(1, Math.max(options.getMany(), options.getPara()));
 	}
 
