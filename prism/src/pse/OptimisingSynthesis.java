@@ -26,7 +26,7 @@
 
 package pse;
 
-import java.util.LinkedList;
+import java.util.*;
 import java.util.Map.Entry;
 
 import parser.ast.Expression;
@@ -120,10 +120,20 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 		maximalUpperProbBoundOfOptimising = Double.NEGATIVE_INFINITY;
 		BoxRegion regionToDecomposeMin = null;
 		BoxRegion regionToDecomposeMax = null;
+		List<Entry<BoxRegion, BoxRegionValues.StateValuesPair>> regionsToDecomposeMin =
+			new ArrayList<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>();
+		List<Entry<BoxRegion, BoxRegionValues.StateValuesPair>> regionsToDecomposeMax =
+			new ArrayList<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>();
+		int paramCnt = 0;
 		for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
 			if (!optimisingRegions.contains(entry.getKey())) {
 				continue;
 			}
+			if (minDecompositions > 1) {
+				regionsToDecomposeMin.add(entry);
+				regionsToDecomposeMax.add(entry);
+			}
+			paramCnt = entry.getKey().getLowerBounds().getNumValues();
 
 			double currentLowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
 			if (currentLowerProbBound < minimalLowerProbBoundOfOptimising) {
@@ -140,12 +150,54 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 
 		// Evaluate whether a decomposition is needed
 		if (maximalUpperProbBoundOfOptimising - minimalLowerProbBoundOfOptimising > probTolerance) {
-			LabelledBoxRegions regionsToDecompose = new LabelledBoxRegions();
-			regionsToDecompose.add(regionToDecomposeMin, "min lower prob bound");
-			regionsToDecompose.add(regionToDecomposeMax, "max upper prob bound");
-			throw new DecompositionNeeded("Probability tolerance was not satisfied,\n" +
+			if (minDecompositions > 1) {
+				Collections.sort(regionsToDecomposeMin,
+					new Comparator<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>()
+				{
+					@Override
+					public int compare(Entry<BoxRegion, BoxRegionValues.StateValuesPair> t0, Entry<BoxRegion,
+						BoxRegionValues.StateValuesPair> t1)
+					{
+						return Double.compare((Double) t0.getValue().getMin().getValue(initState),
+							(Double) t1.getValue().getMin().getValue(initState));
+					}
+				});
+				Collections.sort(regionsToDecomposeMax,
+					new Comparator<Entry<BoxRegion, BoxRegionValues.StateValuesPair>>()
+					{
+						@Override
+						public int compare(Entry<BoxRegion, BoxRegionValues.StateValuesPair> t0, Entry<BoxRegion,
+							BoxRegionValues.StateValuesPair> t1)
+						{
+							return Double.compare((Double) t1.getValue().getMax().getValue(initState),
+								(Double) t0.getValue().getMax().getValue(initState));
+						}
+					});
+				LabelledBoxRegions regionsToDecompose_ = new LabelledBoxRegions();
+				Iterator<Entry<BoxRegion,BoxRegionValues.StateValuesPair>> itMin = regionsToDecomposeMin.iterator();
+				Iterator<Entry<BoxRegion,BoxRegionValues.StateValuesPair>> itMax = regionsToDecomposeMax.iterator();
+				int decomposed = 0;
+				int i = 1;
+				while (itMin.hasNext() && decomposed < minDecompositions) {
+					BoxRegion regMin = itMin.next().getKey();
+					decomposed += 1 << regMin.getLowerBounds().getNumValues();
+					regionsToDecompose_.add(regMin, String.format("#%s min lower prob bound", i));
+					BoxRegion regMax = itMax.next().getKey();
+					decomposed += 1 << regMax.getLowerBounds().getNumValues();
+					regionsToDecompose_.add(regMax, String.format("#%s max upper prob bound", i));
+					++i;
+				}
+				throw new DecompositionNeeded("Probability tolerance was not satisfied,\n" +
 					maximalUpperProbBoundOfOptimising + " - " + minimalLowerProbBoundOfOptimising + " > " + probTolerance,
-					regionsToDecompose);
+					regionsToDecompose_);
+			} else {
+				LabelledBoxRegions regionsToDecompose_ = new LabelledBoxRegions();
+				regionsToDecompose_.add(regionToDecomposeMin, "min lower prob bound");
+				regionsToDecompose_.add(regionToDecomposeMax, "max upper prob bound");
+				throw new DecompositionNeeded("Probability tolerance was not satisfied,\n" +
+					maximalUpperProbBoundOfOptimising + " - " + minimalLowerProbBoundOfOptimising + " > " + probTolerance,
+					regionsToDecompose_);
+			}
 		}
 	}
 
