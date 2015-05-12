@@ -198,7 +198,7 @@ final class BoxRegion implements Comparable<BoxRegion>
 	public Set<Point> generateSamplePoints(int numSamples)
 	{
 		Set<Point> samples = new HashSet<Point>();
-		Random r = new Random();
+		Random r = new Random(hashCode());
 		while (samples.size() != numSamples) {
 			Values dimensions = new Values();
 			for (int i = 0; i < lowerBounds.getNumValues(); i++) {
