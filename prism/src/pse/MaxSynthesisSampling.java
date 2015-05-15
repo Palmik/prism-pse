@@ -62,10 +62,11 @@ public final class MaxSynthesisSampling extends MaxSynthesis
 		builder.build();
 		pointModel = builder.getModel();
 		// Allow the builder to be garbage-collected
-		builder = null;
 
 		pointMC = new PSEModelChecker(modelChecker);
 		pointMC.setModulesFileAndPropertiesFile(modelChecker.getModulesFile(), modelChecker.getPropertiesFile());
+		pointMC.setExplorer(modelExplorer, builder.getStateArray());
+		builder = null;
 		//pointMC.setVerbosity(0);
 
 		samples = new LinkedList<Point>();

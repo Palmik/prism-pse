@@ -111,7 +111,7 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 				throw new ClassCastException();
 			threshold = (Double) boundExpr.evaluate(modelChecker.getConstantValues());
 		} catch (ClassCastException e) {
-			throw new PrismException("Threshold synthesis requires a bounded P or R operator");
+			throw new PrismException("Threshold synthesis requires a bounded P or R operator " + e.toString());
 		}
 	}
 
