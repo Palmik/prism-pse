@@ -3,7 +3,7 @@
   [ { path => 'models/cluster.sm'
     , opts =>
       [ { parameters =>
-          [ { ws_fail => [0.0025, 0.05], line_fail => [0.00025, 0.05] }
+          [ { ws_fail => [0.005, 0.05], line_fail => [0.001, 0.005] }
           ]
         , environment =>
           [ {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
@@ -18,7 +18,7 @@
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           ]
         , properties =>
-          [ { synth => 1, type => 'thr', csl => 'R{"time_not_min"}<=0.0018[ C<=50 ]', acc => 0.03 }
+          [ { synth => 1, type => 'thr', csl => 'R{"time_not_min"}<=0.001[ C<=100 ]', acc => 0.1 }
           ]
         }
       ]
