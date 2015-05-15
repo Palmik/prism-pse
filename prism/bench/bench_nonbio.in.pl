@@ -18,7 +18,7 @@
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           ]
         , properties =>
-          [ { synth => 1, type => 'thr', csl => 'P<=0.01 [ F<=1000 !"minimum" ]', acc => 0.05 }
+          [ { synth => 1, type => 'thr', csl => 'R{"time_not_min"}<=0.0018[ C<=50 ]', acc => 0.03 }
           ]
         }
       ]
