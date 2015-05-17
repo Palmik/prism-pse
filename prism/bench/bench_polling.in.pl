@@ -3,7 +3,7 @@
   [ { path => 'models/polling.sm'
     , opts =>
       [ { parameters =>
-          [ { gamma => [50, 400], mu => [0.5,4] }
+          [ { gamma => [50, 500], mu => [0.5,5] }
           ]
         , environment =>
           [ {PSE_OCL=>1,PSE_ADAPTIVE_FOX_GLYNN=>1}
@@ -18,7 +18,7 @@
           , {PSE_OCL=>0,PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_PARA=>4}
           ]
         , properties =>
-          [ { synth => 1, type => 'thr', csl => 'R{"waiting"}<=0.75[C<=10]', acc => 0.05 }
+          [ { synth => 1, type => 'thr', csl => 'R{"waiting"}<=2.5[C<=25]', acc => 0.05 }
           ]
         }
       ]
