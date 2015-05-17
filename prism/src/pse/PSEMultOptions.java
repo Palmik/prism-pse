@@ -25,11 +25,6 @@ final public class PSEMultOptions
 				"PSE_PARA has to be disabled (PSE_PARA=0) if you want to use PSE_MANY");
 		}
 
-		if (many > 0 && adatptiveFoxGlynn) {
-			throw new RuntimeException(
-				"PSE_ADAPTIVE_FOX_GLYNN has to be disabled (PSE_ADAPTIVE_FOX_GLYNN=0) if you want to use PSE_MANY");
-		}
-
 		if (para < 0) {
 			throw new RuntimeException(
 				"PSE_PARA has to be set nonnegative integer");
