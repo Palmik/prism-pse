@@ -679,6 +679,9 @@ public final class PSEModel extends ModelExplicit
 		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
+		int totNZ = 0;
+		int totXX = 0;
+
 		int matPColPerRow = 0;
 		int matPRowCnt = 0;
 		int matNColPerRow = 0;
@@ -756,6 +759,9 @@ public final class PSEModel extends ModelExplicit
 		final int warpSize = 32;
 		final int rowCnt = subset.cardinality();
 
+		int totNZ = 0;
+		int totXX = 0;
+
 		int matPRowCnt = rowCnt;
 		VectorOfDouble matPValLower = new VectorOfDouble();
 		VectorOfDouble matPValUpper = new VectorOfDouble();
@@ -796,6 +802,8 @@ public final class PSEModel extends ModelExplicit
 					}
 				}
 				//System.err.printf("\n");
+				totNZ += pnz;
+				totNZ += nnz;
 				matPNZ = Math.max(matPNZ, pnz);
 				matNNZ = Math.max(matNNZ, nnz);
 				r = subset.nextSetBit(r + 1);
@@ -807,6 +815,7 @@ public final class PSEModel extends ModelExplicit
 
 			matNVal.pushBack(stepSize * matNNZ, 0);
 			matNCol.pushBack(stepSize * matNNZ, 0);
+			totXX = stepSize * matPNZ + stepSize * matNNZ;
 			for (int is = 0; is < stepSize; ++is) {
 				int pPos = pSegOff + is;
 				int nPos = nSegOff + is;

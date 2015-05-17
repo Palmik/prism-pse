@@ -117,6 +117,7 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
             decompositionProcedure.examinePartialComputation(out, region, sumMin, sumMax);
             out.put(region, sumMin, sumMax);
         }
+        log.print(String.format("PSEFoxGlynnSimple: iters_total=%s\n", itersTotal));
         return itersTotal;
     }
 
