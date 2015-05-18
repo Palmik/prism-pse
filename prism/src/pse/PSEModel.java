@@ -543,7 +543,12 @@ public final class PSEModel extends ModelExplicit
 
     final public PSEVMCreateData_CSR getCreateData_VM_CSR()
 	{
-	    final double qrec = 1.0 / getDefaultUniformisationRate();
+		return getCreateData_VM_CSR(getDefaultUniformisationRate());
+	}
+
+	final public PSEVMCreateData_CSR getCreateData_VM_CSR(double q)
+	{
+	    final double qrec = 1.0 / q;
 
 	    VectorOfDouble matIMinVal = new VectorOfDouble();
 		VectorOfDouble matIMaxVal = new VectorOfDouble();
@@ -676,7 +681,12 @@ public final class PSEModel extends ModelExplicit
 
 	final public PSEMVCreateData_ELL getCreateData_MV_ELL(BitSet subset, boolean complement)
 	{
-		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		return getCreateData_MV_ELL(subset, complement, getDefaultUniformisationRate(subset));
+	}
+
+	final public PSEMVCreateData_ELL getCreateData_MV_ELL(BitSet subset, boolean complement, double q)
+	{
+		final double qrec = 1.0 / q;
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
 		int totNZ = 0;
@@ -753,7 +763,12 @@ public final class PSEModel extends ModelExplicit
 
 	final public PSEMVCreateData_ELLFW getCreateData_MV_ELLFW(BitSet subset, boolean complement)
 	{
-		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		return getCreateData_MV_ELLFW(subset, complement, getDefaultUniformisationRate(subset));
+	}
+
+	final public PSEMVCreateData_ELLFW getCreateData_MV_ELLFW(BitSet subset, boolean complement, double q)
+	{
+		final double qrec = 1.0 / q;
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
 		final int warpSize = 32;
@@ -875,9 +890,15 @@ public final class PSEModel extends ModelExplicit
 			matNCol.data(), matNRow, matNSegOff.data(),
 			matNN, matNNrem, matNRowCnt, matNCol.size());
 	}
+
 	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset, boolean complement)
 	{
-		final double qrec = 1.0 / getDefaultUniformisationRate(subset);
+		return getCreateData_MV_CSR(subset, complement, getDefaultUniformisationRate(subset));
+	}
+
+	final public PSEMVCreateData_CSR getCreateData_MV_CSR(BitSet subset, boolean complement, double q)
+	{
+		final double qrec = 1.0 / q;
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
 		VectorOfDouble matPValLower = new VectorOfDouble();

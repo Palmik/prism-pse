@@ -78,8 +78,6 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 				// Configure parameter space
 				model.evaluateParameters(region);
                 maxq = Math.max(maxq, uniformisationRateGetter.getUniformisationRate(model));
-                multManager.update(matCnt, mult);
-				multManager.update(matCnt, mult);
 				log.println("Computing probabilities for parameter region " + region);
 
                 ++matCnt;
@@ -87,6 +85,11 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 
             if (matCnt == 0) {
                 continue;
+            }
+
+            for (int i = 0; i < matCnt; ++i) {
+                model.evaluateParameters(entry[i].getKey());
+                multManager.update(i, mult, maxq);
             }
 
             // Conmpute FoxGlynn param from the maximum uniformisation rate.

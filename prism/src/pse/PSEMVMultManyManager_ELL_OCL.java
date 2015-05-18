@@ -15,9 +15,9 @@ public class PSEMVMultManyManager_ELL_OCL implements PSEMultManyManager<PSEMVMul
 	}
 
 	@Override
-	final public void update(int matId, PSEMVMultMany_ELL_OCL mult)
+	final public void update(int matId, PSEMVMultMany_ELL_OCL mult, double q)
 	{
-		mult.update(matId, model.getCreateData_MV_ELL(modelSubset, modelSubsetComplement));
+		mult.update(matId, model.getCreateData_MV_ELL(modelSubset, modelSubsetComplement, q));
 	}
 
 	@Override
