@@ -20,7 +20,7 @@
           , {PSE_ADAPTIVE_FOX_GLYNN=>1,PSE_OCL=>1,PSE_FMT=>'ELL',PSE_MANY=>16}
           ]
         , properties =>
-          [ { synth => 1, type => 'max-sample', csl => 'P=? [ (popI>0) U[165,215] (popI=0) ]', acc => 0.05 }
+          [ { synth => 1, type => 'max-sample', csl => 'P=? [ (popI>0) U[165,215] (popI=0) ]', acc => 0.2 }
           ]
         }
       ]
