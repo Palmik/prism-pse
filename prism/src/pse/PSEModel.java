@@ -689,8 +689,8 @@ public final class PSEModel extends ModelExplicit
 		final double qrec = 1.0 / q;
 		subset = Utility.makeBitSetComplement(subset, complement, getNumStates());
 
-		int totNZ = 0;
-		int totXX = 0;
+		int totPNZ = 0;
+		int totNNZ = 0;
 
 		int matPColPerRow = 0;
 		int matPRowCnt = 0;
@@ -711,9 +711,14 @@ public final class PSEModel extends ModelExplicit
 			}
 			if (matPNZ > 0) ++matPRowCnt;
 			if (matNNZ > 0) ++matNRowCnt;
+			totPNZ += matPNZ;
+			totNNZ += matNNZ;
 			matPColPerRow = Math.max(matPColPerRow, matPNZ);
 			matNColPerRow = Math.max(matNColPerRow, matNNZ);
 		}
+
+		System.err.printf("totPNZ %s; totNNZ %s; totP %s; totN %s;\n",
+			totPNZ, totNNZ, matPColPerRow * matPRowCnt, matNColPerRow * matNRowCnt);
 
 		int matPValCnt = matPRowCnt * matPColPerRow;
 		double[] matPValLower = new double[matPValCnt];

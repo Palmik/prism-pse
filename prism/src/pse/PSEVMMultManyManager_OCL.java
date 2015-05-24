@@ -10,9 +10,9 @@ public class PSEVMMultManyManager_OCL implements PSEMultManyManager<PSEVMMultMan
 	}
 
 	@Override
-	final public void update(int matId, PSEVMMultMany_OCL mult)
+	final public void update(int matId, PSEVMMultMany_OCL mult, double q)
 	{
-		mult.update(matId, model.getCreateData_VM_CSR());
+		mult.update(matId, model.getCreateData_VM_CSR(q));
 	}
 
 	@Override
