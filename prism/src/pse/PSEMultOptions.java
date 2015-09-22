@@ -41,8 +41,8 @@ final public class PSEMultOptions
 	@Override
 	public String toString()
 	{
-		return String.format("{ ocl = %s; para = %s; many = %s; adaptiveFoxGlynn = %s }",
-			ocl, para, many, adatptiveFoxGlynn);
+		return String.format("{ ocl = %s; fmt = %s, para = %s; many = %s; adaptiveFoxGlynn = %s }",
+			ocl, fmt, para, many, adatptiveFoxGlynn);
 	}
 
 	public PSEMultFormat getFmt()
