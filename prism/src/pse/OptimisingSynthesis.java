@@ -32,6 +32,7 @@ import java.util.Map.Entry;
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
 import parser.ast.ExpressionReward;
+import parser.ast.ExpressionFilter;
 import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
@@ -92,13 +93,17 @@ abstract class OptimisingSynthesis extends DecompositionProcedure
 	@Override
 	protected void processPropertyExpression() throws PrismException
 	{
+		Expression propExprTmp = propExpr;
+		while (propExprTmp instanceof ExpressionFilter) {
+			propExprTmp = ((ExpressionFilter)propExprTmp).getOperand();
+		}
 		try {
 			RelOp relOp;
 			try {
-				ExpressionProb probExpr = (ExpressionProb) propExpr;
-				relOp = probExpr.getRelOp();
+				ExpressionProb probExprTmp = (ExpressionProb) propExprTmp;
+				relOp = probExprTmp.getRelOp();
 			} catch (ClassCastException e) {
-				ExpressionReward rewExpr = (ExpressionReward) propExpr;
+				ExpressionReward rewExpr = (ExpressionReward) propExprTmp;
 				relOp = rewExpr.getRelOp();
 			}
 			if (relOp != RelOp.EQ)

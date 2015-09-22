@@ -32,6 +32,7 @@ import java.util.Map.Entry;
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
 import parser.ast.ExpressionReward;
+import parser.ast.ExpressionFilter;
 import parser.ast.RelOp;
 import prism.PrismException;
 import prism.PrismLog;
@@ -92,15 +93,19 @@ public final class ThresholdSynthesis extends DecompositionProcedure
 	@Override
 	protected void processPropertyExpression() throws PrismException
 	{
+		Expression propExprTmp = propExpr;
+		while (propExprTmp instanceof ExpressionFilter) {
+			propExprTmp = ((ExpressionFilter)propExprTmp).getOperand();
+		}
 		try {
 			RelOp relOp;
 			Expression boundExpr;
 			try {
-				ExpressionProb probExpr = (ExpressionProb) propExpr;
+				ExpressionProb probExpr = (ExpressionProb) propExprTmp;
 				relOp = probExpr.getRelOp();
 				boundExpr = probExpr.getProb();
 			} catch (ClassCastException e) {
-				ExpressionReward rewExpr = (ExpressionReward) propExpr;
+				ExpressionReward rewExpr = (ExpressionReward) propExprTmp;
 				relOp = rewExpr.getRelOp();
 				boundExpr = rewExpr.getReward();
 			}

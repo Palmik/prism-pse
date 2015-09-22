@@ -179,6 +179,7 @@ public final class PSEModelChecker extends PrismComponent
 	public BoxRegionValues checkExpression(PSEModel model, Expression expr, DecompositionProcedure decompositionProcedure)
 			throws PrismException
 	{
+		
 		if (expr instanceof ExpressionFilter) {
 			return checkExpressionFilter(model, (ExpressionFilter) expr, decompositionProcedure);
 		}
@@ -420,21 +421,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		// Compute probabilities
-		BoxRegionValues regionValues = checkProbPathFormula(model, expr.getExpression(), decompositionProcedure);
-
-		// For =? properties, just return values
-		if (pb == null) {
-			return regionValues;
-		}
-		// Otherwise, compare against bound to get set of satisfying states
-		else {
-			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-				BitSet solnMin = entry.getValue().getMin().getBitSetFromInterval(relOp, p);
-				BitSet solnMax = entry.getValue().getMax().getBitSetFromInterval(relOp, p);
-				regionValues.put(entry.getKey(), solnMin, solnMax);
-			}
-			return regionValues;
-		}
+		return checkProbPathFormula(model, expr.getExpression(), decompositionProcedure);
 	}
 
 	/**
@@ -857,21 +844,7 @@ public final class PSEModelChecker extends PrismComponent
 		}
 
 		// Compute rewards
-		BoxRegionValues regionValues = checkRewardFormula(model, stateRewards, expr.getExpression(), decompositionProcedure);
-
-		// For =? properties, just return values
-		if (rb == null) {
-			return regionValues;
-		}
-		// Otherwise, compare against bound to get set of satisfying states
-		else {
-			for (Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry : regionValues) {
-				BitSet solnMin = entry.getValue().getMin().getBitSetFromInterval(relOp, r);
-				BitSet solnMax = entry.getValue().getMax().getBitSetFromInterval(relOp, r);
-				regionValues.put(entry.getKey(), solnMin, solnMax);
-			}
-			return regionValues;
-		}
+		return checkRewardFormula(model, stateRewards, expr.getExpression(), decompositionProcedure);
 	}
 
 	/**
