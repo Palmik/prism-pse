@@ -681,10 +681,6 @@ public final class PSEModelChecker extends PrismComponent
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n;
 		long timer;
-		// Fox-Glynn stuff
-		FoxGlynn fg;
-		int left, right;
-		double termCritParam, q, qt, acc, weight[], totalWeight;
 
 		assert nonAbsMin.equals(nonAbsMax);
 		BitSet nonAbs = nonAbsMin;
@@ -718,25 +714,6 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutTransitions();
-
-		// Get uniformisation rate; do Fox-Glynn
-		q = model.getDefaultUniformisationRate(nonAbs);
-		qt = q * t;
-		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
-		termCritParam = 1e-6;
-		acc = termCritParam / 8.0;
-		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
-		left = fg.getLeftTruncationPoint();
-		right = fg.getRightTruncationPoint();
-		if (right < 0)
-			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		weight = fg.getWeights();
-		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++) {
-			weight[i - left] /= totalWeight;
-		}
-		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
-		mainLog.println();
 
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
@@ -908,10 +885,6 @@ public final class PSEModelChecker extends PrismComponent
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i, n;
 		long timer;
-		// Fox-Glynn stuff
-		FoxGlynn fg;
-		int left, right;
-		double termCritParam, q, qt, acc, weights[], totalWeight;
 
 		if (previousResult == null) {
 			previousResult = new BoxRegionValues(model);
@@ -940,36 +913,6 @@ public final class PSEModelChecker extends PrismComponent
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutTransitions();
 
-		// Get uniformisation rate; do Fox-Glynn
-		q = model.getDefaultUniformisationRate();
-		qt = q * t;
-		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
-		termCritParam = 1e-6;
-		acc = termCritParam / 8.0;
-		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
-		left = fg.getLeftTruncationPoint();
-		right = fg.getRightTruncationPoint();
-		if (right < 0)
-			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		weights = fg.getWeights();
-		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++) {
-			weights[i - left] /= totalWeight;
-		}
-		
-		// modify the poisson probabilities to what we need for this computation
-		// first make the kth value equal to the sum of the values for 0...k
-		for (i = left+1; i <= right; i++) {
-			weights[i - left] += weights[i - 1 - left];
-		}
-		// then subtract from 1 and divide by uniformisation constant (q) to give mixed poisson probabilities
-		for (i = left; i <= right; i++) {
-			weights[i - left] = (1 - weights[i - left]) / q;
-		}
-
-		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
-		mainLog.println();
-
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);
 
@@ -988,7 +931,7 @@ public final class PSEModelChecker extends PrismComponent
 
 		int totalIters = foxGlynn.compute(distributionGetter,
 			new PSEFoxGlynn.UniformisationRateGetterWhole(),
-			new PSEFoxGlynn.ParametersGetterRewards(1.0 / q),
+			new PSEFoxGlynn.ParametersGetterRewards(),
 			t, decompositionProcedure, multProbs, previousResult, regionValues);
 
 		// Examine the whole computation after it's completely finished
@@ -1068,10 +1011,6 @@ public final class PSEModelChecker extends PrismComponent
 		BoxRegionValues regionValues = new BoxRegionValues(model);
 		int i;
 		long timer;
-		// Fox-Glynn stuff
-		FoxGlynn fg;
-		int left, right;
-		double termCritParam, q, qt, acc, weight[], totalWeight;
 
 		if (previousResult == null) {
 			previousResult = new BoxRegionValues(model);
@@ -1083,23 +1022,6 @@ public final class PSEModelChecker extends PrismComponent
 
 		// Compute the in, out, inout sets of reactions
 		model.computeInOutTransitions();
-
-		// Get uniformisation rate; do Fox-Glynn
-		q = model.getDefaultUniformisationRate();
-		qt = q * t;
-		mainLog.println("\nUniformisation: q.t = " + q + " x " + t + " = " + qt);
-		termCritParam = 1e-6;
-		acc = termCritParam / 8.0;
-		fg = new FoxGlynn(qt, 1e-300, 1e+300, acc);
-		left = fg.getLeftTruncationPoint();
-		right = fg.getRightTruncationPoint();
-		if (right < 0)
-			throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-		weight = fg.getWeights();
-		totalWeight = fg.getTotalWeight();
-		for (i = left; i <= right; i++)
-			weight[i - left] /= totalWeight;
-		mainLog.println("Fox-Glynn (" + acc + "): left = " + left + ", right = " + right);
 
 		// Get number of iterations for partial examination
 		int numItersExaminePartial = settings.getInteger(PrismSettings.PRISM_PSE_EXAMINEPARTIAL);

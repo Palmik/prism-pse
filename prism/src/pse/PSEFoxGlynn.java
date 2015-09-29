@@ -8,140 +8,138 @@ import java.util.Map;
 
 public interface PSEFoxGlynn
 {
-    public static class Params
-    {
-        public Params(int fgL, int fgR, double[] weight, double weightDef) throws PrismException
-        {
-            this.fgL = fgL;
-            this.fgR = fgR;
-            this.weight = weight;
-            this.weightDef = weightDef;
-            if (fgR < 0) {
-                throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
-            }
-        }
+	public static class Params
+	{
+		public Params(int fgL, int fgR, double[] weight, double weightDef) throws PrismException
+		{
+			this.fgL = fgL;
+			this.fgR = fgR;
+			this.weight = weight;
+			this.weightDef = weightDef;
+			if (fgR < 0) {
+				throw new PrismException("Overflow in Fox-Glynn computation (time bound too big?)");
+			}
+		}
 
-        @Override
-        public String toString()
-        {
-            return String.format("{ fgL = %s; fgR = %s }", fgL, fgR);
-        }
+		@Override
+		public String toString()
+		{
+			return String.format("{ fgL = %s; fgR = %s }", fgL, fgR);
+		}
 
-        final public int fgL;
-        final public int fgR;
-        final public double[] weight;
-        final public double weightDef;
-    }
+		final public int fgL;
+		final public int fgR;
+		final public double[] weight;
+		final public double weightDef;
+	}
 
-    public static interface UniformisationRateGetter
-    {
-        public double getUniformisationRate(PSEModel model);
-    }
+	public static interface UniformisationRateGetter
+	{
+		public double getUniformisationRate(PSEModel model);
+	}
 
-    public static final class UniformisationRateGetterWhole implements UniformisationRateGetter
-    {
-        public double getUniformisationRate(PSEModel model)
-        {
-            return model.getDefaultUniformisationRate();
-        }
-    }
+	public static final class UniformisationRateGetterWhole implements UniformisationRateGetter
+	{
+		public double getUniformisationRate(PSEModel model)
+		{
+			return model.getDefaultUniformisationRate();
+		}
+	}
 
-    public static final class UniformisationRateGetterSubset implements UniformisationRateGetter
-    {
-        public UniformisationRateGetterSubset(BitSet subset)
-        {
-            this.subset = subset;
-        }
+	public static final class UniformisationRateGetterSubset implements UniformisationRateGetter
+	{
+		public UniformisationRateGetterSubset(BitSet subset)
+		{
+			this.subset = subset;
+		}
 
-        public double getUniformisationRate(PSEModel model)
-        {
-            return model.getDefaultUniformisationRate(subset);
-        }
+		public double getUniformisationRate(PSEModel model)
+		{
+			return model.getDefaultUniformisationRate(subset);
+		}
 
-        final private BitSet subset;
-    }
-    public static interface ParametersGetter
-    {
-        public Params getParameters(double q, double t) throws PrismException;
-    }
+		final private BitSet subset;
+	}
 
-    public static final class ParametersGetterProbs implements ParametersGetter
-    {
-        public ParametersGetterProbs(double weightDef)
-        {
-            this.weightDef = weightDef;
-        }
+	public static interface ParametersGetter
+	{
+		public Params getParameters(double q, double t) throws PrismException;
+	}
 
-        @Override
-        public Params getParameters(double q, double t) throws PrismException
-        {
-            double qt = q * t;
-            double accuracy = 1e-6 / 8.0;
-            FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
+	public static final class ParametersGetterProbs implements ParametersGetter
+	{
+		public ParametersGetterProbs(double weightDef)
+		{
+			this.weightDef = weightDef;
+		}
 
-            int fgL = fg.getLeftTruncationPoint();
-            int fgR = fg.getRightTruncationPoint();
-            double[] weight = fg.getWeights();
-            double weightTotal = fg.getTotalWeight();
-            for (int i = fgL; i <= fgR; ++i) {
-                weight[i - fgL] /= weightTotal;
-            }
+		@Override
+		public Params getParameters(double q, double t) throws PrismException
+		{
+			double qt = q * t;
+			double accuracy = 1e-6 / 8.0;
+			FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
 
-            return new Params(fgL, fgR, weight, weightDef);
-        }
+			int fgL = fg.getLeftTruncationPoint();
+			int fgR = fg.getRightTruncationPoint();
+			double[] weight = fg.getWeights();
+			double weightTotal = fg.getTotalWeight();
+			for (int i = fgL; i <= fgR; ++i) {
+				weight[i - fgL] /= weightTotal;
+			}
 
-        private final double weightDef;
-    }
+			return new Params(fgL, fgR, weight, weightDef);
+		}
 
-    public static final class ParametersGetterRewards implements ParametersGetter
-    {
-        public ParametersGetterRewards(double weightDef)
-        {
-            this.weightDef = weightDef;
-        }
+		private final double weightDef;
+	}
 
-        @Override
-        public Params getParameters(double q, double t) throws PrismException
-        {
-            double qt = q * t;
-            double accuracy = 1e-6 / 8.0;
-            FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
+	public static final class ParametersGetterRewards implements ParametersGetter
+	{
+		public ParametersGetterRewards()
+		{
+		}
 
-            int fgL = fg.getLeftTruncationPoint();
-            int fgR = fg.getRightTruncationPoint();
-            double[] weight = fg.getWeights();
-            double weightTotal = fg.getTotalWeight();
+		@Override
+		public Params getParameters(double q, double t) throws PrismException
+		{
+			double qt = q * t;
+			double accuracy = 1e-6 / 8.0;
+			FoxGlynn fg = new FoxGlynn(qt, 1e-300, 1e+300, accuracy);
 
-            weight[0] /= weightTotal;
-            for (int i = fgL  + 1; i <= fgR; ++i) {
-                weight[i - fgL] /= weightTotal;
-                weight[i - fgL] += weight[i - fgL - 1];
-                weight[i - fgL - 1] = (1 - weight[i - fgL - 1]) / q;
-            }
-            weight[fgR - fgL] = (1 - weight[fgR - fgL]) / q;
+			int fgL = fg.getLeftTruncationPoint();
+			int fgR = fg.getRightTruncationPoint();
+			double[] weight = fg.getWeights();
+			double weightTotal = fg.getTotalWeight();
 
-            return new Params(fgL, fgR, weight, weightDef);
-        }
+			weight[0] /= weightTotal;
+			for (int i = fgL	+ 1; i <= fgR; ++i) {
+				weight[i - fgL] /= weightTotal;
+				weight[i - fgL] += weight[i - fgL - 1];
+				weight[i - fgL - 1] = (1 - weight[i - fgL - 1]) / q;
+			}
+			weight[fgR - fgL] = (1 - weight[fgR - fgL]) / q;
 
-        private final double weightDef;
-    }
+			return new Params(fgL, fgR, weight, 1.0 / q);
+		}
+	}
 
-    public static interface DistributionGetter
-    {
-        public void getDistribution(Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry,
-            int solnOff, final double[] solnMin, final double[] solnMax);
-    }
+	public static interface DistributionGetter
+	{
+		public void getDistribution(Map.Entry<BoxRegion, BoxRegionValues.StateValuesPair> entry,
+			int solnOff, final double[] solnMin, final double[] solnMax);
+	}
 
-    public int compute
-        ( DistributionGetter distributionGetter
-        , UniformisationRateGetter uniformisationRateGetter
-        , ParametersGetter parametersGetter
-        , double t
+	public int compute
+		( DistributionGetter distributionGetter
+		, UniformisationRateGetter uniformisationRateGetter
+		, ParametersGetter parametersGetter
+		, double t
 
-        , DecompositionProcedure decompositionProcedure
+		, DecompositionProcedure decompositionProcedure
 
-        , BoxRegionValues in
-        , BoxRegionValues outPrev
-        , BoxRegionValues out
-        ) throws PrismException, DecompositionProcedure.DecompositionNeeded;
+		, BoxRegionValues in
+		, BoxRegionValues outPrev
+		, BoxRegionValues out
+		) throws PrismException, DecompositionProcedure.DecompositionNeeded;
 }

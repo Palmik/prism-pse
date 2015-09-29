@@ -116,6 +116,10 @@ public final class PSEFoxGlynnParallel<Mult extends  PSEMult> implements PSEFoxG
 						params = parametersGetter.getParameters(q, t);
 					}
 					mainLog.println("Computing probabilities for parameter region " + region);
+
+					mainLog.println(String.format("Fox-Glynn left = %s, right = %s", params.fgL, params.fgR));
+					mainLog.println();
+
 					modelLock.writeLock().unlock();
 
 					if (multOptions.getAdaptiveFoxGlynn()) {
