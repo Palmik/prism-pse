@@ -61,8 +61,6 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 	/** map from rate expression to respective rate parameters and population,
 	 *  the latter having been extracted from the former */
 	private Map<Expression, RateParametersAndPopulation> rateDataCache = new HashMap<Expression, RateParametersAndPopulation>();
-	/** map from state to its transition list */
-	private Map<State, TransitionList> transitionsCache = new HashMap<State, TransitionList>();
 
 	/**
 	 * Special data structure for holding a pair consisting of rate parameters
@@ -207,12 +205,7 @@ public final class PSEModelExplorer implements ModelExplorer<Expression>
 	public void queryState(State state) throws PrismException
 	{
 		currentState = state;
-		if (transitionsCache.containsKey(state)) {
-			transitionList = transitionsCache.get(state);
-		} else {
-			transitionList = engine.calculateTransitions(state);
-			transitionsCache.put(state, transitionList);
-		}
+		transitionList = engine.calculateTransitions(state);
 	}
 
 	@Override
