@@ -135,13 +135,13 @@ public class SymbolicEngine
 		ch = new ChoiceListFlexi();
 		ch.setModuleOrActionIndex(moduleOrActionIndex);
 		n = ups.getNumUpdates();
+		int[] varMap = new int[state.varValues.length];
+		for (int var = 0; var < varMap.length; var++) {
+			varMap[var] = var;
+		}
 		for (i = 0; i < n; i++) {
 			// Compute probability/rate
 			p = getProbabilityInState(ups, i, state);
-			int[] varMap = new int[state.varValues.length];
-			for (int var = 0; var < varMap.length; var++) {
-				varMap[var] = var;
-			}
 			p = (Expression) p.evaluatePartially(state, varMap);
 			list = new ArrayList<Update>();
 			list.add(ups.getUpdate(i));
