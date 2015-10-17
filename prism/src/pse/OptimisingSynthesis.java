@@ -46,6 +46,8 @@ import prism.PrismLog;
  */
 abstract class OptimisingSynthesis extends DecompositionProcedure
 {
+	static double Epsilon = 10E-6;
+
 	// Synthesis parameters
 	/** greatest acceptable difference between {@link #maximalUpperProbBoundOfOptimising}
 	 *  and {@link #minimalLowerProbBoundOfOptimising} */

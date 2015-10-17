@@ -62,7 +62,7 @@ abstract class MaxSynthesis extends OptimisingSynthesis
 			}
 			double upperProbBound = (Double) entry.getValue().getMax().getValue(initState);
 			double lowerProbBound = (Double) entry.getValue().getMin().getValue(initState);
-			if (upperProbBound < maximalLowerBound) {
+			if (upperProbBound + Epsilon < maximalLowerBound) {
 				nonOptimisingRegions.add(entry.getKey(), "upper prob bound = " + upperProbBound);
 				nonOptimisingRegions.add(entry.getKey(), "lower prob bound = " + lowerProbBound);
 			} else {
