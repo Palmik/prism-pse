@@ -103,11 +103,10 @@ public final class PSEFoxGlynnSimple<Mult extends PSEMult> implements PSEFoxGlyn
 			while (iters < fgR) {
 				int itersStep;
 				if (iters == 0 && weightDef == 0) {
-					itersStep = Math.max(Utility.leastGreaterMultiple(fgL, iterStep), iterStep);
+					itersStep = Math.min(fgR,Math.max(Utility.leastGreaterMultiple(fgL, iterStep), iterStep));
 				} else {
 					itersStep = Math.min(iterStep, fgR - iters);
 				}
-
 				mult.mult(itersStep);
 				iters += itersStep;
 				itersTotal += itersStep;

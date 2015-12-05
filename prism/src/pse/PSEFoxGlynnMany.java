@@ -127,7 +127,7 @@ public final class PSEFoxGlynnMany<Mult extends PSEMultMany> implements PSEFoxGl
 				// Matrix-vector multiply
 				int itersStep;
 				if (iters == 0 && weightDef == 0) {
-					itersStep = Math.max(Utility.leastGreaterMultiple(fgL, iterStep), iterStep);
+					itersStep = Math.min(fgR,Math.max(Utility.leastGreaterMultiple(fgL, iterStep), iterStep));
 				} else {
 					itersStep = Math.min(iterStep, fgR - iters);
 				}
